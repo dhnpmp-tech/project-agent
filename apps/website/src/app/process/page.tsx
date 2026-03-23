@@ -162,7 +162,7 @@ export default function ProcessPage() {
           </div>
 
           {/* Right: Sticky agent pipeline illustration */}
-          <div className="hidden lg:block w-[320px] flex-shrink-0">
+          <div className="hidden lg:block w-[420px] flex-shrink-0">
             <div className="sticky top-28">
               <AgentPipeline />
             </div>
