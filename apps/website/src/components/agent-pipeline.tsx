@@ -150,28 +150,28 @@ function AgentNode({
       {/* Chat bubble card */}
       <div
         className={cn(
-          "rounded-2xl ring-1 p-4 transition-all duration-600",
+          "rounded-2xl ring-1 p-5 transition-all duration-600",
           isActive ? agent.bgClass : "bg-white/[0.02] ring-white/[0.04]"
         )}
       >
         {/* Header */}
-        <div className="flex items-center gap-2.5 mb-2.5">
+        <div className="flex items-center gap-3 mb-3">
           <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center"
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
             style={{
               backgroundColor: isActive ? `${agent.color}20` : "rgba(255,255,255,0.03)",
               transition: "background-color 0.6s",
             }}
           >
-            <div className="w-[18px] h-[18px]">
+            <div className="w-5 h-5">
               <AgentPipelineIcon type={agent.icon} color={isActive ? agent.color : "#555"} />
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-bold text-white/90 truncate">{agent.label}</p>
+            <p className="text-sm font-bold text-white/90 truncate">{agent.label}</p>
           </div>
           <span
-            className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ring-1"
+            className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full ring-1"
             style={{
               color: isActive ? agent.color : "#666",
               backgroundColor: isActive ? `${agent.color}15` : "transparent",
@@ -184,7 +184,7 @@ function AgentNode({
         </div>
         {/* Message */}
         <p
-          className="text-xs leading-relaxed"
+          className="text-[13px] leading-relaxed"
           style={{
             color: isActive ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.2)",
             transition: "color 0.6s",
@@ -214,7 +214,7 @@ function AgentNode({
 
 /* ── Output dashboard ────────────────────────────────────────── */
 function OutputDashboard({ progress }: { progress: number }) {
-  const isActive = progress > 0.85;
+  const isActive = progress > 0.7;
 
   return (
     <div
@@ -239,7 +239,7 @@ function OutputDashboard({ progress }: { progress: number }) {
       </div>
 
       {/* Output card */}
-      <div className="rounded-2xl bg-gradient-to-br from-brand-500/10 via-surface-900/80 to-violet-500/5 ring-1 ring-brand-500/20 p-5 relative overflow-hidden">
+      <div className="rounded-2xl bg-gradient-to-br from-brand-500/10 via-surface-900/80 to-violet-500/5 ring-1 ring-brand-500/20 p-6 relative overflow-hidden">
         {/* Glow */}
         {isActive && (
           <motion.div
@@ -251,29 +251,29 @@ function OutputDashboard({ progress }: { progress: number }) {
         )}
 
         <div className="relative">
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-brand-500/20 flex items-center justify-center">
-              <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-brand-500/20 flex items-center justify-center">
+              <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round">
                 <path d="M2 12V8M5 12V6M8 12V4M11 12V7M14 12V2" />
               </svg>
             </div>
-            <p className="text-[13px] font-bold text-white/90">Business Outcome</p>
+            <p className="text-sm font-bold text-white/90">Business Outcome</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-3">
             {outputStats.map((stat, i) => (
               <div
                 key={stat.label}
-                className="rounded-lg bg-white/[0.03] ring-1 ring-white/[0.06] p-2.5"
+                className="rounded-xl bg-white/[0.03] ring-1 ring-white/[0.06] p-3"
                 style={{
                   opacity: isActive ? 1 : 0,
                   transform: `translateY(${isActive ? 0 : 6}px)`,
                   transition: `all 0.5s cubic-bezier(0.32, 0.72, 0, 1) ${i * 0.1}s`,
                 }}
               >
-                <p className="text-[10px] text-white/30 font-medium">{stat.label}</p>
-                <p className="text-base font-extrabold text-brand-400 tracking-tight mt-0.5">{stat.value}</p>
-                <p className="text-[9px] text-white/20 mt-0.5">was {stat.prev}</p>
+                <p className="text-[11px] text-white/30 font-medium">{stat.label}</p>
+                <p className="text-lg font-extrabold text-brand-400 tracking-tight mt-0.5">{stat.value}</p>
+                <p className="text-[10px] text-white/20 mt-0.5">was {stat.prev}</p>
               </div>
             ))}
           </div>
@@ -317,8 +317,8 @@ export function AgentPipeline({ className }: { className?: string }) {
     offset: ["start end", "end start"],
   });
 
-  // Map scroll to a 0–1 progress
-  const progress = useTransform(scrollYProgress, [0.1, 0.85], [0, 1]);
+  // Map scroll to a 0–1 progress — finish earlier so last nodes are readable
+  const progress = useTransform(scrollYProgress, [0.05, 0.55], [0, 1]);
 
   return (
     <div ref={containerRef} className={className}>
