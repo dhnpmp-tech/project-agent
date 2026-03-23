@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { FadeUp, StaggerList, StaggerItem, ScaleIn, GlowCard, Float } from "@/components/motion";
-import { AgentNetworkSVG, WorkflowSVG, ChatMockupSVG, GradientMesh, GridBackground } from "@/components/illustrations";
+import { AgentNetworkSVG, WorkflowSVG, ChatMockupSVG, GradientMesh, GridBackground, IntegrationLogos, WhatsAppLogo, LinkedInLogo, InstagramLogo } from "@/components/illustrations";
 import { motion } from "framer-motion";
 
 const agents = [
@@ -214,6 +214,47 @@ export default function HomePage() {
                 </div>
               </div>
             </Float>
+          </FadeUp>
+        </div>
+      </section>
+
+      {/* ═══════════ SOCIAL PROOF + INTEGRATIONS ═══════════ */}
+      <section className="px-6 py-16 relative border-t border-white/[0.04]">
+        <div className="max-w-[1400px] mx-auto">
+          <FadeUp>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-10">
+              {/* Testimonial snippet */}
+              <div className="flex items-center gap-4 max-w-lg">
+                <div className="flex -space-x-2 flex-shrink-0">
+                  {["AH", "SK", "MR"].map((initials, i) => (
+                    <div key={initials} className={cn(
+                      "w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold ring-2 ring-surface-950",
+                      i === 0 ? "bg-brand-500/30 text-brand-300" :
+                      i === 1 ? "bg-sky-500/30 text-sky-300" :
+                      "bg-violet-500/30 text-violet-300"
+                    )}>
+                      {initials}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-0.5 mb-0.5">
+                    {[1,2,3,4,5].map((star) => (
+                      <svg key={star} className="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <p className="text-xs text-white/40">Trusted by SMBs across <span className="text-white/60 font-medium">Dubai, Abu Dhabi, and Riyadh</span></p>
+                </div>
+              </div>
+
+              {/* Integration logos */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.15em] font-semibold text-white/15 mb-3">Integrates with</p>
+                <IntegrationLogos />
+              </div>
+            </div>
           </FadeUp>
         </div>
       </section>
