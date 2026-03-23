@@ -5,196 +5,210 @@ import { motion } from "framer-motion";
 const spring = { type: "spring" as const, stiffness: 80, damping: 18 };
 const smooth = { duration: 0.8, ease: [0.32, 0.72, 0, 1] as const };
 
-/* ── Hero illustration: animated agent network ─────────────── */
+/* ── Hero illustration: 3-column agent flow ────────────────── */
+/*
+ * Left column:  Incoming triggers (lead, message, form)
+ * Center:       AI agents processing
+ * Right column: Business outputs (WhatsApp reply, CRM, Calendar, Social post, Email)
+ *
+ * Animated particles flow LEFT → CENTER → RIGHT to show the real pipeline.
+ */
 export function AgentNetworkSVG({ className }: { className?: string }) {
-  const nodes = [
-    { x: 220, y: 60, label: "WhatsApp", color: "#22c55e", icon: "chat" },
-    { x: 370, y: 120, label: "Sales", color: "#f59e0b", icon: "chart" },
-    { x: 330, y: 270, label: "Content", color: "#f43f5e", icon: "pen" },
-    { x: 120, y: 270, label: "HR", color: "#0ea5e9", icon: "people" },
-    { x: 80, y: 120, label: "Finance", color: "#8b5cf6", icon: "coin" },
+  /* ─ Layout constants ─ */
+  const W = 520, H = 380;
+  const colL = 60;      // left column x
+  const colC = W / 2;   // center column x
+  const colR = W - 60;  // right column x
+
+  /* ─ Incoming triggers (left) ─ */
+  const triggers = [
+    { y: 90,  label: "Instagram Ad",  color: "#f43f5e", icon: "pen" },
+    { y: 190, label: "WhatsApp DM",   color: "#22c55e", icon: "chat" },
+    { y: 290, label: "Website Form",  color: "#0ea5e9", icon: "form" },
   ];
-  const center = { x: 225, y: 175 };
+
+  /* ─ AI agent nodes (center) ─ */
+  const agents = [
+    { y: 110, label: "Lead Qualifier",    color: "#22c55e" },
+    { y: 190, label: "Smart Responder",   color: "#8b5cf6" },
+    { y: 270, label: "Task Router",       color: "#0ea5e9" },
+  ];
+
+  /* ─ Business outputs (right) ─ */
+  const outputs = [
+    { y: 65,  label: "WhatsApp Reply", color: "#22c55e", icon: "chat" },
+    { y: 140, label: "CRM Updated",    color: "#f59e0b", icon: "chart" },
+    { y: 215, label: "Meeting Booked", color: "#8b5cf6", icon: "calendar" },
+    { y: 290, label: "Email Sent",     color: "#0ea5e9", icon: "mail" },
+    { y: 340, label: "Report Filed",   color: "#f43f5e", icon: "file" },
+  ];
+
+  /* ─ Connection pairs: trigger→agent, agent→output ─ */
+  const leftLines = [
+    { from: triggers[0], to: agents[0] },
+    { from: triggers[1], to: agents[1] },
+    { from: triggers[1], to: agents[0] },
+    { from: triggers[2], to: agents[2] },
+  ];
+  const rightLines = [
+    { from: agents[0], to: outputs[0] },
+    { from: agents[0], to: outputs[1] },
+    { from: agents[1], to: outputs[0] },
+    { from: agents[1], to: outputs[2] },
+    { from: agents[2], to: outputs[3] },
+    { from: agents[2], to: outputs[4] },
+  ];
 
   return (
-    <svg viewBox="0 0 460 360" fill="none" className={className}>
+    <svg viewBox={`0 0 ${W} ${H}`} fill="none" className={className}>
       <defs>
-        <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
+        <radialGradient id="agCenterGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#22c55e" stopOpacity="0.15" />
           <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
         </radialGradient>
-        {nodes.map((n, i) => (
-          <radialGradient key={i} id={`glow-${i}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={n.color} stopOpacity="0.4" />
-            <stop offset="100%" stopColor={n.color} stopOpacity="0" />
-          </radialGradient>
-        ))}
       </defs>
 
-      {/* Connection lines with animated dashes */}
-      {nodes.map((n, i) => (
-        <motion.line
-          key={`line-${i}`}
-          x1={center.x}
-          y1={center.y}
-          x2={n.x}
-          y2={n.y}
-          stroke={n.color}
-          strokeWidth="1.5"
-          strokeOpacity="0.3"
-          strokeDasharray="6 4"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 1.2, delay: 0.3 + i * 0.15, ease: "easeOut" }}
-        />
-      ))}
-
-      {/* Animated data particles along lines */}
-      {nodes.map((n, i) => (
-        <motion.circle
-          key={`particle-${i}`}
-          r="3"
-          fill={n.color}
-          initial={{ opacity: 0 }}
-          animate={{
-            cx: [center.x, n.x],
-            cy: [center.y, n.y],
-            opacity: [0, 1, 1, 0],
-          }}
-          transition={{
-            duration: 2,
-            delay: 1 + i * 0.4,
-            repeat: Infinity,
-            repeatDelay: 3,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-
-      {/* Center hub */}
-      <motion.circle
-        cx={center.x}
-        cy={center.y}
-        r="50"
-        fill="url(#centerGlow)"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ ...spring, delay: 0.2 }}
-      />
-      <motion.circle
-        cx={center.x}
-        cy={center.y}
-        r="32"
-        fill="#09090b"
-        stroke="#22c55e"
-        strokeWidth="2"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ ...spring, delay: 0.3 }}
-      />
-      <motion.text
-        x={center.x}
-        y={center.y - 5}
-        textAnchor="middle"
-        fill="#22c55e"
-        fontSize="8"
-        fontWeight="700"
-        fontFamily="system-ui"
-        letterSpacing="0.05em"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-      >
-        YOUR
+      {/* ── Column labels ─────────────────────────────── */}
+      <motion.text x={colL} y={28} textAnchor="middle" fill="white" fillOpacity="0.25" fontSize="8" fontWeight="700" fontFamily="system-ui" letterSpacing="0.12em"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+        TRIGGERS
       </motion.text>
-      <motion.text
-        x={center.x}
-        y={center.y + 6}
-        textAnchor="middle"
-        fill="#22c55e"
-        fontSize="8"
-        fontWeight="700"
-        fontFamily="system-ui"
-        letterSpacing="0.05em"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.85 }}
-      >
-        AI TEAM
+      <motion.text x={colC} y={28} textAnchor="middle" fill="#22c55e" fillOpacity="0.6" fontSize="8" fontWeight="700" fontFamily="system-ui" letterSpacing="0.12em"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+        AI AGENTS
+      </motion.text>
+      <motion.text x={colR} y={28} textAnchor="middle" fill="white" fillOpacity="0.25" fontSize="8" fontWeight="700" fontFamily="system-ui" letterSpacing="0.12em"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+        OUTPUTS
       </motion.text>
 
-      {/* Agent nodes */}
-      {nodes.map((n, i) => (
-        <motion.g
-          key={`node-${i}`}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ ...spring, delay: 0.5 + i * 0.12 }}
-          style={{ originX: `${n.x}px`, originY: `${n.y}px` }}
-        >
-          {/* Glow */}
-          <circle cx={n.x} cy={n.y} r="30" fill={`url(#glow-${i})`} />
-          {/* Node background */}
-          <circle cx={n.x} cy={n.y} r="18" fill="#18181b" stroke={n.color} strokeWidth="1.5" />
-          {/* Icon */}
-          <AgentIcon type={n.icon} x={n.x} y={n.y} color={n.color} />
-          {/* Label */}
-          <text
-            x={n.x}
-            y={n.y + 30}
-            textAnchor="middle"
-            fill="white"
-            fontSize="8"
-            fontWeight="600"
-            fontFamily="system-ui"
-            opacity="0.7"
-          >
-            {n.label}
-          </text>
+      {/* ── Left connection lines (trigger → agent) ─── */}
+      {leftLines.map((l, i) => {
+        const x1 = colL + 22, y1 = l.from.y;
+        const x2 = colC - 24, y2 = l.to.y;
+        const mx = (x1 + x2) / 2;
+        const d = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+        return (
+          <g key={`ll-${i}`}>
+            <motion.path d={d} stroke={l.from.color} strokeWidth="1" strokeOpacity="0.2" strokeDasharray="4 4"
+              initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.5 + i * 0.1 }} />
+            <motion.circle r="3" fill={l.from.color}
+              initial={{ opacity: 0, offsetDistance: "0%" }}
+              animate={{ opacity: [0, 0.9, 0.9, 0], offsetDistance: ["0%", "100%"] } as any}
+              transition={{ duration: 2.2, delay: 1.2 + i * 0.7, repeat: Infinity, repeatDelay: 3.5, ease: "easeInOut" }}
+              style={{ offsetPath: `path("${d}")` } as any}
+            />
+          </g>
+        );
+      })}
+
+      {/* ── Right connection lines (agent → output) ── */}
+      {rightLines.map((l, i) => {
+        const x1 = colC + 24, y1 = l.from.y;
+        const x2 = colR - 22, y2 = l.to.y;
+        const mx = (x1 + x2) / 2;
+        const d = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+        return (
+          <g key={`rl-${i}`}>
+            <motion.path d={d} stroke={l.to.color} strokeWidth="1" strokeOpacity="0.2" strokeDasharray="4 4"
+              initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.8 + i * 0.1 }} />
+            <motion.circle r="3" fill={l.to.color}
+              initial={{ opacity: 0, offsetDistance: "0%" }}
+              animate={{ opacity: [0, 0.9, 0.9, 0], offsetDistance: ["0%", "100%"] } as any}
+              transition={{ duration: 2, delay: 1.8 + i * 0.5, repeat: Infinity, repeatDelay: 4, ease: "easeInOut" }}
+              style={{ offsetPath: `path("${d}")` } as any}
+            />
+          </g>
+        );
+      })}
+
+      {/* ── Center glow ───────────────────────────────── */}
+      <motion.circle cx={colC} cy={190} r="90" fill="url(#agCenterGlow)"
+        initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ ...spring, delay: 0.3 }} />
+
+      {/* ── Trigger nodes (left) ──────────────────────── */}
+      {triggers.map((t, i) => (
+        <motion.g key={`trig-${i}`}
+          initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+          transition={{ ...smooth, delay: 0.3 + i * 0.12 }}>
+          <circle cx={colL} cy={t.y} r="22" fill={t.color} fillOpacity="0.08" />
+          <circle cx={colL} cy={t.y} r="14" fill="#18181b" stroke={t.color} strokeWidth="1.2" />
+          <AgentIcon type={t.icon} x={colL} y={t.y} color={t.color} />
+          <text x={colL} y={t.y + 28} textAnchor="middle" fill="white" fillOpacity="0.5" fontSize="7.5" fontWeight="600" fontFamily="system-ui">{t.label}</text>
         </motion.g>
       ))}
 
-      {/* Pulsing ring on center */}
-      <motion.circle
-        cx={center.x}
-        cy={center.y}
-        r="32"
-        fill="none"
-        stroke="#22c55e"
-        strokeWidth="1"
-        initial={{ r: 32, opacity: 0.6 }}
-        animate={{ r: 56, opacity: 0 }}
-        transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }}
-      />
+      {/* ── Agent nodes (center) ──────────────────────── */}
+      {agents.map((a, i) => (
+        <motion.g key={`agent-${i}`}
+          initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ ...spring, delay: 0.5 + i * 0.15 }}
+          style={{ originX: `${colC}px`, originY: `${a.y}px` }}>
+          <circle cx={colC} cy={a.y} r="28" fill={a.color} fillOpacity="0.06" />
+          <circle cx={colC} cy={a.y} r="20" fill="#09090b" stroke={a.color} strokeWidth="1.5" />
+          {/* AI brain icon */}
+          <g transform={`translate(${colC - 7}, ${a.y - 7})`}>
+            <path d="M7 2a5 5 0 015 5v0a5 5 0 01-5 5v0A5 5 0 012 7v0a5 5 0 015-5z" stroke={a.color} strokeWidth="1.2" fill="none" strokeLinecap="round" />
+            <circle cx="5" cy="6" r="0.8" fill={a.color} />
+            <circle cx="9" cy="6" r="0.8" fill={a.color} />
+            <circle cx="7" cy="9" r="0.8" fill={a.color} />
+            <path d="M5 6L7 9M9 6L7 9" stroke={a.color} strokeWidth="0.6" strokeLinecap="round" />
+          </g>
+          <text x={colC} y={a.y + 32} textAnchor="middle" fill="white" fillOpacity="0.6" fontSize="8" fontWeight="600" fontFamily="system-ui">{a.label}</text>
+          {/* Pulsing ring */}
+          <motion.circle cx={colC} cy={a.y} r="20" fill="none" stroke={a.color} strokeWidth="0.8"
+            animate={{ r: [20, 34], opacity: [0.4, 0] } as any}
+            transition={{ duration: 2.5, delay: i * 0.8, repeat: Infinity, ease: "easeOut" }} />
+        </motion.g>
+      ))}
+
+      {/* ── Output nodes (right) ──────────────────────── */}
+      {outputs.map((o, i) => (
+        <motion.g key={`out-${i}`}
+          initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+          transition={{ ...smooth, delay: 0.6 + i * 0.1 }}>
+          <circle cx={colR} cy={o.y} r="18" fill={o.color} fillOpacity="0.08" />
+          <circle cx={colR} cy={o.y} r="12" fill="#18181b" stroke={o.color} strokeWidth="1.2" />
+          <AgentIcon type={o.icon} x={colR} y={o.y} color={o.color} size="small" />
+          <text x={colR} y={o.y + 22} textAnchor="middle" fill="white" fillOpacity="0.5" fontSize="7" fontWeight="600" fontFamily="system-ui">{o.label}</text>
+        </motion.g>
+      ))}
+
+      {/* ── Direction arrows (subtle) ─────────────────── */}
+      <motion.text x={colL + 48} y={H - 15} fill="white" fillOpacity="0.12" fontSize="9" fontWeight="600" fontFamily="system-ui"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }}>
+        {"incoming  →  processing  →  delivered"}
+      </motion.text>
     </svg>
   );
 }
 
-function AgentIcon({ type, x, y, color }: { type: string; x: number; y: number; color: string }) {
-  const props = { stroke: color, strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, fill: "none" };
+function AgentIcon({ type, x, y, color, size = "normal" }: { type: string; x: number; y: number; color: string; size?: "normal" | "small" }) {
+  const s = size === "small" ? 5 : 7;
+  const props = { stroke: color, strokeWidth: size === "small" ? 1.2 : 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, fill: "none" };
 
   switch (type) {
     case "chat":
       return (
-        <g transform={`translate(${x - 7}, ${y - 7})`}>
+        <g transform={`translate(${x - s}, ${y - s}) scale(${s / 7})`}>
           <path d="M2 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H5l-3 3V4z" {...props} />
         </g>
       );
     case "chart":
       return (
-        <g transform={`translate(${x - 7}, ${y - 7})`}>
+        <g transform={`translate(${x - s}, ${y - s}) scale(${s / 7})`}>
           <path d="M2 12V8M6 12V4M10 12V6M14 12V2" {...props} />
         </g>
       );
     case "pen":
       return (
-        <g transform={`translate(${x - 7}, ${y - 7})`}>
+        <g transform={`translate(${x - s}, ${y - s}) scale(${s / 7})`}>
           <path d="M2 12L10 4l2 2-8 8H2v-2z" {...props} />
         </g>
       );
     case "people":
       return (
-        <g transform={`translate(${x - 7}, ${y - 7})`}>
+        <g transform={`translate(${x - s}, ${y - s}) scale(${s / 7})`}>
           <circle cx="5" cy="4" r="2.5" {...props} />
           <path d="M1 12a4 4 0 0 1 8 0" {...props} />
           <circle cx="11" cy="4" r="2" {...props} />
@@ -203,9 +217,37 @@ function AgentIcon({ type, x, y, color }: { type: string; x: number; y: number; 
       );
     case "coin":
       return (
-        <g transform={`translate(${x - 7}, ${y - 7})`}>
+        <g transform={`translate(${x - s}, ${y - s}) scale(${s / 7})`}>
           <circle cx="7" cy="7" r="6" {...props} />
           <path d="M7 3v8M5 5h4M5 9h4" {...props} />
+        </g>
+      );
+    case "form":
+      return (
+        <g transform={`translate(${x - s}, ${y - s}) scale(${s / 7})`}>
+          <rect x="2" y="1" width="10" height="12" rx="1.5" {...props} />
+          <path d="M5 4h4M5 7h4M5 10h2" {...props} />
+        </g>
+      );
+    case "calendar":
+      return (
+        <g transform={`translate(${x - s}, ${y - s}) scale(${s / 7})`}>
+          <rect x="1" y="3" width="12" height="10" rx="1.5" {...props} />
+          <path d="M4 1v4M10 1v4M1 7h12" {...props} />
+        </g>
+      );
+    case "mail":
+      return (
+        <g transform={`translate(${x - s}, ${y - s}) scale(${s / 7})`}>
+          <rect x="1" y="3" width="12" height="9" rx="1.5" {...props} />
+          <path d="M1 3l6 5 6-5" {...props} />
+        </g>
+      );
+    case "file":
+      return (
+        <g transform={`translate(${x - s}, ${y - s}) scale(${s / 7})`}>
+          <path d="M3 1h5l4 4v8a1 1 0 01-1 1H3a1 1 0 01-1-1V2a1 1 0 011-1z" {...props} />
+          <path d="M8 1v4h4" {...props} />
         </g>
       );
     default:
