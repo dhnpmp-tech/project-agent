@@ -8,16 +8,16 @@ const smooth = { duration: 0.8, ease: [0.32, 0.72, 0, 1] as const };
 /* ── Hero illustration: animated agent network ─────────────── */
 export function AgentNetworkSVG({ className }: { className?: string }) {
   const nodes = [
-    { x: 200, y: 100, label: "WhatsApp", color: "#22c55e", icon: "chat" },
-    { x: 380, y: 60, label: "Sales", color: "#f59e0b", icon: "chart" },
-    { x: 340, y: 220, label: "Content", color: "#f43f5e", icon: "pen" },
-    { x: 120, y: 260, label: "HR", color: "#0ea5e9", icon: "people" },
-    { x: 60, y: 140, label: "Finance", color: "#8b5cf6", icon: "coin" },
+    { x: 220, y: 60, label: "WhatsApp", color: "#22c55e", icon: "chat" },
+    { x: 370, y: 120, label: "Sales", color: "#f59e0b", icon: "chart" },
+    { x: 330, y: 270, label: "Content", color: "#f43f5e", icon: "pen" },
+    { x: 120, y: 270, label: "HR", color: "#0ea5e9", icon: "people" },
+    { x: 80, y: 120, label: "Finance", color: "#8b5cf6", icon: "coin" },
   ];
-  const center = { x: 220, y: 170 };
+  const center = { x: 225, y: 175 };
 
   return (
-    <svg viewBox="0 0 440 340" fill="none" className={className}>
+    <svg viewBox="0 0 460 360" fill="none" className={className}>
       <defs>
         <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
@@ -84,7 +84,7 @@ export function AgentNetworkSVG({ className }: { className?: string }) {
       <motion.circle
         cx={center.x}
         cy={center.y}
-        r="28"
+        r="32"
         fill="#09090b"
         stroke="#22c55e"
         strokeWidth="2"
@@ -94,10 +94,10 @@ export function AgentNetworkSVG({ className }: { className?: string }) {
       />
       <motion.text
         x={center.x}
-        y={center.y - 4}
+        y={center.y - 5}
         textAnchor="middle"
         fill="#22c55e"
-        fontSize="9"
+        fontSize="8"
         fontWeight="700"
         fontFamily="system-ui"
         letterSpacing="0.05em"
@@ -105,21 +105,22 @@ export function AgentNetworkSVG({ className }: { className?: string }) {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 }}
       >
-        AI CORE
+        YOUR
       </motion.text>
       <motion.text
         x={center.x}
-        y={center.y + 10}
+        y={center.y + 6}
         textAnchor="middle"
         fill="#22c55e"
-        fontSize="7"
+        fontSize="8"
+        fontWeight="700"
         fontFamily="system-ui"
-        opacity="0.6"
+        letterSpacing="0.05em"
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.6 }}
-        transition={{ delay: 0.9 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.85 }}
       >
-        ORCHESTRATOR
+        AI TEAM
       </motion.text>
 
       {/* Agent nodes */}
@@ -157,12 +158,12 @@ export function AgentNetworkSVG({ className }: { className?: string }) {
       <motion.circle
         cx={center.x}
         cy={center.y}
-        r="28"
+        r="32"
         fill="none"
         stroke="#22c55e"
         strokeWidth="1"
-        initial={{ r: 28, opacity: 0.6 }}
-        animate={{ r: 50, opacity: 0 }}
+        initial={{ r: 32, opacity: 0.6 }}
+        animate={{ r: 56, opacity: 0 }}
         transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }}
       />
     </svg>
