@@ -1,0 +1,185 @@
+{
+  "name": "WhatsApp Agent — Local Test",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simple local test — accepts { \"message\": \"...\", \"name\": \"Test User\" }\nconst body = $input.first().json.body;\nconst message = body?.message || body?.text || '';\nconst name = body?.name || 'Test User';\n\nif (!message) {\n  return [{ json: { error: true, response: 'Send a POST with { \"message\": \"your message\" }' } }];\n}\n\nreturn [{\n  json: {\n    error: false,\n    message,\n    contactName: name,\n    language: /[\\u0600-\\u06FF]/.test(message) ? 'ar' : 'en'\n  }\n}];"
+      },
+      "id": "parse-input",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.error }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "error-check",
+      "name": "Has Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: $json.response }) }}"
+      },
+      "id": "respond-error",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [820, 450]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.ANTHROPIC_API_KEY}}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 150,\n  \"temperature\": 0,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Classify this WhatsApp message into exactly one intent. Respond with ONLY a JSON object.\\n\\nMessage: {{ $json.message }}\\nSender: {{ $json.contactName }}\\n\\nCategories:\\n- greeting: Hello, hi, السلام عليكم\\n- question: Asking about services, pricing, policies\\n- booking: Wants to schedule an appointment\\n- complaint: Unhappy, issue, problem\\n- handoff: Asks for human/manager\\n- unknown: Cannot classify\\n\\nRespond: {\\\"intent\\\": \\\"<cat>\\\", \\\"confidence\\\": <0-1>, \\\"language\\\": \\\"en|ar\\\", \\\"sentiment\\\": \\\"positive|neutral|negative\\\"}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "classify-intent",
+      "name": "Classify Intent (Haiku)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [820, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Haiku classification + prepare for main response\nconst classifyResult = $input.first().json;\nconst content = classifyResult?.content?.[0]?.text || '{}';\n\nlet classification;\ntry {\n  const jsonMatch = content.match(/\\{[^}]+\\}/);\n  classification = JSON.parse(jsonMatch ? jsonMatch[0] : content);\n} catch (e) {\n  classification = { intent: 'unknown', confidence: 0, language: 'en', sentiment: 'neutral' };\n}\n\n// Get original input data\nconst orig = $('Parse Input').first().json;\n\nreturn [{\n  json: {\n    message: orig.message,\n    contactName: orig.contactName,\n    language: classification.language || orig.language,\n    intent: classification.intent || 'unknown',\n    confidence: classification.confidence || 0,\n    sentiment: classification.sentiment || 'neutral'\n  }\n}];"
+      },
+      "id": "parse-classification",
+      "name": "Parse Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.ANTHROPIC_API_KEY}}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6-20250514\",\n  \"max_tokens\": 500,\n  \"temperature\": 0.4,\n  \"system\": \"You are the WhatsApp AI assistant for AI Agent Systems, a company based in Dubai that builds and deploys AI agents for businesses.\\n\\nBusiness info:\\n- We build custom AI agents for WhatsApp, lead qualification, content creation, HR screening, and financial analysis\\n- Free 30-minute AI audit to identify automation opportunities\\n- Setup takes under 2 weeks\\n- We serve businesses in UAE and Saudi Arabia\\n- Booking link: https://calendly.com/ai-agent-systems/audit\\n\\nRules:\\n- Detect the customer's language and reply in the same language (Arabic or English)\\n- Keep responses concise — 1-3 short paragraphs max\\n- If the intent is 'booking', share the booking link\\n- If the intent is 'complaint' or 'handoff', acknowledge and say a team member will follow up\\n- Never fabricate information not listed above\\n- If asked, confirm you are an AI assistant\\n\\nClassified intent: {{ $json.intent }}\\nCustomer sentiment: {{ $json.sentiment }}\\nDetected language: {{ $json.language }}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.message }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "generate-response",
+      "name": "Generate Response (Sonnet)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1260, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build final response\nconst llmResult = $input.first().json;\nconst responseText = llmResult?.content?.[0]?.text || 'Sorry, I could not generate a response.';\n\nconst classData = $('Parse Classification').first().json;\n\nreturn [{\n  json: {\n    response: responseText,\n    intent: classData.intent,\n    confidence: classData.confidence,\n    language: classData.language,\n    sentiment: classData.sentiment,\n    model: llmResult?.model || 'unknown',\n    input_tokens: llmResult?.usage?.input_tokens || 0,\n    output_tokens: llmResult?.usage?.output_tokens || 0\n  }\n}];"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1480, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-ok",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1700, 200]
+    }
+  ],
+  "connections": {
+    "Chat Webhook": {
+      "main": [[{ "node": "Parse Input", "type": "main", "index": 0 }]]
+    },
+    "Parse Input": {
+      "main": [[{ "node": "Has Error?", "type": "main", "index": 0 }]]
+    },
+    "Has Error?": {
+      "main": [
+        [{ "node": "Classify Intent (Haiku)", "type": "main", "index": 0 }],
+        [{ "node": "Error Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Classify Intent (Haiku)": {
+      "main": [[{ "node": "Parse Classification", "type": "main", "index": 0 }]]
+    },
+    "Parse Classification": {
+      "main": [[{ "node": "Generate Response (Sonnet)", "type": "main", "index": 0 }]]
+    },
+    "Generate Response (Sonnet)": {
+      "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]]
+    },
+    "Format Response": {
+      "main": [[{ "node": "Send Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "local-test" },
+    { "name": "whatsapp-agent" }
+  ]
+}
