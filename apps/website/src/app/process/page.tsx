@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { FadeUp, StaggerList, StaggerItem, ScaleIn } from "@/components/motion";
+import { AgentPipeline } from "@/components/agent-pipeline";
 import { motion } from "framer-motion";
 
 const steps = [
@@ -113,49 +114,59 @@ export default function ProcessPage() {
         </div>
       </section>
 
-      {/* Timeline */}
+      {/* Timeline + Agent Pipeline */}
       <main className="max-w-[1400px] mx-auto px-6 pb-28 relative">
-        <div className="max-w-3xl">
-          <StaggerList className="space-y-5">
-            {steps.map((s) => (
-              <StaggerItem key={s.step}>
-                <motion.div
-                  className={cn(
-                    "rounded-3xl bg-white/[0.03] ring-1 ring-white/[0.06] p-8 transition-all duration-500",
-                    "hover:bg-white/[0.05] hover:ring-white/[0.1]"
-                  )}
-                  whileHover={{ x: 6 }}
-                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                >
-                  <div className="flex gap-6">
-                    <div className={cn(
-                      "flex-shrink-0 w-12 h-12 rounded-xl bg-surface-950 border flex items-center justify-center text-sm font-bold font-mono transition-all duration-500",
-                      s.border, s.color
-                    )}>
-                      {s.step}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-3 mb-2">
-                        <h2 className="text-lg font-extrabold tracking-tight">{s.title}</h2>
-                        <span className="text-[10px] font-semibold text-white/30 uppercase tracking-[0.15em] bg-white/5 rounded-full px-2.5 py-0.5 ring-1 ring-white/10">{s.duration}</span>
+        <div className="flex gap-8 lg:gap-12">
+          {/* Left: Process steps */}
+          <div className="flex-1 max-w-3xl min-w-0">
+            <StaggerList className="space-y-5">
+              {steps.map((s) => (
+                <StaggerItem key={s.step}>
+                  <motion.div
+                    className={cn(
+                      "rounded-3xl bg-white/[0.03] ring-1 ring-white/[0.06] p-8 transition-all duration-500",
+                      "hover:bg-white/[0.05] hover:ring-white/[0.1]"
+                    )}
+                    whileHover={{ x: 6 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                  >
+                    <div className="flex gap-6">
+                      <div className={cn(
+                        "flex-shrink-0 w-12 h-12 rounded-xl bg-surface-950 border flex items-center justify-center text-sm font-bold font-mono transition-all duration-500",
+                        s.border, s.color
+                      )}>
+                        {s.step}
                       </div>
-                      <p className="text-sm text-white/50 leading-relaxed max-w-[65ch]">{s.description}</p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {s.details.map((d) => (
-                          <span key={d} className="inline-flex items-center gap-1.5 text-xs font-medium text-white/50 bg-white/5 rounded-full px-3 py-1.5 ring-1 ring-white/10">
-                            <svg className={cn("w-3 h-3", s.color)} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                            {d}
-                          </span>
-                        ))}
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                          <h2 className="text-lg font-extrabold tracking-tight">{s.title}</h2>
+                          <span className="text-[10px] font-semibold text-white/30 uppercase tracking-[0.15em] bg-white/5 rounded-full px-2.5 py-0.5 ring-1 ring-white/10">{s.duration}</span>
+                        </div>
+                        <p className="text-sm text-white/50 leading-relaxed max-w-[65ch]">{s.description}</p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {s.details.map((d) => (
+                            <span key={d} className="inline-flex items-center gap-1.5 text-xs font-medium text-white/50 bg-white/5 rounded-full px-3 py-1.5 ring-1 ring-white/10">
+                              <svg className={cn("w-3 h-3", s.color)} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                              {d}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              </StaggerItem>
-            ))}
-          </StaggerList>
+                  </motion.div>
+                </StaggerItem>
+              ))}
+            </StaggerList>
+          </div>
+
+          {/* Right: Sticky agent pipeline illustration */}
+          <div className="hidden lg:block w-[320px] flex-shrink-0">
+            <div className="sticky top-28">
+              <AgentPipeline />
+            </div>
+          </div>
         </div>
 
         {/* CTA */}
