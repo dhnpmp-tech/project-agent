@@ -41,11 +41,29 @@ fi
 
 log "ANTHROPIC_API_KEY is configured"
 
-# --- 2. Start Docker containers ---
-log "Starting n8n + Postgres..."
-docker compose up -d
+# --- 2. Check Docker is running ---
+if ! docker info > /dev/null 2>&1; then
+  err "Docker is not running. Please open Docker Desktop and wait for it to start, then re-run this script."
+  exit 1
+fi
+log "Docker is running"
 
-# --- 3. Wait for n8n to be ready ---
+# --- 3. Detect docker compose command ---
+if docker compose version > /dev/null 2>&1; then
+  DC="docker compose"
+elif docker-compose version > /dev/null 2>&1; then
+  DC="docker-compose"
+else
+  err "Neither 'docker compose' nor 'docker-compose' found. Is Docker Desktop running?"
+  exit 1
+fi
+log "Using: $DC"
+
+# --- 4. Start Docker containers ---
+log "Starting n8n + Postgres..."
+$DC up -d
+
+# --- 5. Wait for n8n to be ready ---
 log "Waiting for n8n to start..."
 MAX_WAIT=90
 WAITED=0
