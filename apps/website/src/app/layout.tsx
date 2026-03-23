@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Agent Systems — UAE & Saudi Arabia",
+  title: "AI Agent Systems — Automate Your Business 24/7 | UAE & Saudi Arabia",
   description:
-    "Done-for-you AI agent deployment for SMBs and solopreneurs in the UAE and Saudi Arabia. WhatsApp agents, sales automation, content creation, and more.",
+    "Done-for-you AI agent deployment for SMBs in the UAE and Saudi Arabia. WhatsApp agents, sales automation, content creation — live in under 2 weeks. Book a free AI audit.",
 };
 
 export default function RootLayout({
@@ -13,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" className="scroll-smooth">
+      <body className="overflow-x-hidden">{children}</body>
     </html>
   );
 }
