@@ -1,5 +1,6 @@
 "use client";
 
+/* Website v2 — dark theme with animations, social proof, integration logos */
 import { cn } from "@/lib/utils";
 import { FadeUp, StaggerList, StaggerItem, ScaleIn, GlowCard, Float } from "@/components/motion";
 import { AgentNetworkSVG, WorkflowSVG, ChatMockupSVG, GradientMesh, GridBackground, IntegrationLogos, WhatsAppLogo, LinkedInLogo, InstagramLogo } from "@/components/illustrations";
