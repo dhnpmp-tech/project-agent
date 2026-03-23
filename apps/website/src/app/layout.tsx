@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Agent Systems — Automate Your Business 24/7 | UAE & Saudi Arabia",
+  title: "AI Agent Systems — Automate your business 24/7 | UAE & Saudi Arabia",
   description:
-    "Done-for-you AI agent deployment for SMBs in the UAE and Saudi Arabia. WhatsApp agents, sales automation, content creation — live in under 2 weeks. Book a free AI audit.",
+    "Done-for-you AI agent deployment for SMBs in the UAE and Saudi Arabia. WhatsApp agents, sales automation, content creation — live in under 2 weeks.",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className="overflow-x-hidden">{children}</body>
+      <body className="grain overflow-x-hidden">{children}</body>
     </html>
   );
 }
