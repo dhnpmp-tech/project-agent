@@ -1,0 +1,13 @@
+{
+  "nav": {
+    "services": "Services",
+    "process": "Process",
+    "case_study": "Case Study",
+    "book_audit": "Book Free AI Audit"
+  },
+  "hero": {
+    "title": "AI Agents That Run Your Business",
+    "subtitle": "24/7, in Arabic & English",
+    "description": "We build and deploy AI agent systems for SMBs in the UAE and Saudi Arabia."
+  }
+}

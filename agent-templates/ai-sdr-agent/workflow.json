@@ -1,0 +1,215 @@
+{
+  "name": "AI SDR Agent — {{COMPANY_NAME}}",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Hourly Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [200, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sdr-lead-inbound",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "inbound-webhook",
+      "name": "Inbound Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process inbound lead from form/CRM\nconst lead = $input.first().json.body || $input.first().json;\nreturn [{\n  json: {\n    source: 'inbound',\n    name: lead.name || lead.contact_name || '',\n    email: lead.email || lead.contact_email || '',\n    phone: lead.phone || '',\n    company: lead.company || lead.company_name || '',\n    industry: lead.industry || '',\n    employeeCount: lead.employee_count || lead.size || '',\n    message: lead.message || lead.inquiry || '',\n    website: lead.website || ''\n  }\n}];"
+      },
+      "id": "parse-lead",
+      "name": "Parse Lead Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 400]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an ICP scoring engine. Score this lead against the Ideal Customer Profile on a scale of 0-100. Return ONLY a JSON object.\n\nICP Criteria:\n{{ICP_CRITERIA}}\n\nDefault scoring:\n- UAE/Saudi based: +20\n- SMB (1-50 employees): +20\n- Decision maker (CEO/Founder/Owner): +20\n- Has clear pain point matching our services: +25\n- Currently no AI automation: +15"
+            },
+            {
+              "role": "user",
+              "content": "=Lead:\nName: {{ $json.name }}\nCompany: {{ $json.company }}\nIndustry: {{ $json.industry }}\nEmployees: {{ $json.employeeCount }}\nMessage: {{ $json.message }}\nWebsite: {{ $json.website }}\n\nReturn: {\"score\": <0-100>, \"tier\": \"hot|warm|cold\", \"reasoning\": \"<1 sentence>\", \"personalization_angle\": \"<what to mention in outreach>\"}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 200,
+          "temperature": 0
+        }
+      },
+      "id": "icp-scorer",
+      "name": "Score Lead (ICP)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [640, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-creds",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const scoreText = $input.first().json.message?.content || '{}';\nlet scoring;\ntry {\n  const match = scoreText.match(/\\{[\\s\\S]*\\}/);\n  scoring = JSON.parse(match ? match[0] : scoreText);\n} catch {\n  scoring = { score: 50, tier: 'warm', reasoning: 'Unable to parse', personalization_angle: '' };\n}\n\nconst lead = $('Parse Lead Data').first().json;\n\nreturn [{\n  json: {\n    ...lead,\n    icpScore: scoring.score || 50,\n    tier: scoring.tier || 'warm',\n    reasoning: scoring.reasoning || '',\n    personalizationAngle: scoring.personalization_angle || ''\n  }\n}];"
+      },
+      "id": "parse-score",
+      "name": "Parse Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 400]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputIndex": 0, "value": "hot" },
+            { "outputIndex": 1, "value": "warm" },
+            { "outputIndex": 2, "value": "cold" }
+          ]
+        },
+        "value": "={{ $json.tier }}"
+      },
+      "id": "tier-router",
+      "name": "Route by Tier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1080, 400]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a sales outreach writer for {{COMPANY_NAME}}. Write a personalized email to this hot lead.\n\nRules:\n- Subject line: specific, under 50 characters\n- Body: 80-120 words max\n- Open with a specific observation about their business\n- One clear value proposition\n- End with a soft CTA (suggest a 15-minute call)\n- Tone: professional, not salesy\n- If the lead's name suggests Arabic speaker, write in both English and Arabic"
+            },
+            {
+              "role": "user",
+              "content": "=Lead: {{ $json.name }} at {{ $json.company }}\nIndustry: {{ $json.industry }}\nPersonalization: {{ $json.personalizationAngle }}\nMessage they sent: {{ $json.message }}"
+            }
+          ]
+        },
+        "options": { "maxTokens": 400, "temperature": 0.7 }
+      },
+      "id": "hot-outreach",
+      "name": "Generate Hot Outreach",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1300, 250],
+      "credentials": {
+        "anthropicApi": { "id": "anthropic-creds", "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a sales outreach writer for {{COMPANY_NAME}}. Write a nurture email for this warm lead.\n\nRules:\n- Subject line: value-oriented, under 50 chars\n- Body: 60-100 words\n- Share one relevant insight or stat about their industry\n- Mention how {{COMPANY_NAME}} helps similar businesses\n- Soft CTA: offer a free resource or audit\n- Tone: helpful, not pushy"
+            },
+            {
+              "role": "user",
+              "content": "=Lead: {{ $json.name }} at {{ $json.company }}\nIndustry: {{ $json.industry }}\nPersonalization: {{ $json.personalizationAngle }}"
+            }
+          ]
+        },
+        "options": { "maxTokens": 300, "temperature": 0.7 }
+      },
+      "id": "warm-outreach",
+      "name": "Generate Warm Outreach",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1300, 450],
+      "credentials": {
+        "anthropicApi": { "id": "anthropic-creds", "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cold leads: just log, no outreach\nreturn [{ json: { ...$json, action: 'logged_cold', outreach: false } }];"
+      },
+      "id": "cold-log",
+      "name": "Log Cold Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"client_id\": \"{{CLIENT_ID}}\",\n  \"event_type\": \"lead_scored\",\n  \"summary\": \"{{ $json.name }} ({{ $json.company }}) scored {{ $json.icpScore }} — {{ $json.tier }}\",\n  \"payload\": {{ JSON.stringify($json) }}\n}"
+      },
+      "id": "log-lead",
+      "name": "Log Lead to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1540, 400]
+    }
+  ],
+  "connections": {
+    "Inbound Lead Webhook": {
+      "main": [[{ "node": "Parse Lead Data", "type": "main", "index": 0 }]]
+    },
+    "Parse Lead Data": {
+      "main": [[{ "node": "Score Lead (ICP)", "type": "main", "index": 0 }]]
+    },
+    "Score Lead (ICP)": {
+      "main": [[{ "node": "Parse Score", "type": "main", "index": 0 }]]
+    },
+    "Parse Score": {
+      "main": [[{ "node": "Route by Tier", "type": "main", "index": 0 }]]
+    },
+    "Route by Tier": {
+      "main": [
+        [{ "node": "Generate Hot Outreach", "type": "main", "index": 0 }],
+        [{ "node": "Generate Warm Outreach", "type": "main", "index": 0 }],
+        [{ "node": "Log Cold Lead", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate Hot Outreach": {
+      "main": [[{ "node": "Log Lead to Supabase", "type": "main", "index": 0 }]]
+    },
+    "Generate Warm Outreach": {
+      "main": [[{ "node": "Log Lead to Supabase", "type": "main", "index": 0 }]]
+    },
+    "Log Cold Lead": {
+      "main": [[{ "node": "Log Lead to Supabase", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "sdr" }, { "name": "sales" }, { "name": "ai-agent" }]
+}

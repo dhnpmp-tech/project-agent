@@ -1,0 +1,15 @@
+{
+  "required": [
+    "clientId",
+    "clientSlug",
+    "companyName"
+  ],
+  "optional": [
+    "companyNameAr",
+    "scoringCriteria",
+    "calendlyLink",
+    "preferredLanguage",
+    "hiringManagerEmail",
+    "hiringManagerName"
+  ]
+}

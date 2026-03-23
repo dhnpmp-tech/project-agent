@@ -1,3 +1,39 @@
+# Dependencies
 node_modules/
+
+# Build outputs
+dist/
+.next/
+.turbo/
+out/
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# OS
 .DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker volumes (local dev)
+deployments/
+infrastructure/traefik/dynamic/*.yml
+!infrastructure/traefik/dynamic/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/
+
+# Misc
+.vercel
+.cache

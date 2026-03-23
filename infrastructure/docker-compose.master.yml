@@ -1,0 +1,107 @@
+version: "3.8"
+
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - traefik-certs:/letsencrypt
+    networks:
+      - agent-network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # Dashboard (protect with basic auth in production)
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${PLATFORM_DOMAIN}`)"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
+
+  master-n8n:
+    image: n8nio/n8n:latest
+    container_name: master-n8n
+    environment:
+      - N8N_HOST=${MASTER_N8N_HOST}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://${MASTER_N8N_HOST}/
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=master-postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n_master
+      - DB_POSTGRESDB_USER=${MASTER_DB_USER}
+      - DB_POSTGRESDB_PASSWORD=${MASTER_DB_PASSWORD}
+      # Env vars available to n8n workflows
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - PLATFORM_DOMAIN=${PLATFORM_DOMAIN}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID}
+    volumes:
+      - master-n8n-data:/home/node/.n8n
+      - ./scripts:/scripts:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../deployments:/deployments
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.master-n8n.rule=Host(`${MASTER_N8N_HOST}`)"
+      - "traefik.http.routers.master-n8n.tls.certresolver=letsencrypt"
+      - "traefik.http.services.master-n8n.loadbalancer.server.port=5678"
+    networks:
+      - agent-network
+    depends_on:
+      - master-postgres
+      - redis
+    restart: unless-stopped
+
+  master-postgres:
+    image: postgres:16-alpine
+    container_name: master-postgres
+    environment:
+      - POSTGRES_DB=n8n_master
+      - POSTGRES_USER=${MASTER_DB_USER}
+      - POSTGRES_PASSWORD=${MASTER_DB_PASSWORD}
+    volumes:
+      - master-postgres-data:/var/lib/postgresql/data
+    networks:
+      - agent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MASTER_DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - agent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  traefik-certs:
+  master-n8n-data:
+  master-postgres-data:
+  redis-data:
+
+networks:
+  agent-network:
+    name: agent-network
+    driver: bridge

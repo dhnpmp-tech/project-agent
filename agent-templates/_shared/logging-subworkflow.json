@@ -1,0 +1,28 @@
+{
+  "name": "Activity Logger",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"client_id\": \"{{$env.CLIENT_ID}}\",\n  \"event_type\": \"{{ $json.event_type }}\",\n  \"summary\": \"{{ $json.summary }}\",\n  \"payload\": {{ JSON.stringify($json.payload || {}) }}\n}"
+      },
+      "id": "log-activity",
+      "name": "Log to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [200, 300]
+    }
+  ],
+  "connections": {}
+}

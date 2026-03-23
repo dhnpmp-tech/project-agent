@@ -1,0 +1,15 @@
+{
+  "required": [
+    "clientId",
+    "clientSlug",
+    "companyName"
+  ],
+  "optional": [
+    "companyNameAr",
+    "preferredLanguage",
+    "transactionCategories",
+    "reportRecipientEmail",
+    "currency",
+    "fiscalYearStart"
+  ]
+}

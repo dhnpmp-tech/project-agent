@@ -1,0 +1,16 @@
+{
+  "required": [
+    "clientId",
+    "clientSlug",
+    "companyName",
+    "businessDescription"
+  ],
+  "optional": [
+    "companyNameAr",
+    "icpCriteria",
+    "emailSequenceLanguage",
+    "calendlyLink",
+    "escalationEmail",
+    "preferredLanguage"
+  ]
+}

@@ -1,0 +1,213 @@
+{
+  "name": "HR Screening Agent — {{COMPANY_NAME}}",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hr-application",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "application-webhook",
+      "name": "New Application Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json.body || $input.first().json;\nreturn [{\n  json: {\n    candidateName: data.name || '',\n    email: data.email || '',\n    phone: data.phone || '',\n    position: data.position || data.role || '',\n    cvText: data.cv_text || data.resume_text || '',\n    cvUrl: data.cv_url || '',\n    source: data.source || 'direct',\n    appliedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-application",
+      "name": "Parse Application",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-haiku-4-5-20251001",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Extract structured data from this CV/resume text. Return ONLY a JSON object:\n{\n  \"name\": \"\",\n  \"email\": \"\",\n  \"phone\": \"\",\n  \"location\": \"\",\n  \"years_experience\": 0,\n  \"current_title\": \"\",\n  \"skills\": [],\n  \"education\": [{\"degree\": \"\", \"institution\": \"\", \"year\": \"\"}],\n  \"languages\": [],\n  \"visa_status\": \"\",\n  \"summary\": \"<2 sentence professional summary>\"\n}"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.cvText }}"
+            }
+          ]
+        },
+        "options": { "maxTokens": 500, "temperature": 0 }
+      },
+      "id": "cv-parser",
+      "name": "Parse CV (Haiku)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [640, 300],
+      "credentials": {
+        "anthropicApi": { "id": "anthropic-creds", "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an HR screening engine. Score this candidate against the job criteria. Return ONLY a JSON object:\n{\n  \"score\": <0-100>,\n  \"tier\": \"advance|hold|decline\",\n  \"strengths\": [\"<strength 1>\", \"<strength 2>\"],\n  \"gaps\": [\"<gap 1>\"],\n  \"recommendation\": \"<1-2 sentences>\",\n  \"interview_questions\": [\"<question about gap 1>\", \"<question about experience>\"]\n}\n\nScoring criteria:\n{{SCORING_CRITERIA}}"
+            },
+            {
+              "role": "user",
+              "content": "=Position: {{ $('Parse Application').first().json.position }}\n\nCandidate data:\n{{ $json.message?.content || '{}' }}"
+            }
+          ]
+        },
+        "options": { "maxTokens": 400, "temperature": 0 }
+      },
+      "id": "score-candidate",
+      "name": "Score Candidate (Sonnet)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [860, 300],
+      "credentials": {
+        "anthropicApi": { "id": "anthropic-creds", "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const scoreText = $input.first().json.message?.content || '{}';\nlet scoring;\ntry {\n  const match = scoreText.match(/\\{[\\s\\S]*\\}/);\n  scoring = JSON.parse(match ? match[0] : scoreText);\n} catch {\n  scoring = { score: 50, tier: 'hold', recommendation: 'Manual review needed' };\n}\n\nconst application = $('Parse Application').first().json;\n\nreturn [{\n  json: {\n    ...application,\n    score: scoring.score,\n    tier: scoring.tier,\n    strengths: scoring.strengths || [],\n    gaps: scoring.gaps || [],\n    recommendation: scoring.recommendation || '',\n    interviewQuestions: scoring.interview_questions || []\n  }\n}];"
+      },
+      "id": "parse-scoring",
+      "name": "Parse Scoring",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputIndex": 0, "value": "advance" },
+            { "outputIndex": 1, "value": "hold" },
+            { "outputIndex": 2, "value": "decline" }
+          ]
+        },
+        "value": "={{ $json.tier }}"
+      },
+      "id": "tier-router",
+      "name": "Route by Tier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Write a professional interview invitation email for {{COMPANY_NAME}}. Include:\n- Warm congratulations on advancing\n- Position title\n- Request to book via Calendly: {{CALENDLY_LINK}}\n- What to prepare\nKeep it concise (100-150 words). Detect language from candidate name/CV."
+            },
+            {
+              "role": "user",
+              "content": "=Candidate: {{ $json.candidateName }}\nPosition: {{ $json.position }}\nEmail: {{ $json.email }}"
+            }
+          ]
+        },
+        "options": { "maxTokens": 300 }
+      },
+      "id": "advance-email",
+      "name": "Interview Invitation",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1520, 150],
+      "credentials": {
+        "anthropicApi": { "id": "anthropic-creds", "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Write a respectful, warm rejection email for {{COMPANY_NAME}}. Thank them for applying, wish them well. Do NOT mention scoring. Keep it to 80-100 words."
+            },
+            {
+              "role": "user",
+              "content": "=Candidate: {{ $json.candidateName }}\nPosition: {{ $json.position }}"
+            }
+          ]
+        },
+        "options": { "maxTokens": 200 }
+      },
+      "id": "decline-email",
+      "name": "Rejection Email",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1520, 450],
+      "credentials": {
+        "anthropicApi": { "id": "anthropic-creds", "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"client_id\": \"{{CLIENT_ID}}\",\n  \"event_type\": \"cv_screened\",\n  \"summary\": \"{{ $json.candidateName }} for {{ $json.position }} — {{ $json.tier }} ({{ $json.score }})\",\n  \"payload\": {{ JSON.stringify($json) }}\n}"
+      },
+      "id": "log-screening",
+      "name": "Log to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1740, 300]
+    }
+  ],
+  "connections": {
+    "New Application Webhook": {
+      "main": [[{ "node": "Parse Application", "type": "main", "index": 0 }]]
+    },
+    "Parse Application": {
+      "main": [[{ "node": "Parse CV (Haiku)", "type": "main", "index": 0 }]]
+    },
+    "Parse CV (Haiku)": {
+      "main": [[{ "node": "Score Candidate (Sonnet)", "type": "main", "index": 0 }]]
+    },
+    "Score Candidate (Sonnet)": {
+      "main": [[{ "node": "Parse Scoring", "type": "main", "index": 0 }]]
+    },
+    "Parse Scoring": {
+      "main": [[{ "node": "Route by Tier", "type": "main", "index": 0 }]]
+    },
+    "Route by Tier": {
+      "main": [
+        [{ "node": "Interview Invitation", "type": "main", "index": 0 }],
+        [{ "node": "Log to Supabase", "type": "main", "index": 0 }],
+        [{ "node": "Rejection Email", "type": "main", "index": 0 }]
+      ]
+    },
+    "Interview Invitation": {
+      "main": [[{ "node": "Log to Supabase", "type": "main", "index": 0 }]]
+    },
+    "Rejection Email": {
+      "main": [[{ "node": "Log to Supabase", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "hr" }, { "name": "screening" }, { "name": "ai-agent" }]
+}

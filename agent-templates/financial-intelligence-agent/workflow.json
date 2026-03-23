@@ -1,0 +1,117 @@
+{
+  "name": "Financial Intelligence Agent — {{COMPANY_NAME}}",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * 0" }]
+        }
+      },
+      "id": "weekly-trigger",
+      "name": "Weekly Sunday 6AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Placeholder: In production, this pulls from Plaid/Lean/Xero/QuickBooks API\n// For now, simulate with sample transaction data\nconst sampleTransactions = [\n  { date: '2026-03-16', description: 'Client payment — ABC Corp', amount: 15000, type: 'credit', category: '' },\n  { date: '2026-03-17', description: 'AWS hosting', amount: -450, type: 'debit', category: '' },\n  { date: '2026-03-17', description: 'Staff salary — March', amount: -8500, type: 'debit', category: '' },\n  { date: '2026-03-18', description: 'DEWA utilities', amount: -1200, type: 'debit', category: '' },\n  { date: '2026-03-19', description: 'Client payment — XYZ LLC', amount: 8000, type: 'credit', category: '' },\n  { date: '2026-03-20', description: 'Office supplies — Amazon', amount: -350, type: 'debit', category: '' }\n];\n\nreturn [{ json: { transactions: sampleTransactions, period: 'weekly', weekOf: new Date().toISOString().split('T')[0] } }];"
+      },
+      "id": "fetch-transactions",
+      "name": "Fetch Transactions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-haiku-4-5-20251001",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Categorize each transaction into one of these categories: Revenue, COGS, Payroll, Rent & Utilities, Marketing, Software, Professional Services, Travel, Office Supplies, Banking Fees, Government, Other.\n\nReturn a JSON array with each transaction plus a 'category' field added."
+            },
+            {
+              "role": "user",
+              "content": "={{ JSON.stringify($json.transactions) }}"
+            }
+          ]
+        },
+        "options": { "maxTokens": 1000, "temperature": 0 }
+      },
+      "id": "categorize",
+      "name": "Categorize Transactions (Haiku)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [640, 300],
+      "credentials": {
+        "anthropicApi": { "id": "anthropic-creds", "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a financial analyst for {{COMPANY_NAME}}. Analyze the categorized transactions and generate a weekly financial report.\n\nInclude:\n1. Revenue this week (total credits)\n2. Total expenses (total debits)\n3. Net cash flow\n4. Top expense categories\n5. Any anomalies (unusually large transactions, new vendors)\n6. Executive summary (3-4 sentences, plain language)\n\nCurrency: AED\nLanguage: {{PREFERRED_LANGUAGE}}\n\nFormat as a clean, readable report."
+            },
+            {
+              "role": "user",
+              "content": "=Categorized transactions for week of {{ $('Fetch Transactions').first().json.weekOf }}:\n\n{{ $json.message?.content || '[]' }}"
+            }
+          ]
+        },
+        "options": { "maxTokens": 1000, "temperature": 0.3 }
+      },
+      "id": "generate-report",
+      "name": "Generate Weekly Report (Sonnet)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [860, 300],
+      "credentials": {
+        "anthropicApi": { "id": "anthropic-creds", "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"client_id\": \"{{CLIENT_ID}}\",\n  \"event_type\": \"report_generated\",\n  \"summary\": \"Weekly financial report — {{ $('Fetch Transactions').first().json.weekOf }}\",\n  \"payload\": { \"report\": {{ JSON.stringify($json.message?.content || '') }} }\n}"
+      },
+      "id": "log-report",
+      "name": "Log to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1080, 300]
+    }
+  ],
+  "connections": {
+    "Weekly Sunday 6AM": {
+      "main": [[{ "node": "Fetch Transactions", "type": "main", "index": 0 }]]
+    },
+    "Fetch Transactions": {
+      "main": [[{ "node": "Categorize Transactions (Haiku)", "type": "main", "index": 0 }]]
+    },
+    "Categorize Transactions (Haiku)": {
+      "main": [[{ "node": "Generate Weekly Report (Sonnet)", "type": "main", "index": 0 }]]
+    },
+    "Generate Weekly Report (Sonnet)": {
+      "main": [[{ "node": "Log to Supabase", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "finance" }, { "name": "reporting" }, { "name": "ai-agent" }]
+}
