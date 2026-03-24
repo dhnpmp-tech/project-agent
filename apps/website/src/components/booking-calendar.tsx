@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 // --- Types ---
 
@@ -24,8 +26,8 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-// Simulated time slots (will connect to calendar adapter API)
-const TIME_SLOTS = [
+// Fallback time slots when API is not connected yet
+const FALLBACK_TIME_SLOTS = [
   "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
   "12:00", "14:00", "14:30", "15:00", "15:30", "16:00",
   "16:30", "17:00", "17:30",
@@ -51,6 +53,34 @@ export function BookingCalendar() {
     return { year: now.getFullYear(), month: now.getMonth() };
   });
   const [submitting, setSubmitting] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<string[]>(FALLBACK_TIME_SLOTS);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  // Fetch real availability when a date is selected
+  const fetchAvailability = useCallback(async (date: Date) => {
+    if (!API_BASE) return; // No API configured — use fallback slots
+    setLoadingSlots(true);
+    try {
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const res = await fetch(
+        `${API_BASE}/api/public/availability?date=${dateStr}&tz=Asia/Dubai`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.slots && data.slots.length > 0) {
+          setAvailableSlots(data.slots.map((s: { time: string }) => s.time));
+        } else {
+          setAvailableSlots(FALLBACK_TIME_SLOTS);
+        }
+      }
+    } catch {
+      // Silently fall back to default slots
+      setAvailableSlots(FALLBACK_TIME_SLOTS);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, []);
 
   // Calendar grid computation
   const calendarDays = useMemo(() => {
@@ -101,6 +131,8 @@ export function BookingCalendar() {
   function handleDateSelect(day: number) {
     const date = new Date(viewMonth.year, viewMonth.month, day);
     setSelectedDate(date);
+    setSelectedTime(null);
+    fetchAvailability(date);
     setStep("time");
   }
 
@@ -111,10 +143,46 @@ export function BookingCalendar() {
 
   async function handleSubmit() {
     setSubmitting(true);
-    // Simulate API call — will connect to calendar adapter
-    await new Promise((r) => setTimeout(r, 1500));
-    setSubmitting(false);
-    setStep("confirmed");
+    setBookingError(null);
+
+    if (!selectedDate || !selectedTime) return;
+
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+
+    try {
+      if (API_BASE) {
+        const res = await fetch(`${API_BASE}/api/public/book`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: dateStr,
+            time: selectedTime,
+            timezone: "Asia/Dubai",
+            name: details.name,
+            email: details.email,
+            phone: details.phone || undefined,
+            company: details.company || undefined,
+            notes: details.notes || undefined,
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Booking failed. Please try again.");
+        }
+      } else {
+        // No API configured — simulate for demo
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+
+      setStep("confirmed");
+    } catch (err) {
+      setBookingError(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleReset() {
@@ -300,8 +368,19 @@ export function BookingCalendar() {
                 30-minute slots — Dubai time (GST)
               </p>
 
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {TIME_SLOTS.map((time) => {
+              {loadingSlots && (
+                <div className="flex items-center justify-center py-8">
+                  <motion.span
+                    className="w-5 h-5 border-2 border-white/20 border-t-brand-400 rounded-full"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                  />
+                  <span className="ml-3 text-sm text-white/30">Checking availability...</span>
+                </div>
+              )}
+
+              {!loadingSlots && <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {availableSlots.map((time) => {
                   const isSelected = selectedTime === time;
                   const hour = parseInt(time.split(":")[0]);
                   const isPM = hour >= 12;
@@ -330,7 +409,7 @@ export function BookingCalendar() {
                     </motion.button>
                   );
                 })}
-              </div>
+              </div>}
             </motion.div>
           )}
 
@@ -431,6 +510,12 @@ export function BookingCalendar() {
                     "Confirm Booking"
                   )}
                 </motion.button>
+
+                {bookingError && (
+                  <div className="rounded-xl bg-red-500/10 ring-1 ring-red-500/20 px-4 py-3 text-sm text-red-400">
+                    {bookingError}
+                  </div>
+                )}
 
                 <p className="text-[10px] text-white/15 text-center">
                   You will receive a calendar invite and WhatsApp confirmation.
