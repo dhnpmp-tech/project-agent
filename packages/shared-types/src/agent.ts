@@ -22,6 +22,7 @@ export interface AgentDeployment {
 export interface AgentMetrics {
   messages_handled?: number;
   leads_qualified?: number;
+  meetings_booked?: number;
   content_published?: number;
   cvs_screened?: number;
   reports_generated?: number;
