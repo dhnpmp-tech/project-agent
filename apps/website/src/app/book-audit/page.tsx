@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { FadeUp, StaggerList, StaggerItem, ScaleIn, Float } from "@/components/motion";
 import { GradientMesh, IntegrationLogos } from "@/components/illustrations";
+import { BookingCalendar } from "@/components/booking-calendar";
 import { motion } from "framer-motion";
 
 export default function BookAuditPage() {
@@ -132,50 +133,22 @@ export default function BookAuditPage() {
               </FadeUp>
             </div>
 
-            {/* Right — Calendly embed area */}
+            {/* Right — Booking calendar */}
             <FadeUp delay={0.2} className="lg:col-span-3">
-              <div className="relative rounded-3xl overflow-hidden bg-white/[0.03] ring-1 ring-white/[0.06]">
-                <div className="p-10 min-h-[560px] flex flex-col items-center justify-center text-center">
-                  {/* Calendar icon with glow */}
-                  <Float duration={4} distance={8}>
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-brand-500/20 rounded-2xl blur-xl scale-150" />
-                      <div className="relative w-16 h-16 rounded-2xl bg-surface-900 ring-1 ring-white/10 flex items-center justify-center">
-                        <svg className="w-7 h-7 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </Float>
+              <BookingCalendar />
 
-                  <h3 className="text-lg font-extrabold tracking-tight mt-6 mb-2">Schedule your free audit</h3>
-                  <p className="text-sm text-white/40 max-w-sm mx-auto leading-relaxed">
-                    Pick a time that works for you. We will send a calendar invite with a video call link.
-                  </p>
-
-                  <div className="mt-8 w-full max-w-md mx-auto bg-white/[0.03] rounded-2xl ring-1 ring-dashed ring-white/10 p-10">
-                    <p className="text-xs text-white/20 font-medium">
-                      Calendly widget will be embedded here
-                    </p>
-                    <p className="text-[10px] text-white/10 mt-2 font-mono">
-                      calendly-inline-widget
-                    </p>
+              {/* Quick stats */}
+              <div className="mt-6 flex gap-8 justify-center">
+                {[
+                  { value: "50+", label: "audits completed" },
+                  { value: "<24h", label: "roadmap delivered" },
+                  { value: "100%", label: "actionable insights" },
+                ].map((s) => (
+                  <div key={s.label} className="text-center">
+                    <p className="text-lg font-extrabold tracking-tighter font-mono bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">{s.value}</p>
+                    <p className="text-[10px] text-white/25 mt-0.5">{s.label}</p>
                   </div>
-
-                  {/* Quick stats */}
-                  <div className="mt-10 flex gap-8 justify-center">
-                    {[
-                      { value: "50+", label: "audits completed" },
-                      { value: "<24h", label: "roadmap delivered" },
-                      { value: "100%", label: "actionable insights" },
-                    ].map((s) => (
-                      <div key={s.label} className="text-center">
-                        <p className="text-lg font-extrabold tracking-tighter font-mono bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">{s.value}</p>
-                        <p className="text-[10px] text-white/25 mt-0.5">{s.label}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
 
               {/* Integrations we connect to */}
