@@ -35,12 +35,20 @@ export default async function DashboardPage() {
               Plan: {client?.plan || "—"} | Status: {client?.status || "—"}
             </p>
           </div>
-          <a
-            href="/dashboard/support"
-            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-          >
-            Request a Change
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href="/dashboard/integrations"
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Calendar Integrations
+            </a>
+            <a
+              href="/dashboard/support"
+              className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              Request a Change
+            </a>
+          </div>
         </div>
       </header>
 
