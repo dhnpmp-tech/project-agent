@@ -1,0 +1,8 @@
+{
+  "name": "@project-agent/supabase",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "migrate": "echo 'Run migrations via Supabase CLI: supabase db push'"
+  }
+}

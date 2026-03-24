@@ -1,0 +1,17 @@
+{
+  "required": [
+    "clientId",
+    "clientSlug",
+    "companyName"
+  ],
+  "optional": [
+    "companyNameAr",
+    "businessDescription",
+    "businessHours",
+    "knowledgeBaseContent",
+    "calendlyLink",
+    "preferredLanguage",
+    "escalationPhone",
+    "escalationEmail"
+  ]
+}

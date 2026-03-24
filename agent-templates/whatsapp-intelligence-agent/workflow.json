@@ -1,0 +1,514 @@
+{
+  "name": "WhatsApp Intelligence Agent — {{COMPANY_NAME}}",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract message data from WhatsApp webhook payload\nconst body = $input.first().json.body;\n\n// WhatsApp Cloud API payload structure\nconst entry = body?.entry?.[0];\nconst changes = entry?.changes?.[0];\nconst value = changes?.value;\n\nif (!value?.messages?.[0]) {\n  // This is a status update, not a message\n  return [{ json: { skip: true } }];\n}\n\nconst message = value.messages[0];\nconst contact = value.contacts?.[0];\n\nreturn [{\n  json: {\n    skip: false,\n    messageId: message.id,\n    from: message.from,\n    timestamp: message.timestamp,\n    type: message.type,\n    text: message.text?.body || message.interactive?.button_reply?.title || '',\n    contactName: contact?.profile?.name || 'Unknown',\n    phoneNumberId: value.metadata?.phone_number_id\n  }\n}];"
+      },
+      "id": "parse-webhook",
+      "name": "Parse WhatsApp Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.skip }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "skip-check",
+      "name": "Is Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"status\": \"ok\" }"
+      },
+      "id": "respond-skip",
+      "name": "Acknowledge (Skip)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [820, 450]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Load conversation history from Redis\n// Key: conv:{{CLIENT_ID}}:{phone}\nconst phone = $input.first().json.from;\nconst redisKey = `conv:{{CLIENT_ID}}:${phone}`;\n\n// This node connects to Redis via the Redis credentials\n// In production, use the Redis node instead of code\nreturn [{\n  json: {\n    ...$input.first().json,\n    redisKey,\n    conversationHistory: [] // Will be populated by Redis Get node\n  }\n}];"
+      },
+      "id": "prepare-memory",
+      "name": "Prepare Memory Key",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [820, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-haiku-4-5-20251001",
+        "messages": {
+          "values": [
+            {
+              "role": "user",
+              "content": "=Classify the following WhatsApp message into exactly one intent category. Respond with ONLY a JSON object.\n\nMessage: {{ $json.text }}\nSender: {{ $json.contactName }}\n\nCategories:\n- greeting: Hello, hi, السلام عليكم, مرحبا\n- question: Asking about products, services, pricing, policies\n- booking: Wants to schedule, book, reserve, make an appointment\n- complaint: Unhappy, issue, problem, complaint\n- handoff: Explicitly asks for human, manager, real person\n- purchase: Wants to buy, order, pay\n- unknown: Cannot classify\n\nRespond with: {\"intent\": \"<category>\", \"confidence\": <0-1>, \"language\": \"en|ar\", \"sentiment\": \"positive|neutral|negative\"}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 150,
+          "temperature": 0
+        }
+      },
+      "id": "intent-classifier",
+      "name": "Classify Intent (Haiku)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1040, 200],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-creds",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse intent classification result\nconst classificationText = $input.first().json.message?.content || $input.first().json.text || '{}';\nlet classification;\ntry {\n  // Extract JSON from the response\n  const jsonMatch = classificationText.match(/\\{[^}]+\\}/);\n  classification = JSON.parse(jsonMatch ? jsonMatch[0] : classificationText);\n} catch (e) {\n  classification = { intent: 'unknown', confidence: 0, language: 'en', sentiment: 'neutral' };\n}\n\nconst prevData = $('Prepare Memory Key').first().json;\n\nreturn [{\n  json: {\n    ...prevData,\n    intent: classification.intent || 'unknown',\n    confidence: classification.confidence || 0,\n    language: classification.language || 'en',\n    sentiment: classification.sentiment || 'neutral'\n  }\n}];"
+      },
+      "id": "parse-intent",
+      "name": "Parse Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1260, 200]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputIndex": 0, "value": "greeting" },
+            { "outputIndex": 1, "value": "question" },
+            { "outputIndex": 2, "value": "booking" },
+            { "outputIndex": 3, "value": "complaint" },
+            { "outputIndex": 4, "value": "handoff" },
+            { "outputIndex": 5, "value": "unknown" }
+          ]
+        },
+        "value": "={{ $json.intent }}"
+      },
+      "id": "intent-router",
+      "name": "Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1480, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are the WhatsApp assistant for {{COMPANY_NAME}}. The customer sent a greeting. Respond warmly and briefly in their language ({{language}}). Ask how you can help. Keep it to 1-2 sentences."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 200,
+          "temperature": 0.7
+        }
+      },
+      "id": "greeting-response",
+      "name": "Greeting Response",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1700, 0],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-creds",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "={{$env.SYSTEM_PROMPT || 'You are a helpful WhatsApp assistant for {{COMPANY_NAME}}.\\n\\nKnowledge Base:\\n{{KNOWLEDGE_BASE}}\\n\\nAnswer the customer\\'s question using ONLY the knowledge base. If you don\\'t know, say so honestly. Respond in the customer\\'s language. Keep it concise (1-3 short paragraphs).'}}"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 500,
+          "temperature": 0.3
+        }
+      },
+      "id": "question-response",
+      "name": "Answer Question (Sonnet)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1700, 150],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-creds",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are the WhatsApp assistant for {{COMPANY_NAME}}. The customer wants to book an appointment. Share this booking link: {{CALENDLY_LINK}} and confirm availability. Respond in the customer's language. Keep it brief."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 300,
+          "temperature": 0.5
+        }
+      },
+      "id": "booking-response",
+      "name": "Booking Response",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1700, 300],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-creds",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are the WhatsApp assistant for {{COMPANY_NAME}}. The customer has a complaint. Acknowledge their frustration, apologize sincerely, and tell them a team member will follow up shortly. Respond in the customer's language. Be empathetic."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 300,
+          "temperature": 0.5
+        }
+      },
+      "id": "complaint-response",
+      "name": "Complaint Response",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1700, 450],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-creds",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate handoff message\nconst lang = $json.language;\nconst response = lang === 'ar'\n  ? 'سأقوم بتوصيلك مع أحد أعضاء فريقنا الذي يمكنه مساعدتك مباشرة. سيتواصلون معك قريباً.'\n  : 'Let me connect you with a team member who can help with this directly. They\\'ll reach out shortly.';\n\nreturn [{ json: { ...($json), response, escalate: true } }];"
+      },
+      "id": "handoff-response",
+      "name": "Handoff to Human",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1700, 600]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are the WhatsApp assistant for {{COMPANY_NAME}}. The message intent is unclear. Politely ask the customer to clarify what they need help with. Offer 2-3 suggestions of things you can help with. Respond in the customer's language."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 200,
+          "temperature": 0.5
+        }
+      },
+      "id": "fallback-response",
+      "name": "Fallback Response",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1700, 750],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-creds",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge all response branches into a single output\nconst items = $input.all();\nconst item = items[0];\n\n// Extract response text from LLM output or code node\nlet responseText = '';\nif (item.json.response) {\n  responseText = item.json.response;\n} else if (item.json.message?.content) {\n  responseText = item.json.message.content;\n} else if (typeof item.json.text === 'string' && item.json.intent) {\n  responseText = 'Thank you for your message. How can I help you?';\n}\n\n// Get original message data (from Parse Classification node)\nconst origData = $('Parse Classification').first().json;\n\nreturn [{\n  json: {\n    phone: origData.from,\n    phoneNumberId: origData.phoneNumberId,\n    responseText,\n    intent: origData.intent,\n    sentiment: origData.sentiment,\n    language: origData.language,\n    escalate: item.json.escalate || false,\n    originalMessage: origData.text,\n    contactName: origData.contactName\n  }\n}];"
+      },
+      "id": "merge-response",
+      "name": "Merge Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1940, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.phoneNumberId }}/messages",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "type",
+              "value": "text"
+            },
+            {
+              "name": "text",
+              "value": "={\"body\": \"{{ $json.responseText }}\"}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-whatsapp",
+      "name": "Send WhatsApp Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2160, 250]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/activity_logs",
+        "authentication": "predefinedCredentialType",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "client_id",
+              "value": "{{CLIENT_ID}}"
+            },
+            {
+              "name": "event_type",
+              "value": "message_received"
+            },
+            {
+              "name": "summary",
+              "value": "={{ $json.intent }}: {{ $json.originalMessage.substring(0, 100) }}"
+            },
+            {
+              "name": "payload",
+              "value": "={\"phone\": \"{{ $json.phone }}\", \"intent\": \"{{ $json.intent }}\", \"sentiment\": \"{{ $json.sentiment }}\", \"language\": \"{{ $json.language }}\", \"escalated\": {{ $json.escalate }}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-to-supabase",
+      "name": "Log to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2160, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"status\": \"ok\" }"
+      },
+      "id": "respond-ok",
+      "name": "Acknowledge (OK)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2380, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.escalate }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "escalation-check",
+      "name": "Needs Escalation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2160, 550]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=🔔 *Escalation Required*\n\n*Client*: {{COMPANY_NAME}}\n*Customer*: {{ $json.contactName }} ({{ $json.phone }})\n*Intent*: {{ $json.intent }}\n*Sentiment*: {{ $json.sentiment }}\n*Message*: {{ $json.originalMessage }}\n\nPlease follow up within 30 minutes."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "slack-escalation",
+      "name": "Notify Team (Slack)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2380, 550]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [[{ "node": "Parse WhatsApp Payload", "type": "main", "index": 0 }]]
+    },
+    "Parse WhatsApp Payload": {
+      "main": [[{ "node": "Is Message?", "type": "main", "index": 0 }]]
+    },
+    "Is Message?": {
+      "main": [
+        [{ "node": "Prepare Memory Key", "type": "main", "index": 0 }],
+        [{ "node": "Acknowledge (Skip)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Memory Key": {
+      "main": [[{ "node": "Classify Intent (Haiku)", "type": "main", "index": 0 }]]
+    },
+    "Classify Intent (Haiku)": {
+      "main": [[{ "node": "Parse Classification", "type": "main", "index": 0 }]]
+    },
+    "Parse Classification": {
+      "main": [[{ "node": "Route by Intent", "type": "main", "index": 0 }]]
+    },
+    "Route by Intent": {
+      "main": [
+        [{ "node": "Greeting Response", "type": "main", "index": 0 }],
+        [{ "node": "Answer Question (Sonnet)", "type": "main", "index": 0 }],
+        [{ "node": "Booking Response", "type": "main", "index": 0 }],
+        [{ "node": "Complaint Response", "type": "main", "index": 0 }],
+        [{ "node": "Handoff to Human", "type": "main", "index": 0 }],
+        [{ "node": "Fallback Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Greeting Response": {
+      "main": [[{ "node": "Merge Response", "type": "main", "index": 0 }]]
+    },
+    "Answer Question (Sonnet)": {
+      "main": [[{ "node": "Merge Response", "type": "main", "index": 0 }]]
+    },
+    "Booking Response": {
+      "main": [[{ "node": "Merge Response", "type": "main", "index": 0 }]]
+    },
+    "Complaint Response": {
+      "main": [[{ "node": "Merge Response", "type": "main", "index": 0 }]]
+    },
+    "Handoff to Human": {
+      "main": [[{ "node": "Merge Response", "type": "main", "index": 0 }]]
+    },
+    "Fallback Response": {
+      "main": [[{ "node": "Merge Response", "type": "main", "index": 0 }]]
+    },
+    "Merge Response": {
+      "main": [[
+        { "node": "Send WhatsApp Reply", "type": "main", "index": 0 },
+        { "node": "Log to Supabase", "type": "main", "index": 0 },
+        { "node": "Needs Escalation?", "type": "main", "index": 0 }
+      ]]
+    },
+    "Send WhatsApp Reply": {
+      "main": [[{ "node": "Acknowledge (OK)", "type": "main", "index": 0 }]]
+    },
+    "Needs Escalation?": {
+      "main": [
+        [{ "node": "Notify Team (Slack)", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "whatsapp" },
+    { "name": "customer-support" },
+    { "name": "ai-agent" }
+  ]
+}

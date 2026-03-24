@@ -1,0 +1,58 @@
+{
+  "name": "Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const error = $input.first().json;\nconst errorMessage = error.execution?.error?.message || 'Unknown error';\nconst workflowName = error.workflow?.name || 'Unknown workflow';\nconst timestamp = new Date().toISOString();\n\nreturn [{\n  json: {\n    errorMessage,\n    workflowName,\n    timestamp,\n    executionId: error.execution?.id\n  }\n}];"
+      },
+      "id": "format-error",
+      "name": "Format Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "client_id", "value": "={{$env.CLIENT_ID}}" },
+            { "name": "event_type", "value": "agent_error" },
+            { "name": "summary", "value": "={{ $json.workflowName }}: {{ $json.errorMessage }}" },
+            { "name": "payload", "value": "={{ JSON.stringify($json) }}" }
+          ]
+        }
+      },
+      "id": "log-error",
+      "name": "Log Error to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [640, 300]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [[{ "node": "Format Error", "type": "main", "index": 0 }]]
+    },
+    "Format Error": {
+      "main": [[{ "node": "Log Error to Supabase", "type": "main", "index": 0 }]]
+    }
+  }
+}

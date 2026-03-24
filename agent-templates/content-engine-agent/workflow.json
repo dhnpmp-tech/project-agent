@@ -1,0 +1,130 @@
+{
+  "name": "Content Engine Agent — {{COMPANY_NAME}}",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * 1" }]
+        }
+      },
+      "id": "weekly-trigger",
+      "name": "Weekly Monday 6AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a content research analyst. Research trending topics and generate 7 content briefs for the week.\n\nBusiness: {{COMPANY_NAME}}\nIndustry: {{BUSINESS_DESCRIPTION}}\nTarget audience: SMB owners and decision-makers in UAE/Saudi Arabia\nLanguage: {{PREFERRED_LANGUAGE}}\n\nReturn a JSON array of 7 briefs. Each brief:\n{\n  \"day\": \"Monday|Tuesday|...\",\n  \"platform\": \"linkedin|instagram|tiktok\",\n  \"type\": \"educational|social_proof|thought_leadership|engagement|behind_scenes\",\n  \"hook\": \"<attention-grabbing first line>\",\n  \"key_message\": \"<core point in 1 sentence>\",\n  \"cta\": \"<call to action>\",\n  \"language\": \"en|ar\",\n  \"hashtags\": [\"tag1\", \"tag2\"]\n}"
+            },
+            {
+              "role": "user",
+              "content": "Generate this week's content plan. Today is {{ $now.format('YYYY-MM-DD') }}. Mix platforms: 3 LinkedIn, 2 Instagram, 2 TikTok/Reels."
+            }
+          ]
+        },
+        "options": { "maxTokens": 2000, "temperature": 0.8 }
+      },
+      "id": "research-briefs",
+      "name": "Generate Weekly Briefs",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [420, 300],
+      "credentials": {
+        "anthropicApi": { "id": "anthropic-creds", "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json.message?.content || '[]';\nlet briefs;\ntry {\n  const match = response.match(/\\[([\\s\\S]*)\\]/);\n  briefs = JSON.parse(match ? `[${match[1]}]` : response);\n} catch {\n  briefs = [{ day: 'Monday', platform: 'linkedin', type: 'educational', hook: 'Default content brief', key_message: 'AI automation for UAE businesses', cta: 'Book a free audit', language: 'en', hashtags: ['AI', 'UAE'] }];\n}\n\nreturn briefs.map(brief => ({ json: brief }));"
+      },
+      "id": "parse-briefs",
+      "name": "Parse Briefs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-6-20250514",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "={{$env.SYSTEM_PROMPT || 'You are a social media content writer for {{COMPANY_NAME}}. Write engaging, platform-optimized content.'}}"
+            },
+            {
+              "role": "user",
+              "content": "=Write a {{ $json.platform }} post based on this brief:\n\nPlatform: {{ $json.platform }}\nType: {{ $json.type }}\nHook: {{ $json.hook }}\nKey message: {{ $json.key_message }}\nCTA: {{ $json.cta }}\nLanguage: {{ $json.language }}\nHashtags: {{ $json.hashtags.join(', ') }}\n\nWrite the complete post, ready to publish."
+            }
+          ]
+        },
+        "options": { "maxTokens": 800, "temperature": 0.7 }
+      },
+      "id": "write-content",
+      "name": "Write Full Post",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [860, 300],
+      "credentials": {
+        "anthropicApi": { "id": "anthropic-creds", "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.message?.content || '';\nconst brief = $('Parse Briefs').first().json;\n\nreturn [{\n  json: {\n    platform: brief.platform,\n    day: brief.day,\n    type: brief.type,\n    language: brief.language,\n    content: content,\n    hashtags: brief.hashtags,\n    status: 'ready',\n    generatedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-post",
+      "name": "Format for Scheduling",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"client_id\": \"{{CLIENT_ID}}\",\n  \"event_type\": \"content_published\",\n  \"summary\": \"{{ $json.platform }} post ({{ $json.type }}) — {{ $json.day }}\",\n  \"payload\": {{ JSON.stringify($json) }}\n}"
+      },
+      "id": "log-content",
+      "name": "Log to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Weekly Monday 6AM": {
+      "main": [[{ "node": "Generate Weekly Briefs", "type": "main", "index": 0 }]]
+    },
+    "Generate Weekly Briefs": {
+      "main": [[{ "node": "Parse Briefs", "type": "main", "index": 0 }]]
+    },
+    "Parse Briefs": {
+      "main": [[{ "node": "Write Full Post", "type": "main", "index": 0 }]]
+    },
+    "Write Full Post": {
+      "main": [[{ "node": "Format for Scheduling", "type": "main", "index": 0 }]]
+    },
+    "Format for Scheduling": {
+      "main": [[{ "node": "Log to Supabase", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "content" }, { "name": "social-media" }, { "name": "ai-agent" }]
+}

@@ -1,0 +1,100 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+[dir="rtl"] {
+  text-align: right;
+}
+
+@layer base {
+  body {
+    @apply bg-surface-950 text-white antialiased font-sans;
+  }
+
+  ::selection {
+    @apply bg-brand-500/30 text-white;
+  }
+}
+
+@layer components {
+  /* Double-bezel card architecture (light variant for sub-pages) */
+  .card-shell {
+    @apply bg-surface-950/[0.03] ring-1 ring-surface-950/[0.04] p-1.5 rounded-4xl;
+  }
+
+  .card-core {
+    @apply bg-surface-0 rounded-[calc(2rem-0.375rem)] p-8;
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.6),
+      0 20px 40px -15px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Dark card variants */
+  .card-dark {
+    @apply bg-white/[0.03] ring-1 ring-white/[0.06] rounded-3xl backdrop-blur-sm;
+  }
+
+  .card-dark-glow {
+    @apply bg-white/[0.03] ring-1 ring-white/[0.06] rounded-3xl backdrop-blur-sm;
+    box-shadow:
+      0 0 60px -15px rgba(34, 197, 94, 0.1),
+      0 20px 40px -15px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Pill badge */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.15em] font-semibold;
+    @apply bg-brand-500/10 text-brand-400 ring-1 ring-brand-500/20;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-full bg-brand-500 px-7 py-3.5 text-sm font-semibold text-white;
+    @apply transition-all duration-500 ease-spring;
+    @apply hover:bg-brand-400 active:scale-[0.98] active:translate-y-[1px];
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 0 50px rgba(34, 197, 94, 0.4);
+  }
+
+  .btn-secondary {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold text-white/70;
+    @apply ring-1 ring-white/10 transition-all duration-500 ease-spring;
+    @apply hover:ring-white/20 hover:bg-white/5 active:scale-[0.98];
+  }
+
+  .btn-icon {
+    @apply w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-500 ease-spring;
+    @apply group-hover:translate-x-0.5 group-hover:-translate-y-px group-hover:scale-105;
+  }
+
+  /* Stat numbers */
+  .stat-value {
+    @apply text-4xl md:text-5xl font-extrabold tracking-tighter font-mono;
+    @apply bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+
+  /* Grain overlay */
+  .grain::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0.02;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  }
+}

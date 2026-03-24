@@ -1,0 +1,81 @@
+# Client container template — provisioning system replaces {{PLACEHOLDERS}}
+version: "3.8"
+
+services:
+  n8n-{{CLIENT_SLUG}}:
+    image: n8nio/n8n:latest
+    container_name: n8n-{{CLIENT_SLUG}}
+    environment:
+      - N8N_HOST={{CLIENT_SLUG}}.{{PLATFORM_DOMAIN}}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://{{CLIENT_SLUG}}.{{PLATFORM_DOMAIN}}/
+      - N8N_ENCRYPTION_KEY={{N8N_ENCRYPTION_KEY}}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres-{{CLIENT_SLUG}}
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n_{{CLIENT_SLUG_UNDERSCORE}}
+      - DB_POSTGRESDB_USER={{DB_USER}}
+      - DB_POSTGRESDB_PASSWORD={{DB_PASSWORD}}
+      - N8N_BASIC_AUTH_USER={{N8N_AUTH_USER}}
+      - N8N_BASIC_AUTH_PASSWORD={{N8N_AUTH_PASSWORD}}
+      # Agent secrets
+      - ANTHROPIC_API_KEY={{ANTHROPIC_API_KEY}}
+      - WHATSAPP_API_TOKEN={{WHATSAPP_API_TOKEN}}
+      - WHATSAPP_PHONE_NUMBER_ID={{WHATSAPP_PHONE_NUMBER_ID}}
+      - SENDGRID_API_KEY={{SENDGRID_API_KEY}}
+      - CALENDLY_API_KEY={{CALENDLY_API_KEY}}
+      - CRM_API_KEY={{CRM_API_KEY}}
+      - SUPABASE_URL={{SUPABASE_URL}}
+      - SUPABASE_SERVICE_ROLE_KEY={{SUPABASE_SERVICE_ROLE_KEY}}
+      - CLIENT_ID={{CLIENT_ID}}
+      - REDIS_URL=redis://:{{REDIS_PASSWORD}}@redis:6379
+    volumes:
+      - n8n-{{CLIENT_SLUG}}-data:/home/node/.n8n
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n-{{CLIENT_SLUG}}.rule=Host(`{{CLIENT_SLUG}}.{{PLATFORM_DOMAIN}}`)"
+      - "traefik.http.routers.n8n-{{CLIENT_SLUG}}.tls.certresolver=letsencrypt"
+      - "traefik.http.services.n8n-{{CLIENT_SLUG}}.loadbalancer.server.port=5678"
+    networks:
+      - agent-network
+    depends_on:
+      postgres-{{CLIENT_SLUG}}:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  postgres-{{CLIENT_SLUG}}:
+    image: postgres:16-alpine
+    container_name: postgres-{{CLIENT_SLUG}}
+    environment:
+      - POSTGRES_DB=n8n_{{CLIENT_SLUG_UNDERSCORE}}
+      - POSTGRES_USER={{DB_USER}}
+      - POSTGRES_PASSWORD={{DB_PASSWORD}}
+    volumes:
+      - postgres-{{CLIENT_SLUG}}-data:/var/lib/postgresql/data
+    networks:
+      - agent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{DB_USER}}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
+
+volumes:
+  n8n-{{CLIENT_SLUG}}-data:
+  postgres-{{CLIENT_SLUG}}-data:
+
+networks:
+  agent-network:
+    external: true

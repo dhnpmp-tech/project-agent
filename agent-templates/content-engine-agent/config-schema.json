@@ -1,0 +1,17 @@
+{
+  "required": [
+    "clientId",
+    "clientSlug",
+    "companyName",
+    "businessDescription"
+  ],
+  "optional": [
+    "companyNameAr",
+    "brandVoice",
+    "socialPlatforms",
+    "preferredLanguage",
+    "industryKeywords",
+    "competitorAccounts",
+    "postingSchedule"
+  ]
+}

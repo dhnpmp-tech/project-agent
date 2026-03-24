@@ -1,0 +1,28 @@
+{
+  "dashboard": {
+    "title": "Dashboard",
+    "your_agents": "Your Agents",
+    "recent_activity": "Recent Activity",
+    "view_all": "View all",
+    "request_change": "Request a Change",
+    "no_agents": "No agents deployed yet",
+    "no_activity": "No recent activity"
+  },
+  "support": {
+    "title": "Request a Change",
+    "description": "Need something changed, fixed, or added? Submit a request below.",
+    "category": "Category",
+    "config_change": "Configuration Change",
+    "bug_report": "Bug Report",
+    "feature_request": "Feature Request",
+    "kb_update": "Knowledge Base Update",
+    "other": "Other",
+    "priority": "Priority",
+    "low": "Low — no rush",
+    "medium": "Medium — within a few days",
+    "high": "High — urgent",
+    "submit": "Submit Request",
+    "success": "Request submitted successfully!",
+    "success_detail": "Our team will review it within 24 hours."
+  }
+}
