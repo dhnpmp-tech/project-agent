@@ -25,10 +25,16 @@ interface GeneratedCredentials {
   n8nAuthPassword: string;
 }
 
-const DEPLOYMENTS_BASE = process.env.DEPLOYMENTS_BASE || "/deployments";
-const TEMPLATE_PATH =
-  process.env.COMPOSE_TEMPLATE_PATH ||
-  join(__dirname, "../../infrastructure/docker-compose.client.template.yml");
+function getDeploymentsBase(): string {
+  return process.env.DEPLOYMENTS_BASE || "/deployments";
+}
+
+function getTemplatePath(): string {
+  return (
+    process.env.COMPOSE_TEMPLATE_PATH ||
+    join(__dirname, "../../infrastructure/docker-compose.client.template.yml")
+  );
+}
 
 function generateRandomHex(bytes: number): string {
   const array = new Uint8Array(bytes);
@@ -51,13 +57,13 @@ function generateCredentials(slug: string): GeneratedCredentials {
 export function generateClientCompose(
   config: ClientComposeConfig
 ): { composePath: string; credentials: GeneratedCredentials } {
-  const clientDir = join(DEPLOYMENTS_BASE, config.clientSlug);
+  const clientDir = join(getDeploymentsBase(), config.clientSlug);
 
   if (!existsSync(clientDir)) {
     mkdirSync(clientDir, { recursive: true });
   }
 
-  const template = readFileSync(TEMPLATE_PATH, "utf-8");
+  const template = readFileSync(getTemplatePath(), "utf-8");
   const creds = generateCredentials(config.clientSlug);
   const slugUnderscore = config.clientSlug.replace(/-/g, "_");
 
@@ -94,12 +100,12 @@ export function generateClientCompose(
 }
 
 export function startClientStack(slug: string): void {
-  const clientDir = join(DEPLOYMENTS_BASE, slug);
+  const clientDir = join(getDeploymentsBase(), slug);
   execSync("docker compose up -d", { cwd: clientDir, stdio: "inherit" });
 }
 
 export function stopClientStack(slug: string): void {
-  const clientDir = join(DEPLOYMENTS_BASE, slug);
+  const clientDir = join(getDeploymentsBase(), slug);
   execSync("docker compose down", { cwd: clientDir, stdio: "inherit" });
 }
 
@@ -107,7 +113,7 @@ export function removeClientStack(
   slug: string,
   deleteVolumes = false
 ): void {
-  const clientDir = join(DEPLOYMENTS_BASE, slug);
+  const clientDir = join(getDeploymentsBase(), slug);
   const cmd = deleteVolumes ? "docker compose down -v" : "docker compose down";
   execSync(cmd, { cwd: clientDir, stdio: "inherit" });
 }
