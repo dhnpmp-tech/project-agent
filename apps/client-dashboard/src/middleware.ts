@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
   const authPages = ["/login", "/signup", "/password-reset"];
 
   // Redirect unauthenticated users to login
-  if (!user && pathname.startsWith("/dashboard")) {
+  if (!user && (pathname.startsWith("/dashboard") || pathname === "/onboarding")) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     return NextResponse.redirect(redirectUrl);
@@ -56,5 +56,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/signup", "/password-reset"],
+  matcher: ["/dashboard/:path*", "/onboarding", "/login", "/signup", "/password-reset"],
 };
