@@ -1,0 +1,52 @@
+{
+  "name": "Knowledge Base Loader",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "kb-trigger",
+      "name": "When Called By Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/business_knowledge?client_id=eq.{{$env.CLIENT_ID}}&select=*",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "kb-fetch",
+      "name": "Fetch Knowledge Base",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const kb = $input.first().json;\nif (!kb || !kb[0]) {\n  return [{ json: { knowledge: 'No knowledge base found for this client.' } }];\n}\n\nconst data = kb[0];\nconst sections = [];\n\nif (data.business_description) {\n  sections.push(`## About the Business\\n${data.business_description}`);\n}\n\nif (data.services && data.services.length > 0) {\n  sections.push(`## Services\\n${data.services.map(s => `- ${s}`).join('\\n')}`);\n}\n\nif (data.business_hours) {\n  sections.push(`## Business Hours\\n${data.business_hours}`);\n}\n\nif (data.contact_info) {\n  const c = data.contact_info;\n  const parts = [];\n  if (c.phone) parts.push(`Phone: ${c.phone}`);\n  if (c.email) parts.push(`Email: ${c.email}`);\n  if (c.address) parts.push(`Address: ${c.address}`);\n  if (parts.length > 0) sections.push(`## Contact\\n${parts.join('\\n')}`);\n}\n\nif (data.faq && data.faq.length > 0) {\n  const faqText = data.faq.map(f => `Q: ${f.question}\\nA: ${f.answer}`).join('\\n\\n');\n  sections.push(`## FAQ\\n${faqText}`);\n}\n\nif (data.brand_voice) {\n  sections.push(`## Brand Voice\\n${data.brand_voice}`);\n}\n\nif (data.social_profiles && Object.keys(data.social_profiles).length > 0) {\n  const profiles = Object.entries(data.social_profiles).map(([k, v]) => `- ${k}: ${v}`).join('\\n');\n  sections.push(`## Social Profiles\\n${profiles}`);\n}\n\nif (data.review_sources && data.review_sources.length > 0) {\n  const reviews = data.review_sources.map(r => `- ${r.platform}: ${r.url}${r.rating ? ` (${r.rating}/5, ${r.count} reviews)` : ''}`).join('\\n');\n  sections.push(`## Reviews\\n${reviews}`);\n}\n\nif (data.team_members && data.team_members.length > 0) {\n  const team = data.team_members.map(m => `- ${m.name}${m.role ? ` — ${m.role}` : ''}`).join('\\n');\n  sections.push(`## Team\\n${team}`);\n}\n\nif (data.icp_criteria && data.icp_criteria.notes) {\n  sections.push(`## Ideal Customer Profile\\n${data.icp_criteria.notes}`);\n}\n\nif (data.company_culture) {\n  sections.push(`## Company Culture\\n${data.company_culture}`);\n}\n\nif (data.industry_keywords && data.industry_keywords.length > 0) {\n  sections.push(`## Industry Keywords\\n${data.industry_keywords.join(', ')}`);\n}\n\nreturn [{ json: {\n  knowledge: sections.join('\\n\\n'),\n  raw: data\n}}];"
+      },
+      "id": "kb-format",
+      "name": "Format Knowledge Base",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [710, 300]
+    }
+  ],
+  "connections": {
+    "When Called By Another Workflow": {
+      "main": [[{ "node": "Fetch Knowledge Base", "type": "main", "index": 0 }]]
+    },
+    "Fetch Knowledge Base": {
+      "main": [[{ "node": "Format Knowledge Base", "type": "main", "index": 0 }]]
+    }
+  }
+}

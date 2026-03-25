@@ -1,0 +1,91 @@
+{
+  "name": "Browser Research Tool",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "br-trigger",
+      "name": "When Called By Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract research query from the trigger input\nconst input = $input.first().json;\nconst query = input.query || '';\nconst researchType = input.type || 'general';\n\n// Build search URLs based on research type\nconst urls = [];\n\nif (researchType === 'reviews') {\n  urls.push(`https://www.google.com/search?q=${encodeURIComponent(query + ' reviews')}`);\n  urls.push(`https://www.google.com/maps/search/${encodeURIComponent(query)}`);\n} else if (researchType === 'social') {\n  urls.push(`https://www.google.com/search?q=${encodeURIComponent(query + ' site:linkedin.com OR site:instagram.com OR site:facebook.com')}`);\n} else if (researchType === 'competitors') {\n  urls.push(`https://www.google.com/search?q=${encodeURIComponent(query + ' competitors alternatives')}`);\n} else if (researchType === 'industry') {\n  urls.push(`https://www.google.com/search?q=${encodeURIComponent(query + ' industry trends 2026')}`);\n} else {\n  urls.push(`https://www.google.com/search?q=${encodeURIComponent(query)}`);\n}\n\nreturn urls.map(url => ({ json: { url, query, researchType } }));"
+      },
+      "id": "br-build-urls",
+      "name": "Build Research URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 15000,
+          "redirect": { "redirect": { "followRedirects": true } }
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; ProjectAgent/1.0; business-research)"
+            }
+          ]
+        }
+      },
+      "id": "br-fetch",
+      "name": "Fetch Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [710, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $input.first().json.data || $input.first().json.body || '';\nconst query = $input.first().json.query || '';\nconst researchType = $input.first().json.researchType || 'general';\n\n// Strip HTML tags, scripts, styles\nconst text = html\n  .replace(/<script[^>]*>[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/<style[^>]*>[\\s\\S]*?<\\/style>/gi, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .slice(0, 10000);\n\nreturn [{ json: { text, query, researchType } }];"
+      },
+      "id": "br-clean",
+      "name": "Clean HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "modelId": { "__rl": true, "value": "claude-haiku-4-5-20251001", "mode": "list" },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a business research assistant. Extract relevant information from this web search result.\n\nResearch type: {{ $json.researchType }}\nQuery: {{ $json.query }}\n\nSearch result content:\n{{ $json.text }}\n\nExtract and return a concise summary of findings relevant to the query. Focus on factual information like:\n- Business reviews and ratings\n- Social media presence and engagement\n- Competitor information\n- Industry trends\n- Customer sentiment\n\nReturn a clear, structured summary.",
+              "role": "user"
+            }
+          ]
+        },
+        "options": { "maxTokens": 1024 }
+      },
+      "id": "br-analyze",
+      "name": "Analyze Results",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1170, 300]
+    }
+  ],
+  "connections": {
+    "When Called By Another Workflow": {
+      "main": [[{ "node": "Build Research URLs", "type": "main", "index": 0 }]]
+    },
+    "Build Research URLs": {
+      "main": [[{ "node": "Fetch Page", "type": "main", "index": 0 }]]
+    },
+    "Fetch Page": {
+      "main": [[{ "node": "Clean HTML", "type": "main", "index": 0 }]]
+    },
+    "Clean HTML": {
+      "main": [[{ "node": "Analyze Results", "type": "main", "index": 0 }]]
+    }
+  }
+}
