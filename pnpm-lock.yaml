@@ -29,6 +29,9 @@ importers:
 
   apps/client-dashboard:
     dependencies:
+      '@project-agent/calendar-adapter':
+        specifier: workspace:*
+        version: link:../../packages/calendar-adapter
       '@project-agent/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types

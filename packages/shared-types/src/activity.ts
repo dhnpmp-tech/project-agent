@@ -20,6 +20,7 @@ export interface ActivityLog {
   client_id: string;
   agent_deployment_id?: string;
   event_type: ActivityEventType;
+  summary?: string;
   payload: Record<string, unknown>;
   created_at: string;
 }

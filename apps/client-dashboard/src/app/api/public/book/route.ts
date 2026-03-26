@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the activity (non-blocking)
-    supabase
+    void supabase
       .from("activity_logs")
       .insert({
         event_type: "meeting_booked",
@@ -178,15 +178,13 @@ export async function POST(request: NextRequest) {
           timezone,
           booking_id: result.bookingId,
         },
-      })
-      .then(() => {})
-      .catch(() => {});
+      });
 
     return NextResponse.json(
       {
         success: true,
         bookingId: result.bookingId,
-        calendarLink: result.calendarLink,
+        calendarLink: (result as unknown as Record<string, unknown>).calendarLink || null,
       },
       { headers: corsHeaders() }
     );
