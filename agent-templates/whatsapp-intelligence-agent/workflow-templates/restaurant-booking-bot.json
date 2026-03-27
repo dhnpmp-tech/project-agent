@@ -1,0 +1,140 @@
+{
+  "name": "Restaurant Booking Bot (Kapso)",
+  "description": "Complete restaurant booking flow: menu display, table reservation, location sharing, confirmation. Uses Kapso interactive messages (lists, buttons, location).",
+  "trigger": "whatsapp.message.received",
+  "industry": "hospitality",
+  "kapso_features": ["list_messages", "interactive_buttons", "location_sharing", "template_messages"],
+  "steps": [
+    {
+      "id": "1-greeting",
+      "type": "send_text",
+      "description": "Greet customer and detect language (Arabic/English)",
+      "message": {
+        "en": "Welcome to {{COMPANY_NAME}}! How can I help you today?",
+        "ar": "أهلاً وسهلاً بكم في {{COMPANY_NAME}}! كيف يمكنني مساعدتكم؟"
+      }
+    },
+    {
+      "id": "2-main-menu",
+      "type": "send_interactive_list",
+      "description": "Show main options as a WhatsApp list message",
+      "config": {
+        "header": "What would you like to do?",
+        "body": "Choose from the options below:",
+        "button": "View Options",
+        "sections": [
+          {
+            "title": "Reservations",
+            "rows": [
+              { "id": "book_table", "title": "Book a Table", "description": "Reserve for today or upcoming dates" },
+              { "id": "modify_booking", "title": "Modify Reservation", "description": "Change date, time, or party size" },
+              { "id": "cancel_booking", "title": "Cancel Reservation", "description": "Cancel an existing booking" }
+            ]
+          },
+          {
+            "title": "Information",
+            "rows": [
+              { "id": "view_menu", "title": "View Menu", "description": "See our current menu and specials" },
+              { "id": "opening_hours", "title": "Opening Hours", "description": "Check our operating hours" },
+              { "id": "location", "title": "Get Directions", "description": "View our location on the map" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "3-booking-flow",
+      "type": "whatsapp_flow",
+      "trigger_on": "book_table",
+      "description": "Native WhatsApp Flow form for table booking",
+      "flow_json": {
+        "screens": [
+          {
+            "id": "booking_details",
+            "title": "Table Reservation",
+            "data": {},
+            "layout": {
+              "type": "SingleColumnLayout",
+              "children": [
+                { "type": "DatePicker", "name": "date", "label": "Date", "required": true },
+                { "type": "Dropdown", "name": "time", "label": "Time", "required": true, "data-source": ["18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"] },
+                { "type": "Dropdown", "name": "party_size", "label": "Number of Guests", "required": true, "data-source": ["1", "2", "3", "4", "5", "6", "7", "8", "10+"] },
+                { "type": "Dropdown", "name": "seating", "label": "Seating Preference", "data-source": ["Indoor", "Outdoor / Terrace", "Private Dining", "No preference"] },
+                { "type": "TextInput", "name": "special_requests", "label": "Special Requests", "input-type": "text" },
+                { "type": "Footer", "label": "Confirm Booking", "on-click-action": { "name": "complete", "payload": {} } }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "4-confirmation",
+      "type": "send_interactive_buttons",
+      "description": "Confirm booking with quick reply buttons",
+      "config": {
+        "body": "Your table is booked!\n\n📅 {{date}}\n🕐 {{time}}\n👥 {{party_size}} guests\n💺 {{seating}}\n\nWe look forward to seeing you!",
+        "buttons": [
+          { "type": "reply", "id": "add_to_calendar", "title": "Add to Calendar" },
+          { "type": "reply", "id": "get_directions", "title": "Get Directions" },
+          { "type": "reply", "id": "modify_booking", "title": "Modify" }
+        ]
+      }
+    },
+    {
+      "id": "5-location",
+      "type": "send_location",
+      "trigger_on": "get_directions",
+      "description": "Send restaurant location on WhatsApp map",
+      "config": {
+        "latitude": "{{BUSINESS_LATITUDE}}",
+        "longitude": "{{BUSINESS_LONGITUDE}}",
+        "name": "{{COMPANY_NAME}}",
+        "address": "{{BUSINESS_ADDRESS}}"
+      }
+    },
+    {
+      "id": "6-menu",
+      "type": "send_document",
+      "trigger_on": "view_menu",
+      "description": "Send menu as PDF document",
+      "config": {
+        "document_url": "{{MENU_PDF_URL}}",
+        "filename": "{{COMPANY_NAME}} - Menu.pdf",
+        "caption": "Here's our current menu. Let us know if you have any questions!"
+      }
+    },
+    {
+      "id": "7-reminder-template",
+      "type": "template_message",
+      "description": "24h before: send reminder template (works outside 24h window)",
+      "schedule": "24h_before_booking",
+      "config": {
+        "template_name": "booking_reminder",
+        "language": "en",
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              { "type": "text", "text": "{{guest_name}}" },
+              { "type": "text", "text": "{{date}}" },
+              { "type": "text", "text": "{{time}}" },
+              { "type": "text", "text": "{{party_size}}" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "type": "quick_reply", "text": "Confirm" },
+          { "type": "quick_reply", "text": "Reschedule" }
+        ]
+      }
+    }
+  ],
+  "required_config": {
+    "kapsoApiKey": "Kapso API key",
+    "businessLatitude": "Restaurant latitude",
+    "businessLongitude": "Restaurant longitude",
+    "businessAddress": "Full address",
+    "menuPdfUrl": "URL to menu PDF (optional)"
+  }
+}

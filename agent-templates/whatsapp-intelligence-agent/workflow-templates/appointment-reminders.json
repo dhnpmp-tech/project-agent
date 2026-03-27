@@ -1,0 +1,152 @@
+{
+  "name": "Appointment Reminder System (Kapso)",
+  "description": "Automated appointment reminders via WhatsApp template messages. Sends 24h and 1h reminders with confirm/reschedule buttons. Works outside the 24-hour messaging window.",
+  "trigger": "scheduled",
+  "industry": "healthcare, beauty, professional_services",
+  "kapso_features": ["template_messages", "interactive_buttons", "whatsapp_flows"],
+  "steps": [
+    {
+      "id": "1-24h-reminder",
+      "type": "template_message",
+      "schedule": "24h_before",
+      "description": "Send reminder template 24 hours before appointment",
+      "config": {
+        "template_name": "appointment_reminder_24h",
+        "language": "en",
+        "components": [
+          {
+            "type": "header",
+            "parameters": [{ "type": "text", "text": "{{COMPANY_NAME}}" }]
+          },
+          {
+            "type": "body",
+            "parameters": [
+              { "type": "text", "text": "{{customer_name}}" },
+              { "type": "text", "text": "{{service_name}}" },
+              { "type": "text", "text": "{{appointment_date}}" },
+              { "type": "text", "text": "{{appointment_time}}" },
+              { "type": "text", "text": "{{location_or_link}}" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "type": "quick_reply", "text": "Confirm" },
+          { "type": "quick_reply", "text": "Reschedule" },
+          { "type": "quick_reply", "text": "Cancel" }
+        ]
+      },
+      "template_text": {
+        "en": "Hi {{customer_name}},\n\nThis is a reminder for your {{service_name}} appointment:\n\n📅 {{appointment_date}}\n🕐 {{appointment_time}}\n📍 {{location_or_link}}\n\nPlease confirm, reschedule, or cancel below.",
+        "ar": "مرحباً {{customer_name}}،\n\nتذكير بموعدكم لـ {{service_name}}:\n\n📅 {{appointment_date}}\n🕐 {{appointment_time}}\n📍 {{location_or_link}}\n\nيرجى التأكيد أو إعادة الجدولة أو الإلغاء."
+      }
+    },
+    {
+      "id": "2-1h-reminder",
+      "type": "template_message",
+      "schedule": "1h_before",
+      "description": "Send final reminder 1 hour before",
+      "config": {
+        "template_name": "appointment_reminder_1h",
+        "body": "Hi {{customer_name}}, your {{service_name}} appointment is in 1 hour at {{appointment_time}}. See you soon!",
+        "buttons": [
+          { "type": "quick_reply", "text": "On my way!" },
+          { "type": "quick_reply", "text": "Running late" }
+        ]
+      }
+    },
+    {
+      "id": "3-handle-confirm",
+      "type": "send_text",
+      "trigger_on": "Confirm",
+      "description": "Acknowledge confirmation",
+      "message": {
+        "en": "Great, you're confirmed for {{appointment_date}} at {{appointment_time}}. See you then!",
+        "ar": "ممتاز، تم تأكيد موعدكم. نراكم بإذن الله!"
+      }
+    },
+    {
+      "id": "4-handle-reschedule",
+      "type": "whatsapp_flow",
+      "trigger_on": "Reschedule",
+      "description": "Native WhatsApp Flow form for rescheduling",
+      "flow_json": {
+        "screens": [
+          {
+            "id": "reschedule",
+            "title": "Reschedule Appointment",
+            "layout": {
+              "type": "SingleColumnLayout",
+              "children": [
+                { "type": "DatePicker", "name": "new_date", "label": "New Date", "required": true },
+                { "type": "Dropdown", "name": "new_time", "label": "Preferred Time", "required": true, "data-source": ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "14:00", "14:30", "15:00", "15:30", "16:00"] },
+                { "type": "Footer", "label": "Reschedule", "on-click-action": { "name": "complete", "payload": {} } }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "5-handle-cancel",
+      "type": "send_interactive_buttons",
+      "trigger_on": "Cancel",
+      "description": "Confirm cancellation with reason",
+      "config": {
+        "body": "We're sorry to hear that. Can you tell us why you're cancelling?",
+        "buttons": [
+          { "type": "reply", "id": "schedule_conflict", "title": "Schedule conflict" },
+          { "type": "reply", "id": "no_longer_needed", "title": "No longer needed" },
+          { "type": "reply", "id": "other_reason", "title": "Other" }
+        ]
+      }
+    },
+    {
+      "id": "6-handle-late",
+      "type": "send_text",
+      "trigger_on": "Running late",
+      "description": "Acknowledge and reassure",
+      "message": {
+        "en": "No worries! We'll hold your slot. Just let us know your ETA if you can.",
+        "ar": "لا تقلق! سنحتفظ بموعدكم. أخبرونا بالوقت المتوقع للوصول إذا أمكن."
+      }
+    },
+    {
+      "id": "7-post-appointment",
+      "type": "template_message",
+      "schedule": "2h_after",
+      "description": "Post-appointment follow-up with feedback request",
+      "config": {
+        "template_name": "post_appointment_feedback",
+        "body": "Thank you for visiting {{COMPANY_NAME}}! We hope you had a great experience. Would you mind sharing your feedback?",
+        "buttons": [
+          { "type": "quick_reply", "text": "Leave Review" },
+          { "type": "quick_reply", "text": "Book Again" }
+        ]
+      }
+    },
+    {
+      "id": "8-log",
+      "type": "supabase_insert",
+      "description": "Log appointment status changes",
+      "config": {
+        "table": "activity_logs",
+        "data": {
+          "event_type": "meeting_booked",
+          "summary": "Appointment {{status}}: {{service_name}} on {{appointment_date}}",
+          "payload": {
+            "status": "{{status}}",
+            "customer_name": "{{customer_name}}",
+            "service": "{{service_name}}",
+            "date": "{{appointment_date}}",
+            "time": "{{appointment_time}}"
+          }
+        }
+      }
+    }
+  ],
+  "required_config": {
+    "kapsoApiKey": "Kapso API key",
+    "appointmentSource": "Calendar provider or booking system API",
+    "reminderWindows": ["24h", "1h"]
+  }
+}

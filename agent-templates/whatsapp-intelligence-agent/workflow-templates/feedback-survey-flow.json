@@ -1,0 +1,173 @@
+{
+  "name": "Customer Feedback Survey (Kapso)",
+  "description": "Post-service feedback collection via native WhatsApp Flows. Collects satisfaction rating, NPS score, and written feedback without leaving WhatsApp.",
+  "trigger": "scheduled_or_manual",
+  "industry": "any",
+  "kapso_features": ["whatsapp_flows", "template_messages", "interactive_buttons"],
+  "steps": [
+    {
+      "id": "1-trigger-survey",
+      "type": "template_message",
+      "description": "Send survey invitation (works outside 24h window)",
+      "config": {
+        "template_name": "feedback_survey_invite",
+        "language": "en",
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              { "type": "text", "text": "{{customer_name}}" },
+              { "type": "text", "text": "{{COMPANY_NAME}}" },
+              { "type": "text", "text": "{{service_name}}" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "type": "flow", "text": "Share Feedback", "flow_id": "{{survey_flow_id}}" }
+        ]
+      },
+      "template_text": {
+        "en": "Hi {{customer_name}},\n\nThank you for choosing {{COMPANY_NAME}}! We'd love to hear about your experience with {{service_name}}.\n\nIt takes less than 30 seconds.",
+        "ar": "مرحباً {{customer_name}}،\n\nشكراً لاختياركم {{COMPANY_NAME}}! نود سماع رأيكم عن تجربتكم مع {{service_name}}.\n\nلن يستغرق الأمر أكثر من 30 ثانية."
+      }
+    },
+    {
+      "id": "2-survey-flow",
+      "type": "whatsapp_flow",
+      "description": "Native WhatsApp Flow — multi-screen survey",
+      "flow_json": {
+        "screens": [
+          {
+            "id": "rating",
+            "title": "Rate Your Experience",
+            "layout": {
+              "type": "SingleColumnLayout",
+              "children": [
+                {
+                  "type": "RadioButtonsGroup",
+                  "name": "satisfaction",
+                  "label": "How satisfied were you?",
+                  "required": true,
+                  "data-source": [
+                    { "id": "5", "title": "Excellent" },
+                    { "id": "4", "title": "Good" },
+                    { "id": "3", "title": "Average" },
+                    { "id": "2", "title": "Poor" },
+                    { "id": "1", "title": "Very Poor" }
+                  ]
+                },
+                { "type": "Footer", "label": "Next", "on-click-action": { "name": "navigate", "next": { "type": "screen", "name": "nps" }, "payload": {} } }
+              ]
+            }
+          },
+          {
+            "id": "nps",
+            "title": "Would You Recommend Us?",
+            "layout": {
+              "type": "SingleColumnLayout",
+              "children": [
+                {
+                  "type": "RadioButtonsGroup",
+                  "name": "nps_score",
+                  "label": "On a scale of 0-10, how likely are you to recommend us?",
+                  "required": true,
+                  "data-source": [
+                    { "id": "10", "title": "10 - Extremely likely" },
+                    { "id": "9", "title": "9" },
+                    { "id": "8", "title": "8" },
+                    { "id": "7", "title": "7" },
+                    { "id": "6", "title": "6" },
+                    { "id": "5", "title": "5 - Neutral" },
+                    { "id": "3", "title": "3" },
+                    { "id": "1", "title": "1 - Not at all likely" }
+                  ]
+                },
+                { "type": "Footer", "label": "Next", "on-click-action": { "name": "navigate", "next": { "type": "screen", "name": "comments" }, "payload": {} } }
+              ]
+            }
+          },
+          {
+            "id": "comments",
+            "title": "Any Comments?",
+            "layout": {
+              "type": "SingleColumnLayout",
+              "children": [
+                { "type": "TextArea", "name": "feedback_text", "label": "Tell us more (optional)", "input-type": "text" },
+                { "type": "Footer", "label": "Submit Feedback", "on-click-action": { "name": "complete", "payload": {} } }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "3-thank-you",
+      "type": "send_text",
+      "description": "Thank customer based on score",
+      "logic": {
+        "high_score": {
+          "condition": "satisfaction >= 4",
+          "message": {
+            "en": "Thank you for the wonderful feedback! We're thrilled you had a great experience. Would you mind sharing a review?",
+            "ar": "شكراً لكم على ملاحظاتكم الرائعة! يسعدنا أن تجربتكم كانت ممتازة. هل تمانعون بمشاركة تقييم؟"
+          }
+        },
+        "low_score": {
+          "condition": "satisfaction <= 2",
+          "message": {
+            "en": "We're sorry to hear about your experience. Our team will reach out to make things right. Thank you for the honest feedback.",
+            "ar": "نأسف لسماع ذلك. سيتواصل فريقنا معكم لحل المشكلة. شكراً لصراحتكم."
+          }
+        }
+      }
+    },
+    {
+      "id": "4-review-prompt",
+      "type": "send_interactive_buttons",
+      "trigger_on": "satisfaction >= 4",
+      "description": "Happy customer — ask for public review",
+      "config": {
+        "body": "Your support means a lot to us! Would you share a review?",
+        "buttons": [
+          { "type": "cta_url", "title": "Google Review", "url": "{{GOOGLE_REVIEW_URL}}" },
+          { "type": "reply", "id": "not_now", "title": "Maybe Later" }
+        ]
+      }
+    },
+    {
+      "id": "5-escalate-negative",
+      "type": "internal_action",
+      "trigger_on": "satisfaction <= 2",
+      "description": "Alert team about negative feedback",
+      "config": {
+        "action": "send_slack_notification",
+        "channel": "{{ESCALATION_CHANNEL}}",
+        "message": "Negative feedback received from {{customer_name}} ({{customer_phone}}): Score {{satisfaction}}/5, NPS {{nps_score}}/10. Comment: {{feedback_text}}"
+      }
+    },
+    {
+      "id": "6-log",
+      "type": "supabase_insert",
+      "description": "Log feedback to analytics",
+      "config": {
+        "table": "activity_logs",
+        "data": {
+          "event_type": "feedback_received",
+          "summary": "Feedback: {{satisfaction}}/5, NPS: {{nps_score}}/10",
+          "payload": {
+            "satisfaction": "{{satisfaction}}",
+            "nps_score": "{{nps_score}}",
+            "feedback_text": "{{feedback_text}}",
+            "customer_name": "{{customer_name}}",
+            "service": "{{service_name}}"
+          }
+        }
+      }
+    }
+  ],
+  "required_config": {
+    "kapsoApiKey": "Kapso API key",
+    "googleReviewUrl": "Google Business review URL (optional)",
+    "escalationChannel": "Slack channel for negative feedback alerts"
+  }
+}

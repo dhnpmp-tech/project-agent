@@ -6,6 +6,7 @@ import { StepCompanyProfile, type CompanyProfileData } from "@/components/onboar
 import { StepWebsiteCrawl, type CrawlData } from "@/components/onboarding/step-website-crawl";
 import { StepKnowledgeReview, type KnowledgeOverrides } from "@/components/onboarding/step-knowledge-review";
 import { StepSelectAgents } from "@/components/onboarding/step-select-agents";
+import { OnboardingTutorial } from "@/components/onboarding/onboarding-tutorial";
 import { AGENT_DISPLAY_NAMES, type AgentType } from "@project-agent/shared-types";
 
 const STEPS = [
@@ -43,6 +44,7 @@ function parseFaqText(text: string): { question: string; answer: string }[] {
 }
 
 export default function OnboardingPage() {
+  const [showTutorial, setShowTutorial] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -237,6 +239,9 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {showTutorial && (
+        <OnboardingTutorial onComplete={() => setShowTutorial(false)} />
+      )}
       <div className="max-w-2xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-8">
