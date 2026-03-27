@@ -30,7 +30,10 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
   const dotClass = statusDots[agent.status] || statusDots.pending;
 
   return (
-    <div className={`rounded-lg border p-4 ${colorClass}`}>
+    <a
+      href={`/dashboard/agents/${agent.id}`}
+      className={`block rounded-lg border p-4 ${colorClass} hover:shadow-md transition-shadow`}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} />
@@ -87,6 +90,6 @@ export function AgentStatusCard({ agent }: AgentStatusCardProps) {
           Last active: {new Date(agent.metrics.last_active).toLocaleString()}
         </p>
       )}
-    </div>
+    </a>
   );
 }

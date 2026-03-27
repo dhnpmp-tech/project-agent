@@ -37,10 +37,16 @@ export default async function DashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <a
+              href="/dashboard/reports"
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Reports
+            </a>
+            <a
               href="/dashboard/integrations"
               className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              Calendar Integrations
+              Integrations
             </a>
             <a
               href="/dashboard/support"
