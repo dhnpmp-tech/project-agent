@@ -6,6 +6,7 @@ import { StepCompanyProfile, type CompanyProfileData } from "@/components/onboar
 import { StepWebsiteCrawl, type CrawlData } from "@/components/onboarding/step-website-crawl";
 import { StepKnowledgeReview, type KnowledgeOverrides } from "@/components/onboarding/step-knowledge-review";
 import { StepSelectAgents } from "@/components/onboarding/step-select-agents";
+import { StepIndustrySetup, type IndustryConfig } from "@/components/onboarding/step-industry-setup";
 import { OnboardingTutorial } from "@/components/onboarding/onboarding-tutorial";
 import { AGENT_DISPLAY_NAMES, type AgentType } from "@project-agent/shared-types";
 
@@ -14,6 +15,7 @@ const STEPS = [
   "Scan Website",
   "Knowledge Base",
   "Select Agents",
+  "Industry Setup",
   "Review & Launch",
 ];
 
@@ -78,6 +80,29 @@ export default function OnboardingPage() {
   });
 
   const [selectedAgents, setSelectedAgents] = useState<AgentType[]>([]);
+  const [industryConfig, setIndustryConfig] = useState<IndustryConfig>({
+    industry: "",
+    menuPdfUrl: "",
+    menuPdfFile: null,
+    sevenRoomsApiKey: "",
+    sevenRoomsVenueId: "",
+    googleMapsPlaceId: "",
+    seatingCapacity: "",
+    cuisineType: "",
+    propertyTypes: [],
+    serviceAreas: [],
+    budgetRanges: [],
+    listingsSource: "",
+    listingsApiUrl: "",
+    services: [],
+    appointmentDuration: "30",
+    ownerWhatsAppNumber: "",
+    ownerName: "",
+    notifyOnBooking: true,
+    notifyOnComplaint: true,
+    notifyOnHighValueLead: true,
+    googleBusinessUrl: "",
+  });
 
   function handleNext() {
     setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1));
@@ -188,12 +213,43 @@ export default function OnboardingPage() {
             : {},
           company_culture: knowledgeOverrides.companyCulture || null,
           job_listings: (crawlData?.jobListings || []).map((j) => ({ title: j })),
-          crawl_data: crawlData
-            ? {
-                pages_scanned: crawlData.pagesScanned,
-                last_crawled_at: new Date().toISOString(),
-              }
-            : {},
+          crawl_data: {
+            ...(crawlData
+              ? {
+                  pages_scanned: crawlData.pagesScanned,
+                  last_crawled_at: new Date().toISOString(),
+                }
+              : {}),
+            // Industry-specific config
+            industry: industryConfig.industry,
+            owner_whatsapp: industryConfig.ownerWhatsAppNumber || null,
+            owner_name: industryConfig.ownerName || null,
+            notify_on_booking: industryConfig.notifyOnBooking,
+            notify_on_complaint: industryConfig.notifyOnComplaint,
+            notify_on_high_value_lead: industryConfig.notifyOnHighValueLead,
+            google_business_url: industryConfig.googleBusinessUrl || null,
+            // Restaurant-specific
+            ...(industryConfig.industry === "restaurant" && {
+              menu_pdf_url: industryConfig.menuPdfUrl || null,
+              sevenrooms_api_key: industryConfig.sevenRoomsApiKey || null,
+              sevenrooms_venue_id: industryConfig.sevenRoomsVenueId || null,
+              cuisine_type: industryConfig.cuisineType || null,
+              seating_capacity: industryConfig.seatingCapacity || null,
+            }),
+            // Real estate-specific
+            ...(industryConfig.industry === "real_estate" && {
+              property_types: industryConfig.propertyTypes,
+              service_areas: industryConfig.serviceAreas,
+              budget_ranges: industryConfig.budgetRanges,
+              listings_source: industryConfig.listingsSource || null,
+              listings_api_url: industryConfig.listingsApiUrl || null,
+            }),
+            // Healthcare/Beauty-specific
+            ...((industryConfig.industry === "healthcare" || industryConfig.industry === "beauty") && {
+              service_list: industryConfig.services,
+              appointment_duration: industryConfig.appointmentDuration,
+            }),
+          },
         });
 
       if (knowledgeError) {
@@ -299,12 +355,22 @@ export default function OnboardingPage() {
           />
         )}
         {currentStep === 4 && (
+          <StepIndustrySetup
+            selectedAgents={selectedAgents}
+            config={industryConfig}
+            onChange={setIndustryConfig}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+        {currentStep === 5 && (
           <ReviewAndLaunch
             companyData={companyData}
             websiteUrl={websiteUrl}
             crawlData={crawlData}
             knowledgeOverrides={knowledgeOverrides}
             selectedAgents={selectedAgents}
+            industryConfig={industryConfig}
             loading={loading}
             error={error}
             onBack={handleBack}
@@ -322,6 +388,7 @@ function ReviewAndLaunch({
   crawlData,
   knowledgeOverrides,
   selectedAgents,
+  industryConfig,
   loading,
   error,
   onBack,
@@ -332,6 +399,7 @@ function ReviewAndLaunch({
   crawlData: CrawlData | null;
   knowledgeOverrides: KnowledgeOverrides;
   selectedAgents: AgentType[];
+  industryConfig: IndustryConfig;
   loading: boolean;
   error: string | null;
   onBack: () => void;
@@ -407,6 +475,46 @@ function ReviewAndLaunch({
           ))}
         </ul>
       </div>
+
+      {industryConfig.industry && (
+        <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Industry Setup</h3>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dt className="text-gray-500">Industry</dt>
+            <dd className="text-gray-900 capitalize">{industryConfig.industry.replace("_", " ")}</dd>
+            {industryConfig.ownerWhatsAppNumber && (
+              <>
+                <dt className="text-gray-500">Owner WhatsApp</dt>
+                <dd className="text-gray-900">{industryConfig.ownerWhatsAppNumber}</dd>
+              </>
+            )}
+            {industryConfig.propertyTypes.length > 0 && (
+              <>
+                <dt className="text-gray-500">Property Types</dt>
+                <dd className="text-gray-900">{industryConfig.propertyTypes.join(", ")}</dd>
+              </>
+            )}
+            {industryConfig.serviceAreas.length > 0 && (
+              <>
+                <dt className="text-gray-500">Areas</dt>
+                <dd className="text-gray-900">{industryConfig.serviceAreas.join(", ")}</dd>
+              </>
+            )}
+            {industryConfig.cuisineType && (
+              <>
+                <dt className="text-gray-500">Cuisine</dt>
+                <dd className="text-gray-900">{industryConfig.cuisineType}</dd>
+              </>
+            )}
+            {industryConfig.sevenRoomsApiKey && (
+              <>
+                <dt className="text-gray-500">SevenRooms</dt>
+                <dd className="text-gray-900 text-green-600">Connected</dd>
+              </>
+            )}
+          </dl>
+        </div>
+      )}
 
       <p className="text-xs text-gray-400 text-center">
         All agents will have access to your business knowledge base. You can
