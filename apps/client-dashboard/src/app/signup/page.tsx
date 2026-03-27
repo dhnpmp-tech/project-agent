@@ -30,7 +30,7 @@ export default function SignupPage() {
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -40,6 +40,12 @@ export default function SignupPage() {
 
       if (error) {
         setError(error.message);
+        return;
+      }
+
+      // If autoconfirm is enabled, user gets a session immediately
+      if (data.session) {
+        window.location.href = "/";
         return;
       }
 

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   const response = NextResponse.redirect(
-    new URL(type === "recovery" ? "/update-password" : "/dashboard", request.url)
+    new URL(type === "recovery" ? "/update-password" : "/", request.url)
   );
 
   const supabase = createServerClient(url, key, {

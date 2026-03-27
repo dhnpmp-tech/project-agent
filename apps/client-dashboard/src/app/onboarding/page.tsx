@@ -141,10 +141,15 @@ export default function OnboardingPage() {
 
       const slug = slugify(companyData.companyName);
 
+      // Generate client UUID so we can use it immediately without needing
+      // a SELECT (RLS blocks SELECT until client_id is in user metadata)
+      const clientId = crypto.randomUUID();
+
       // 1. Create client record
-      const { data: client, error: clientError } = await supabase
+      const { error: clientError } = await supabase
         .from("clients")
         .insert({
+          id: clientId,
           slug,
           company_name: companyData.companyName,
           company_name_ar: companyData.companyNameAr || null,
@@ -154,9 +159,7 @@ export default function OnboardingPage() {
           country: companyData.country,
           plan: companyData.plan,
           metadata: { business_description: companyData.businessDescription },
-        })
-        .select("id")
-        .single();
+        });
 
       if (clientError) {
         if (clientError.code === "23505") {
@@ -167,6 +170,11 @@ export default function OnboardingPage() {
         setLoading(false);
         return;
       }
+
+      // 1b. Set client_id in user metadata so RLS policies work going forward
+      await supabase.auth.updateUser({
+        data: { client_id: clientId },
+      });
 
       // 2. Build merged knowledge from crawl + overrides
       const finalDesc =
@@ -188,7 +196,7 @@ export default function OnboardingPage() {
       const { error: knowledgeError } = await supabase
         .from("business_knowledge")
         .insert({
-          client_id: client.id,
+          client_id: clientId,
           website_url: websiteUrl || null,
           business_description: finalDesc,
           brand_voice: knowledgeOverrides.brandVoice || crawlData?.brandVoice || null,
@@ -259,7 +267,7 @@ export default function OnboardingPage() {
 
       // 4. Create agent deployments with knowledge context
       const agentRows = selectedAgents.map((agentType) => ({
-        client_id: client.id,
+        client_id: clientId,
         agent_type: agentType,
         status: "pending" as const,
         config: {

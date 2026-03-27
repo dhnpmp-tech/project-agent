@@ -25,6 +25,6 @@ export default async function Home() {
 
     redirect("/dashboard");
   } catch {
-    redirect("/dashboard");
+    redirect("/onboarding");
   }
 }

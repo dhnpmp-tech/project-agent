@@ -45,10 +45,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages — go to / which
+  // checks for client record and routes to /onboarding or /dashboard
   if (user && authPages.includes(pathname)) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/dashboard";
+    redirectUrl.pathname = "/";
     return NextResponse.redirect(redirectUrl);
   }
 
