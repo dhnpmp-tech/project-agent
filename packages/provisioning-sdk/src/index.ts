@@ -20,3 +20,5 @@ export {
 } from "./template-injector";
 
 export { DnsManager } from "./dns-manager";
+
+export { KapsoPlatformClient } from "./kapso-platform";
