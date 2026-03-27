@@ -1,0 +1,132 @@
+{
+  "name": "Memory Updater (Post-Conversation)",
+  "description": "Called after every conversation ends. Uses MiniMax M2.7 to analyze the conversation, extract learnings, update the customer profile, preferences, and key events. Generates a conversation summary for future retrieval.",
+  "nodes": [
+    {
+      "id": "upd-trigger",
+      "name": "When Called By Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "id": "upd-analyze",
+      "name": "Analyze Conversation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300],
+      "description": "Send conversation to MiniMax M2.7 for analysis",
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{$env.OPENROUTER_API_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "body": {
+          "model": "minimax/minimax-m2.7",
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a conversation analyzer. Given a WhatsApp conversation between a business and a customer, extract structured data. Return ONLY valid JSON with these fields:\n\n{\"summary\": \"2-3 sentence summary of the conversation\", \"outcomes\": [\"booking_created\", \"faq_answered\", etc], \"topics\": [\"pricing\", \"booking\", etc], \"sentiment\": 0.0-1.0, \"customer_updates\": {\"name\": \"if mentioned\", \"preferences\": {\"key\": \"value\"}, \"new_tags\": [\"if applicable\"]}, \"key_event\": {\"type\": \"booking|complaint|purchase|inquiry\", \"summary\": \"what happened\"}, \"profile_update\": \"Updated profile summary incorporating new info\"}"
+            },
+            {
+              "role": "user",
+              "content": "Existing customer profile:\n{{$json.existing_profile}}\n\nConversation transcript:\n{{$json.transcript}}"
+            }
+          ],
+          "max_tokens": 1024,
+          "temperature": 0
+        }
+      }
+    },
+    {
+      "id": "upd-parse",
+      "name": "Parse Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [710, 300],
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.choices?.[0]?.message?.content || '{}';\ntry {\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  const analysis = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');\n  return [{ json: { ...analysis, raw: content } }];\n} catch {\n  return [{ json: { summary: 'Conversation ended', outcomes: [], topics: [], sentiment: 0.5 } }];\n}"
+      }
+    },
+    {
+      "id": "upd-save-summary",
+      "name": "Save Conversation Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [940, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/conversation_summaries",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "client_id", "value": "={{$env.CLIENT_ID}}" },
+            { "name": "customer_id", "value": "={{$json.customer_id}}" },
+            { "name": "started_at", "value": "={{$json.conversation_started_at}}" },
+            { "name": "ended_at", "value": "={{new Date().toISOString()}}" },
+            { "name": "message_count", "value": "={{$json.message_count}}" },
+            { "name": "summary", "value": "={{$json.summary}}" },
+            { "name": "outcomes", "value": "={{JSON.stringify($json.outcomes || [])}}" },
+            { "name": "sentiment", "value": "={{$json.sentiment}}" },
+            { "name": "topics", "value": "={{JSON.stringify($json.topics || [])}}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "upd-update-memory",
+      "name": "Update Customer Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [940, 400],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/customer_memory?id=eq.{{$json.customer_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "last_contact", "value": "={{new Date().toISOString()}}" },
+            { "name": "total_conversations", "value": "={{$json.total_conversations + 1}}" },
+            { "name": "total_messages", "value": "={{$json.total_messages + $json.message_count}}" },
+            { "name": "profile_summary", "value": "={{$json.profile_update || $json.existing_profile}}" },
+            { "name": "avg_sentiment", "value": "={{$json.sentiment}}" }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Called By Another Workflow": {
+      "main": [[{ "node": "Analyze Conversation", "type": "main", "index": 0 }]]
+    },
+    "Analyze Conversation": {
+      "main": [[{ "node": "Parse Analysis", "type": "main", "index": 0 }]]
+    },
+    "Parse Analysis": {
+      "main": [[
+        { "node": "Save Conversation Summary", "type": "main", "index": 0 },
+        { "node": "Update Customer Memory", "type": "main", "index": 0 }
+      ]]
+    }
+  }
+}

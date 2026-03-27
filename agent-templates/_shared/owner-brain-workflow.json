@@ -60,7 +60,7 @@
       "trigger": "trigger-owner-message",
       "description": "Parse owner's message and determine intent",
       "config": {
-        "model": "claude-sonnet-4-6",
+        "model": "minimax/minimax-m2.7",
         "system_prompt": "owner-brain-system-prompt.md",
         "instructions": "The owner sent a message. Determine the intent and respond appropriately. If they're updating inventory/menu/listings, extract the data and return a structured update. If they're asking a question, answer from the knowledge base and activity logs.",
         "output_format": {
@@ -163,7 +163,7 @@
       "trigger": "trigger-morning-brief",
       "description": "Compile and send daily morning briefing",
       "config": {
-        "model": "claude-haiku-4-5-20251001",
+        "model": "minimax/minimax-m2.7",
         "instructions": "Compile a concise daily briefing from the last 24 hours of activity logs. Include: total inquiries, bookings, leads, complaints, and any items needing attention. Keep it under 500 characters. Use emoji sparingly.",
         "input": "{{recent_activity_last_24h}}"
       }
@@ -174,7 +174,7 @@
       "trigger": "trigger-weekly-report",
       "description": "Compile and send weekly performance report",
       "config": {
-        "model": "claude-sonnet-4-6",
+        "model": "minimax/minimax-m2.7",
         "instructions": "Compile a comprehensive weekly report. Include: total conversations, bookings, leads (hot/warm/cold), customer satisfaction trends, top questions asked, revenue impact estimate, and 2-3 actionable suggestions for next week. Format for WhatsApp readability.",
         "input": "{{recent_activity_last_7_days}}"
       }
@@ -185,7 +185,7 @@
       "trigger": "trigger-proactive-ask",
       "description": "Proactively ask owner for information the brain needs",
       "config": {
-        "model": "claude-haiku-4-5-20251001",
+        "model": "minimax/minimax-m2.7",
         "instructions": "Review the knowledge base and recent customer questions. Identify 1-2 gaps where customers asked things we couldn't answer, or where info might be outdated. Generate a friendly, casual message asking the owner for this specific info. Also check for upcoming events/holidays/seasons and ask if anything is changing.",
         "input": "{{knowledge_base}}\n\n{{unanswered_questions}}\n\n{{upcoming_events}}"
       }

@@ -1,0 +1,119 @@
+{
+  "name": "Customer Memory Loader",
+  "description": "Called at the start of every conversation. Looks up the customer by phone number, loads their profile, preferences, and recent conversation summaries. If new customer, creates a memory record. After conversation ends, updates the memory with new learnings.",
+  "nodes": [
+    {
+      "id": "mem-trigger",
+      "name": "When Called By Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "id": "mem-lookup",
+      "name": "Lookup Customer Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/customer_memory?client_id=eq.{{$env.CLIENT_ID}}&phone_number=eq.{{$json.phone_number}}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "mem-check-exists",
+      "name": "Customer Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [710, 300],
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{$json.length > 0}}", "value2": true }]
+        }
+      }
+    },
+    {
+      "id": "mem-create-new",
+      "name": "Create New Customer Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [940, 450],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/customer_memory",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "client_id", "value": "={{$env.CLIENT_ID}}" },
+            { "name": "phone_number", "value": "={{$json.phone_number}}" },
+            { "name": "name", "value": "={{$json.contact_name || null}}" },
+            { "name": "language", "value": "={{$json.detected_language || 'en'}}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "mem-load-conversations",
+      "name": "Load Recent Conversation Summaries",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [940, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/conversation_summaries?customer_id=eq.{{$json[0].id}}&order=started_at.desc&limit=5&select=summary,outcomes,topics,started_at",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "mem-format",
+      "name": "Format Memory Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1170, 300],
+      "parameters": {
+        "jsCode": "const customer = $input.item(0)?.json || $input.item(1)?.json?.[0];\nconst conversations = $input.item(1)?.json || [];\n\nif (!customer) {\n  return [{ json: { memory: 'New customer — no prior history.', isNew: true } }];\n}\n\nconst sections = [];\n\nif (customer.name) sections.push(`Name: ${customer.name}`);\nif (customer.profile_summary) sections.push(`Profile: ${customer.profile_summary}`);\nif (customer.language) sections.push(`Language: ${customer.language}`);\nif (customer.total_conversations > 1) sections.push(`Returning customer (${customer.total_conversations} conversations since ${new Date(customer.first_contact).toLocaleDateString()})`);\n\nconst prefs = customer.preferences || {};\nif (Object.keys(prefs).length > 0) {\n  sections.push(`Preferences: ${JSON.stringify(prefs)}`);\n}\n\nconst events = customer.key_events || [];\nif (events.length > 0) {\n  sections.push(`Recent history:\\n${events.slice(-5).map(e => `- ${e.date}: ${e.summary}`).join('\\n')}`);\n}\n\nif (customer.tags && customer.tags.length > 0) {\n  sections.push(`Tags: ${customer.tags.join(', ')}`);\n}\n\nif (customer.notes) {\n  sections.push(`Notes: ${customer.notes}`);\n}\n\nif (Array.isArray(conversations) && conversations.length > 0) {\n  sections.push(`\\nPast conversations:\\n${conversations.map(c => `- ${new Date(c.started_at).toLocaleDateString()}: ${c.summary}`).join('\\n')}`);\n}\n\nreturn [{ json: {\n  memory: sections.join('\\n'),\n  customerId: customer.id,\n  isNew: customer.total_conversations <= 1,\n  isVip: customer.tags?.includes('vip'),\n  sentiment: customer.avg_sentiment\n}}];"
+      }
+    }
+  ],
+  "connections": {
+    "When Called By Another Workflow": {
+      "main": [[{ "node": "Lookup Customer Memory", "type": "main", "index": 0 }]]
+    },
+    "Lookup Customer Memory": {
+      "main": [[{ "node": "Customer Exists?", "type": "main", "index": 0 }]]
+    },
+    "Customer Exists?": {
+      "main": [
+        [{ "node": "Load Recent Conversation Summaries", "type": "main", "index": 0 }],
+        [{ "node": "Create New Customer Memory", "type": "main", "index": 0 }]
+      ]
+    },
+    "Load Recent Conversation Summaries": {
+      "main": [[{ "node": "Format Memory Context", "type": "main", "index": 0 }]]
+    },
+    "Create New Customer Memory": {
+      "main": [[{ "node": "Format Memory Context", "type": "main", "index": 0 }]]
+    }
+  }
+}
