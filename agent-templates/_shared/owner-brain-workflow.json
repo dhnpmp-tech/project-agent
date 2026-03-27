@@ -1,0 +1,222 @@
+{
+  "name": "Owner Brain Agent",
+  "description": "Proactive AI assistant that communicates with business owners via WhatsApp. Sends notifications, asks for updates, learns from conversations, and bridges customer data with owner decisions. Uses Kapso Platform API for messaging.",
+  "triggers": [
+    {
+      "id": "trigger-owner-message",
+      "type": "kapso_webhook",
+      "event": "whatsapp.message.received",
+      "filter": "owner_phone_number",
+      "description": "When the owner sends a WhatsApp message to the brain"
+    },
+    {
+      "id": "trigger-customer-event",
+      "type": "internal_webhook",
+      "description": "When the customer-facing agent triggers a notification (booking, complaint, lead)"
+    },
+    {
+      "id": "trigger-morning-brief",
+      "type": "cron",
+      "schedule": "0 9 * * *",
+      "timezone": "Asia/Dubai",
+      "description": "Daily morning briefing at 9 AM"
+    },
+    {
+      "id": "trigger-weekly-report",
+      "type": "cron",
+      "schedule": "0 10 * * 0",
+      "timezone": "Asia/Dubai",
+      "description": "Weekly report every Sunday 10 AM"
+    },
+    {
+      "id": "trigger-proactive-ask",
+      "type": "cron",
+      "schedule": "0 11 * * 3",
+      "timezone": "Asia/Dubai",
+      "description": "Weekly proactive information gathering Wednesday 11 AM"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "load-knowledge",
+      "type": "execute_subworkflow",
+      "workflow": "knowledge-base-subworkflow",
+      "description": "Load the full business knowledge base from Supabase"
+    },
+    {
+      "id": "load-recent-activity",
+      "type": "supabase_query",
+      "description": "Fetch recent activity logs for context",
+      "config": {
+        "table": "activity_logs",
+        "filter": "client_id=eq.{{CLIENT_ID}}",
+        "order": "created_at.desc",
+        "limit": 50
+      }
+    },
+    {
+      "id": "owner-message-handler",
+      "type": "llm",
+      "trigger": "trigger-owner-message",
+      "description": "Parse owner's message and determine intent",
+      "config": {
+        "model": "claude-sonnet-4-6",
+        "system_prompt": "owner-brain-system-prompt.md",
+        "instructions": "The owner sent a message. Determine the intent and respond appropriately. If they're updating inventory/menu/listings, extract the data and return a structured update. If they're asking a question, answer from the knowledge base and activity logs.",
+        "output_format": {
+          "intent": "update_inventory | ask_question | acknowledge | other",
+          "response_text": "message to send back to owner",
+          "knowledge_update": {
+            "field": "which field in business_knowledge to update",
+            "action": "add | remove | modify",
+            "data": "the actual data to update"
+          }
+        }
+      }
+    },
+    {
+      "id": "apply-knowledge-update",
+      "type": "supabase_update",
+      "trigger": "owner-message-handler.intent == 'update_inventory'",
+      "description": "Apply the owner's update to business_knowledge",
+      "config": {
+        "table": "business_knowledge",
+        "filter": "client_id=eq.{{CLIENT_ID}}"
+      }
+    },
+    {
+      "id": "send-owner-response",
+      "type": "kapso_send_message",
+      "description": "Send response back to owner via WhatsApp",
+      "config": {
+        "to": "{{OWNER_WHATSAPP}}",
+        "type": "text",
+        "text": "{{response_text}}"
+      }
+    },
+    {
+      "id": "booking-notification",
+      "type": "kapso_send_message",
+      "trigger": "trigger-customer-event.type == 'booking'",
+      "description": "Notify owner of new booking",
+      "config": {
+        "to": "{{OWNER_WHATSAPP}}",
+        "type": "interactive",
+        "interactive": {
+          "type": "button",
+          "body": { "text": "📅 New booking!\n\n{{guest_name}} — {{party_size}} guests\n{{date}} at {{time}}\n{{seating_preference}}\n\n{{special_requests}}" },
+          "action": {
+            "buttons": [
+              { "type": "reply", "reply": { "id": "confirm_booking", "title": "Confirm" } },
+              { "type": "reply", "reply": { "id": "call_guest", "title": "Call Guest" } },
+              { "type": "reply", "reply": { "id": "modify_booking", "title": "Modify" } }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "complaint-alert",
+      "type": "kapso_send_message",
+      "trigger": "trigger-customer-event.type == 'complaint'",
+      "description": "Alert owner of complaint with action buttons",
+      "config": {
+        "to": "{{OWNER_WHATSAPP}}",
+        "type": "interactive",
+        "interactive": {
+          "type": "button",
+          "body": { "text": "⚠️ Customer complaint\n\nFrom: {{customer_name}}\nIssue: {{complaint_summary}}\nSentiment: {{sentiment_score}}/10\n\nI can handle this or connect you directly." },
+          "action": {
+            "buttons": [
+              { "type": "reply", "reply": { "id": "ai_handle", "title": "You Handle It" } },
+              { "type": "reply", "reply": { "id": "connect_me", "title": "Connect Me" } },
+              { "type": "reply", "reply": { "id": "view_history", "title": "View History" } }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "hot-lead-alert",
+      "type": "kapso_send_message",
+      "trigger": "trigger-customer-event.type == 'hot_lead'",
+      "description": "Alert owner of high-value lead",
+      "config": {
+        "to": "{{OWNER_WHATSAPP}}",
+        "type": "interactive",
+        "interactive": {
+          "type": "button",
+          "body": { "text": "🔥 Hot lead!\n\n{{lead_name}} — Score: {{lead_score}}/100\nInterested in: {{interest}}\nBudget: {{budget}}\nTimeline: {{timeline}}\n\nShould I book a meeting?" },
+          "action": {
+            "buttons": [
+              { "type": "reply", "reply": { "id": "book_meeting", "title": "Book Meeting" } },
+              { "type": "reply", "reply": { "id": "send_info", "title": "Send Info First" } },
+              { "type": "reply", "reply": { "id": "i_will_call", "title": "I'll Call Them" } }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "morning-briefing",
+      "type": "llm",
+      "trigger": "trigger-morning-brief",
+      "description": "Compile and send daily morning briefing",
+      "config": {
+        "model": "claude-haiku-4-5-20251001",
+        "instructions": "Compile a concise daily briefing from the last 24 hours of activity logs. Include: total inquiries, bookings, leads, complaints, and any items needing attention. Keep it under 500 characters. Use emoji sparingly.",
+        "input": "{{recent_activity_last_24h}}"
+      }
+    },
+    {
+      "id": "weekly-report",
+      "type": "llm",
+      "trigger": "trigger-weekly-report",
+      "description": "Compile and send weekly performance report",
+      "config": {
+        "model": "claude-sonnet-4-6",
+        "instructions": "Compile a comprehensive weekly report. Include: total conversations, bookings, leads (hot/warm/cold), customer satisfaction trends, top questions asked, revenue impact estimate, and 2-3 actionable suggestions for next week. Format for WhatsApp readability.",
+        "input": "{{recent_activity_last_7_days}}"
+      }
+    },
+    {
+      "id": "proactive-ask",
+      "type": "llm",
+      "trigger": "trigger-proactive-ask",
+      "description": "Proactively ask owner for information the brain needs",
+      "config": {
+        "model": "claude-haiku-4-5-20251001",
+        "instructions": "Review the knowledge base and recent customer questions. Identify 1-2 gaps where customers asked things we couldn't answer, or where info might be outdated. Generate a friendly, casual message asking the owner for this specific info. Also check for upcoming events/holidays/seasons and ask if anything is changing.",
+        "input": "{{knowledge_base}}\n\n{{unanswered_questions}}\n\n{{upcoming_events}}"
+      }
+    },
+    {
+      "id": "log-brain-activity",
+      "type": "supabase_insert",
+      "description": "Log all brain interactions for analytics",
+      "config": {
+        "table": "activity_logs",
+        "data": {
+          "event_type": "brain_interaction",
+          "summary": "{{interaction_summary}}",
+          "payload": {
+            "direction": "{{direction}}",
+            "intent": "{{intent}}",
+            "knowledge_updated": "{{knowledge_updated}}"
+          }
+        }
+      }
+    }
+  ],
+  "intelligence_loop": {
+    "description": "When a customer asks something the agent can't answer, the brain stores the question and asks the owner next time it reaches out. When the owner answers, the knowledge base is updated so the agent can answer it next time.",
+    "flow": [
+      "Customer asks unanswerable question → logged as 'unanswered'",
+      "Brain collects unanswered questions daily",
+      "Brain asks owner: 'Customers are asking about X — can you tell me?'",
+      "Owner responds with answer",
+      "Brain updates business_knowledge.faq with new Q&A",
+      "Next customer asking same question → agent answers immediately"
+    ]
+  }
+}
