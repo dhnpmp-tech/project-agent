@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 const agents = [
   {
     title: "WhatsApp Intelligence",
-    desc: "Handles 400+ customer inquiries a month in Arabic and English. Qualifies leads, books appointments, escalates when needed. Responds in under 1 second.",
+    desc: "Powered by Kapso — connects in 2 minutes, no Meta approval wait. Handles 400+ inquiries/month in Arabic and English. AI voice calls, lead qualification, appointment booking, and human escalation. Sub-second responses.",
     metric: "65-80%",
     metricLabel: "support load reduction",
     color: "emerald",
@@ -165,8 +165,8 @@ export default function HomePage() {
 
             <p className="mt-6 text-lg text-white/50 leading-relaxed max-w-[52ch]">
               We deploy fully-managed AI agent systems for SMBs in the Middle East.
-              WhatsApp support, sales automation, content, HR, and finance — live
-              in under two weeks.
+              WhatsApp support (powered by Kapso — live in 2 minutes), sales automation,
+              content, HR, and finance — deployed in under two weeks.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-3">

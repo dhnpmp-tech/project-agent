@@ -37,6 +37,12 @@ export default async function DashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <a
+              href="/dashboard/whatsapp"
+              className="rounded-md border border-green-300 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100"
+            >
+              WhatsApp
+            </a>
+            <a
               href="/dashboard/reports"
               className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >

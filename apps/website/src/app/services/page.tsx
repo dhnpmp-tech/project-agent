@@ -8,16 +8,18 @@ import { motion } from "framer-motion";
 const agents = [
   {
     name: "WhatsApp Intelligence Agent",
-    tagline: "Your 24/7 customer service team",
+    tagline: "Your 24/7 customer service team — powered by Kapso",
     description:
-      "Handles all inbound WhatsApp messages — customer inquiries, lead qualification, appointment booking, complaints — in Arabic and English. Responds in under 1 second, maintains conversation context, integrates with your CRM.",
+      "Connects your business to WhatsApp in 2 minutes via Kapso — no Meta approval wait. Handles all inbound messages, AI voice calls, lead qualification, appointment booking, and complaints in Arabic and English. Sub-second responses, conversation memory, and built-in team inbox.",
     benefits: [
+      "2-minute WhatsApp setup via Kapso (no Meta approval)",
+      "AI voice calls — answer with real-time speech",
       "400+ inquiries handled monthly",
       "65-80% reduction in support workload",
       "24/7 in Arabic and English",
-      "CRM integration (HubSpot, Zoho, Airtable)",
+      "Built-in team inbox with message history",
       "Smart escalation to human agents",
-      "Appointment booking via Calendly",
+      "Appointment booking via calendar integration",
     ],
     metric: "65-80%",
     metricLabel: "support load cut",
