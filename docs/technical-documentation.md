@@ -42,7 +42,7 @@ The platform is designed for scale: one platform account manages hundreds of cli
                     │  │ • Parse message          │     │
                     │  │ • Fetch knowledge base   │     │
                     │  │ • Fetch customer memory  │     │
-                    │  │ • MiniMax M2.5 AI        │     │
+                    │  │ • MiniMax M2.7 AI        │     │
                     │  │ • Log activity           │     │
                     │  └─────────────────────────┘     │
                     │                                  │
@@ -52,7 +52,7 @@ The platform is designed for scale: one platform account manages hundreds of cli
                     │  │ • Owner messages         │     │
                     │  │ • Daily briefs (9AM)     │     │
                     │  │ • Knowledge base updates │     │
-                    │  │ • MiniMax M2.5 AI        │     │
+                    │  │ • MiniMax M2.7 AI        │     │
                     │  └─────────────────────────┘     │
                     └──────────────┬──────────────────┘
                                    │
@@ -144,8 +144,8 @@ A customer who texted in January is greeted by name in December with their prefe
 | **Frontend (Website)** | Next.js 15 + Framer Motion | Marketing site with dark theme, animations |
 | **Database** | Supabase (PostgreSQL 17 + Auth + RLS) | Multi-tenant data with row-level security |
 | **WhatsApp API** | Kapso Platform API | Multi-tenant WhatsApp, one account for all clients |
-| **AI (Agents)** | MiniMax M2.5 (230B params, 10B active) | Customer responses, owner brain, analysis |
-| **AI (Classification)** | MiniMax M2.5 | Intent classification, sentiment analysis |
+| **AI (Agents)** | MiniMax M2.7 (230B params, 10B active) | Customer responses, owner brain, analysis |
+| **AI (Classification)** | MiniMax M2.7 | Intent classification, sentiment analysis |
 | **Web Search** | Firecrawl API | Live context (weather, events, traffic) for AI responses |
 | **Workflow Engine** | n8n (self-hosted) | Message processing, webhook routing, cron jobs |
 | **Email** | Resend | Transactional emails (6 templates) |
@@ -376,7 +376,7 @@ Service role key bypasses all RLS for admin operations (n8n workflows, provision
 4. n8n fetches business_knowledge from Supabase (services, FAQ, menu, hours)
 5. n8n fetches customer_memory from Supabase (name, preferences, history)
 6. n8n builds system prompt with full context
-7. MiniMax M2.5 generates response (~500ms)
+7. MiniMax M2.7 generates response (~500ms)
 8. <think> tags stripped from output
 9. Response sent back via Kapso → WhatsApp
 10. Activity logged to Supabase
@@ -389,7 +389,7 @@ Service role key bypasses all RLS for admin operations (n8n workflows, provision
 1. Owner sends WhatsApp message (or daily cron fires at 9AM Dubai time)
 2. n8n parses the message / triggers daily brief
 3. n8n fetches business_knowledge + recent activity_logs from Supabase
-4. MiniMax M2.5 generates response as "AI Chief of Staff"
+4. MiniMax M2.7 generates response as "AI Chief of Staff"
 5. If owner sent a command ("add special: X"), AI interprets and updates knowledge base
 6. Response sent back via Kapso → Owner WhatsApp
 ```
@@ -410,7 +410,7 @@ When a customer asks about weather, events, traffic, or nearby attractions:
 
 | Model | Endpoint | Use Case | Cost |
 |-------|----------|----------|------|
-| MiniMax-M2.5 | api.minimax.io/v1/chat/completions | All AI responses | ~$0.001/conversation |
+| MiniMax-M2.7 | api.minimax.io/v1/chat/completions | All AI responses | ~$0.001/conversation |
 | Firecrawl Search | api.firecrawl.dev/v1/search | Live web context | ~$0.01/search |
 | Firecrawl Scrape | api.firecrawl.dev/v1/scrape | Website crawling (onboarding) | ~$0.01/page |
 
@@ -653,7 +653,7 @@ All templates use dark theme matching the website (bg #09090b, green #22c55e acc
 | Hostinger VPS | Shared with DCP | ~$0 marginal |
 | Resend | $0 | 3,000 emails/month free |
 | Kapso | $0 | Free to start |
-| MiniMax M2.5 | ~$0.001/conversation | Pay-per-use |
+| MiniMax M2.7 | ~$0.001/conversation | Pay-per-use |
 | Firecrawl | ~$0.01/search | Pay-per-use |
 
 **At 10 clients × 1,000 conversations/month: ~$30/month total cost**
@@ -668,7 +668,7 @@ All templates use dark theme matching the website (bg #09090b, green #22c55e acc
 **URL:** https://agents.dcp.sa/demo/saffron
 - WhatsApp-style chat interface
 - Full Saffron Kitchen knowledge base (menu, hours, FAQ, specials)
-- MiniMax M2.5 AI with Firecrawl web search
+- MiniMax M2.7 AI with Firecrawl web search
 - Quick-reply buttons: Menu, Book a table, Opening hours, Location
 - Live web context for weather, events, traffic questions
 

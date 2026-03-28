@@ -1,0 +1,34 @@
+{
+  "publishes": {
+    "gleaming-saddle-knz9": {
+      "siteUrl": "https://gleaming-saddle-knz9.here.now/",
+      "claimToken": "3ea8e587ad1dac44dc7358e04105a5bcf22885d8d4ee6b2231a479a03e641c5f",
+      "claimUrl": "https://here.now/claim?slug=gleaming-saddle-knz9&token=3ea8e587ad1dac44dc7358e04105a5bcf22885d8d4ee6b2231a479a03e641c5f",
+      "expiresAt": "2026-03-24T15:08:01.489Z"
+    },
+    "smooth-hill-n67t": {
+      "siteUrl": "https://smooth-hill-n67t.here.now/",
+      "claimToken": "4165512d464981679fd712a825d1936a00ba77cb4128b382e4d9bb7f718c6f74",
+      "claimUrl": "https://here.now/claim?slug=smooth-hill-n67t&token=4165512d464981679fd712a825d1936a00ba77cb4128b382e4d9bb7f718c6f74",
+      "expiresAt": "2026-03-24T15:23:47.379Z"
+    },
+    "quartz-tundra-gatr": {
+      "siteUrl": "https://quartz-tundra-gatr.here.now/",
+      "claimToken": "e196043517ec53150f8b304f767f615233c87ec673fc6171eaa7c2fe91dac42c",
+      "claimUrl": "https://here.now/claim?slug=quartz-tundra-gatr&token=e196043517ec53150f8b304f767f615233c87ec673fc6171eaa7c2fe91dac42c",
+      "expiresAt": "2026-03-24T16:03:42.632Z"
+    },
+    "jade-flint-vx2y": {
+      "siteUrl": "https://jade-flint-vx2y.here.now/"
+    },
+    "robust-cottage-3tbr": {
+      "siteUrl": "https://robust-cottage-3tbr.here.now/",
+      "claimToken": "ff8a1225a2138819327aff87078e1ac9cb1ff9928c53ba3aceeab55ae811eb8c",
+      "claimUrl": "https://here.now/claim?slug=robust-cottage-3tbr&token=ff8a1225a2138819327aff87078e1ac9cb1ff9928c53ba3aceeab55ae811eb8c",
+      "expiresAt": "2026-03-24T17:18:43.426Z"
+    },
+    "clear-fjord-96p9": {
+      "siteUrl": "https://clear-fjord-96p9.here.now/"
+    }
+  }
+}

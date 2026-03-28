@@ -1,0 +1,132 @@
+{
+  "name": "Financial Intelligence Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "financial-intel",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "fin-wh-id",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "fin-wh-id"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst message = body.message || body.query || '';\nconst lower = message.toLowerCase();\n\nlet query_type = 'general';\nlet period = 'current_month';\nlet category = 'overview';\n\nif (/p&l|profit|loss|income statement/i.test(lower)) query_type = 'pnl';\nelse if (/revenue|sales|income/i.test(lower)) query_type = 'revenue';\nelse if (/cost|expense|spend/i.test(lower)) query_type = 'expenses';\nelse if (/cash flow|runway|balance/i.test(lower)) query_type = 'cashflow';\nelse if (/anomal|unusual|alert|flag/i.test(lower)) query_type = 'anomalies';\nelse if (/margin|markup/i.test(lower)) query_type = 'margins';\n\nif (/today/i.test(lower)) period = 'today';\nelse if (/yesterday/i.test(lower)) period = 'yesterday';\nelse if (/week/i.test(lower)) period = 'weekly';\nelse if (/month/i.test(lower)) period = 'monthly';\nelse if (/quarter/i.test(lower)) period = 'quarterly';\n\nif (/food|ingredient|cogs/i.test(lower)) category = 'food_cost';\nelse if (/labor|staff|payroll/i.test(lower)) category = 'labor';\nelse if (/marketing|ads|promotion/i.test(lower)) category = 'marketing';\nelse if (/delivery|talabat|careem/i.test(lower)) category = 'delivery';\nelse if (/rent|utilit|overhead/i.test(lower)) category = 'overhead';\n\nreturn [{\n  json: {\n    message,\n    query_type,\n    period,\n    category,\n    client_id: body.client_id || 'saffron',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-financial-query",
+      "name": "Parse Financial Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://sybzqktipimbmujtowoz.supabase.co/rest/v1/business_knowledge",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "*" },
+            { "name": "client_id", "value": "eq.{{ $json.client_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5Ynpxa3RpcGltYm11anRvd296Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDUwOTY5NCwiZXhwIjoyMDkwMDg1Njk0fQ.-DoNS5fZv3aUsFcugKg23yh9RqXXFIlgc5_9Hrk97bg" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5Ynpxa3RpcGltYm11anRvd296Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDUwOTY5NCwiZXhwIjoyMDkwMDg1Njk0fQ.-DoNS5fZv3aUsFcugKg23yh9RqXXFIlgc5_9Hrk97bg" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-business-knowledge",
+      "name": "Fetch Business Knowledge",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.minimax.io/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.MINIMAX_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"MiniMax-M2.5\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are the Financial Intelligence Agent for Saffron Kitchen restaurant. Provide clear, actionable financial insights in plain language. The owner Ahmed is not an accountant — explain everything simply. Use numbers, percentages, comparisons. Format currency as AED. Keep responses SHORT and data-driven. NEVER output <think> tags. NEVER use markdown bold or dividers.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Query type: {{ $('Parse Financial Query').item.json.query_type }}\\nPeriod: {{ $('Parse Financial Query').item.json.period }}\\nCategory: {{ $('Parse Financial Query').item.json.category }}\\nBusiness context: {{ JSON.stringify($json) }}\\n\\nUser question: {{ $('Parse Financial Query').item.json.message }}\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 1024\n}",
+        "options": {}
+      },
+      "id": "minimax-ai",
+      "name": "MiniMax AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nlet reply = response.choices?.[0]?.message?.content || response.reply || 'Unable to generate financial analysis.';\nreply = reply.replace(/<think>[\\s\\S]*?<\\/think>\\s*/g, '').trim();\nreply = reply.replace(/\\*\\*/g, '').replace(/^---$/gm, '').trim();\nreturn [{ json: { reply } }];"
+      },
+      "id": "extract-reply",
+      "name": "Extract Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst parsed = $('Parse Financial Query').first().json;\nconsole.log(JSON.stringify({\n  agent: 'financial-intelligence',\n  query_type: parsed.query_type,\n  period: parsed.period,\n  category: parsed.category,\n  client_id: parsed.client_id,\n  timestamp: parsed.timestamp,\n  reply_length: input.reply?.length || 0\n}));\nreturn [{ json: { ...input, logged: true } }];"
+      },
+      "id": "log-activity",
+      "name": "Log Activity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ reply: $json.reply }) }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1580, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Parse Financial Query", "type": "main", "index": 0 }]]
+    },
+    "Parse Financial Query": {
+      "main": [[{ "node": "Fetch Business Knowledge", "type": "main", "index": 0 }]]
+    },
+    "Fetch Business Knowledge": {
+      "main": [[{ "node": "MiniMax AI", "type": "main", "index": 0 }]]
+    },
+    "MiniMax AI": {
+      "main": [[{ "node": "Extract Reply", "type": "main", "index": 0 }]]
+    },
+    "Extract Reply": {
+      "main": [[{ "node": "Log Activity", "type": "main", "index": 0 }]]
+    },
+    "Log Activity": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

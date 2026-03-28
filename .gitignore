@@ -38,3 +38,5 @@ coverage/
 # Misc
 .vercel
 .cache
+.gstack/
+.claude/skills/
