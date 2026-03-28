@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 const agents = [
   {
     title: "WhatsApp Intelligence",
-    desc: "Powered by Kapso — connects in 2 minutes, no Meta approval wait. Handles 400+ inquiries/month in Arabic and English. Remembers every customer across months — their name, preferences, past orders, complaints. A returning customer in December gets greeted like a regular, not a stranger. Two channels: one for customers, one private line for the owner to get alerts and update the business by text.",
+    desc: "Instant WhatsApp setup — live in minutes, no approval wait. Handles 400+ inquiries/month in Arabic and English with sub-second AI responses powered by MiniMax M2.7. Customers can send voice notes — AI transcribes and responds instantly. Remembers every customer across months and years: name, allergies, dietary needs, favorite dishes, visit timing. A returning guest in December gets greeted by name with preferences from January. Two channels: one for customers, one private line for the owner. Live web search enriches every conversation with weather, events, and local context.",
     metric: "65-80%",
     metricLabel: "support load reduction",
     color: "emerald",
@@ -21,7 +21,7 @@ const agents = [
   },
   {
     title: "AI Sales Rep",
-    desc: "Scores leads against your ICP, sends personalized outreach via email and WhatsApp, qualifies through conversation, and books meetings directly into your calendar. Builds a memory of every prospect — tracks sentiment, key events, and lifetime value. Your owner gets a WhatsApp alert when a hot lead scores 75+, with full context ready.",
+    desc: "Scores leads against your ICP, sends personalized outreach via email and WhatsApp, qualifies through adaptive conversation that remembers every prior exchange. Persistent lead memory across months — sentiment, key events, lifetime value. Hot leads trigger instant alerts to your Owner Brain with full context. MiniMax M2.7 gets sharper with every conversation, never forgets a prospect.",
     metric: "70-80%",
     metricLabel: "lower cost per meeting",
     color: "amber",
@@ -33,7 +33,7 @@ const agents = [
   },
   {
     title: "Content Engine",
-    desc: "Runs your entire content operation across LinkedIn, Instagram, and TikTok. Generates posts from your knowledge base, creates video with AI voice, publishes on schedule. Bilingual Arabic and English. Owner texts 'post about our new special' on WhatsApp — content goes live within minutes.",
+    desc: "Runs your entire content operation across LinkedIn, Instagram, and TikTok. AI-generated images for social posts, text-to-speech HD for voice messages and TikTok voiceovers, music generation for background tracks, and video generation for promotional clips. Bilingual Arabic and English. Owner texts 'post about our new special' on WhatsApp — content goes live within minutes.",
     metric: "<2 min",
     metricLabel: "per post (was 30+)",
     color: "rose",
@@ -57,7 +57,7 @@ const agents = [
   },
   {
     title: "Financial Intelligence",
-    desc: "Connects to your financial data, categorizes transactions, flags anomalies, and delivers weekly health reports in plain language. Supports AED and SAR. Owner gets a daily WhatsApp snapshot: revenue, expenses, anomalies — no dashboard login needed.",
+    desc: "Connects to your financial data, categorizes transactions, flags anomalies, and delivers weekly health reports in plain language. Supports AED and SAR. Owner gets a daily WhatsApp snapshot: revenue, expenses, anomalies — text back 'What did we spend on marketing last month?' and get instant answers. No dashboard login needed.",
     metric: "12h/mo",
     metricLabel: "returned to owner",
     color: "violet",
@@ -77,11 +77,11 @@ const pricing = [
     setup: "AED 2,999 one-time setup",
     features: [
       "1 AI agent (WhatsApp or Content)",
-      "Arabic + English bilingual",
+      "MiniMax M2.7 with auto-improve",
+      "Arabic + English auto-detection",
+      "Voice message support",
       "Persistent customer memory",
-      "Owner WhatsApp alerts",
-      "Self-service onboarding",
-      "Email support",
+      "Self-service onboarding — live in minutes",
     ],
   },
   {
@@ -92,11 +92,11 @@ const pricing = [
     popular: true,
     features: [
       "3-5 AI agents with shared brain",
-      "Customer memory across all channels",
-      "Owner Brain — daily summaries via WhatsApp",
+      "Customer memory: names, allergies, favorites, sentiment",
+      "Owner Brain — 9AM daily briefs + natural language commands",
+      "Voice messages, live web search, multimodal AI",
       "Auto knowledge base from website crawl",
-      "Live dashboard + calendar integration",
-      "Industry setup (restaurant, real estate, clinic)",
+      "Industry setup (restaurant, real estate, clinic, salon)",
     ],
   },
   {
@@ -106,11 +106,11 @@ const pricing = [
     setup: "Custom setup and integration",
     features: [
       "Unlimited agents with full memory",
-      "Dedicated infrastructure + UAE data residency",
+      "AI image, video, music, and voice generation",
       "Custom integrations and API access",
-      "Owner Brain with custom alert rules",
-      "SLA guarantee",
-      "Dedicated account manager",
+      "Owner Brain with custom alert rules + commands",
+      "Dedicated infrastructure + UAE data residency",
+      "SLA guarantee + dedicated account manager",
     ],
   },
 ];
@@ -170,9 +170,10 @@ export default function HomePage() {
 
             <p className="mt-6 text-lg text-white/50 leading-relaxed max-w-[52ch]">
               We deploy fully-managed AI agent systems for SMBs in the Middle East.
-              WhatsApp support, sales automation, content, HR, and finance — with
-              persistent customer memory, an owner brain that reports to you via
-              WhatsApp, and self-service onboarding that goes live in minutes.
+              Real WhatsApp messages, real AI responses, sub-second — powered by
+              MiniMax M2.7 that auto-improves with every conversation. Voice message
+              support, bilingual Arabic + English auto-detection, persistent customer
+              memory, and an AI Chief of Staff that runs your business from WhatsApp.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-3">
@@ -192,7 +193,7 @@ export default function HomePage() {
               {[
                 { value: "380+", label: "inquiries automated monthly" },
                 { value: "19h", label: "owner time saved per week" },
-                { value: "11d", label: "to go live" },
+                { value: "<10m", label: "to go live" },
               ].map((s) => (
                 <div key={s.label}>
                   <p className="text-3xl font-extrabold tracking-tighter font-mono bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">{s.value}</p>
@@ -273,7 +274,7 @@ export default function HomePage() {
           <FadeUp>
             <div className="max-w-2xl mb-16">
               <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] uppercase tracking-[0.15em] font-semibold bg-white/5 text-white/40 ring-1 ring-white/10 mb-6">
-                5 agents, one brain, total memory
+                5 agents, one brain, total memory — live now
               </span>
               <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter leading-[1.05]">
                 They remember every customer.
@@ -333,13 +334,13 @@ export default function HomePage() {
                 How it works
               </span>
               <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter leading-[1.05]">
-                From first call to live agents
+                Sign up to live agents
                 <br />
-                <span className="bg-gradient-to-r from-brand-400 to-sky-400 bg-clip-text text-transparent">in under 2 weeks</span>
+                <span className="bg-gradient-to-r from-brand-400 to-sky-400 bg-clip-text text-transparent">in under 10 minutes</span>
               </h2>
               <p className="mt-6 text-base text-white/40 leading-relaxed max-w-[52ch]">
-                No technical knowledge required from you. We handle everything
-                from setup to ongoing optimization.
+                Self-service onboarding. AI crawls your website, builds your knowledge
+                base, and deploys your WhatsApp agents — all automatically.
               </p>
 
               {/* Workflow SVG */}
@@ -358,10 +359,10 @@ export default function HomePage() {
             <FadeUp delay={0.2}>
               <div className="space-y-5">
                 {[
-                  { step: "01", title: "Sign up & onboard yourself", desc: "Create your account, enter your company details, and our AI crawls your website to auto-build your knowledge base — FAQ, services, team, socials. Six steps, done in minutes.", color: "text-brand-400", border: "border-brand-500/20", bg: "bg-brand-500/5" },
-                  { step: "02", title: "Pick your agents", desc: "Choose from 5 AI agents. We auto-configure them with your knowledge base, industry setup (restaurant menus, property listings, appointment types), and connect your calendar.", color: "text-sky-400", border: "border-sky-500/20", bg: "bg-sky-500/5" },
-                  { step: "03", title: "Connect WhatsApp & go live", desc: "Click a link, connect your WhatsApp Business number in 2 minutes via Kapso. Your customer-facing AI is live. Your private owner channel starts sending you alerts.", color: "text-violet-400", border: "border-violet-500/20", bg: "bg-violet-500/5" },
-                  { step: "04", title: "Your AI gets smarter every day", desc: "Every customer interaction builds memory. Your owner brain sends you daily summaries. Update your business by texting your AI — menus, prices, availability, all by WhatsApp.", color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
+                  { step: "01", title: "Sign up & onboard yourself", desc: "Create your account, enter your website URL, and our AI crawls everything — FAQ, services, team bios, social links. Your knowledge base writes itself. Done in minutes, not weeks.", color: "text-brand-400", border: "border-brand-500/20", bg: "bg-brand-500/5" },
+                  { step: "02", title: "Pick your agents", desc: "Choose from 5 AI agents. Industry-specific setup pre-loaded: restaurant menus with dietary tracking, property listings with lead scoring, appointment types with calendar sync. MiniMax M2.7 powers every conversation.", color: "text-sky-400", border: "border-sky-500/20", bg: "bg-sky-500/5" },
+                  { step: "03", title: "Connect WhatsApp & go live", desc: "Instant WhatsApp Business API setup — your customer-facing AI is live in minutes. Your private Owner Brain channel starts pushing daily 9AM briefs, hot lead alerts, and complaint escalations.", color: "text-violet-400", border: "border-violet-500/20", bg: "bg-violet-500/5" },
+                  { step: "04", title: "Your AI gets smarter every day", desc: "MiniMax M2.7 auto-improves with every conversation. Customer memory deepens — names, allergies, favorites, sentiment. Voice messages get transcribed and answered. Live web search enriches responses with weather, events, and local context.", color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
                 ].map((s) => (
                   <motion.div
                     key={s.step}

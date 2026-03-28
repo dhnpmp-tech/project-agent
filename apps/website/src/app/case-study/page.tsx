@@ -6,29 +6,29 @@ import { motion } from "framer-motion";
 
 const stats = [
   { value: "380", suffix: "/mo", label: "Inquiries handled with full memory", color: "text-brand-400" },
-  { value: "24", suffix: "/7", label: "Arabic + English, never sleeps", color: "text-sky-400" },
+  { value: "24", suffix: "/7", label: "Arabic + English auto-detection + voice", color: "text-sky-400" },
   { value: "92", suffix: "%", label: "Lead qualification accuracy", color: "text-violet-400" },
-  { value: "4", suffix: "hrs", label: "From signup to fully live", color: "text-amber-400" },
+  { value: "<10", suffix: "min", label: "From signup to fully live", color: "text-amber-400" },
 ];
 
 const agents = [
   {
     name: "Customer WhatsApp Agent + Persistent Memory",
-    desc: "Handles every inbound inquiry in Arabic and English, 24/7. Remembers every customer permanently. When a buyer who inquired 3 months ago texts back asking 'What about that JBR apartment?', the AI greets them by name, recalls their budget (AED 2.5M), preferred areas (JBR, Marina), and the exact units they viewed. No conversation starts from zero.",
+    desc: "Handles every inbound inquiry with bilingual Arabic + English auto-detection, 24/7. Powered by MiniMax M2.7 with sub-second responses that auto-improve with every conversation. Customers send voice notes — AI transcribes and responds instantly. Remembers every customer permanently: names, budgets, preferred areas, exact units viewed, even family details. When a buyer who inquired 3 months ago texts back asking 'What about that JBR apartment?', the AI greets them by name, recalls their AED 2.5M budget, and picks up exactly where they left off. Live web search enriches responses with current market data, weather for viewings, and nearby attractions.",
     dot: "bg-emerald-400",
     gradient: "from-emerald-500/20 to-emerald-500/5",
     glow: "rgba(34, 197, 94, 0.15)",
   },
   {
     name: "Owner Brain — Your AI Chief of Staff",
-    desc: "A private WhatsApp channel just for the agency owner. Every morning at 7am: 'New hot lead: Sarah K., budget AED 3M+, looking for Palm penthouses — lead score 92/100.' Every night at 9pm: '47 inquiries handled, 3 viewings booked, 2 hot leads flagged.' Owner texts back 'Palm penthouse in Tower B sold' — the AI removes it from listings instantly. Texts 'Price drop: Marina 2BR now AED 1.6M' — updated across all channels in seconds.",
+    desc: "A private WhatsApp channel just for the agency owner. Daily 9AM briefs with yesterday's metrics: 'New hot lead: Sarah K., budget AED 3M+, looking for Palm penthouses — lead score 92/100. 47 inquiries handled, 3 viewings booked, 2 hot leads flagged.' Natural language commands work instantly — text 'Palm penthouse in Tower B sold' and the AI removes it from listings. 'Price drop: Marina 2BR now AED 1.6M' — updated across all channels in seconds. '86 the Downtown studio' — gone. No dashboards, no logins.",
     dot: "bg-amber-400",
     gradient: "from-amber-500/20 to-amber-500/5",
     glow: "rgba(245, 158, 11, 0.15)",
   },
   {
     name: "Auto Knowledge Base — Crawled & Ready",
-    desc: "During onboarding, our system automatically crawled the agency's entire website — every property listing, team bio, service page, and FAQ. The AI built its own knowledge base in minutes, not weeks. No manual data entry. No CSV uploads. It knew the difference between their off-plan projects in Dubai Hills and ready units in Marina before the first customer ever texted.",
+    desc: "During self-service onboarding, Ahmed pasted his website URL and our AI crawled the agency's entire site — 127 property listings, team bios, service pages, and FAQs. The knowledge base built itself in minutes. No manual data entry. No CSV uploads. It knew the difference between off-plan projects in Dubai Hills and ready units in Marina before the first customer ever texted. MiniMax M2.7 auto-improves from every conversation, getting smarter about properties, pricing, and customer preferences every single day.",
     dot: "bg-rose-400",
     gradient: "from-rose-500/20 to-rose-500/5",
     glow: "rgba(244, 63, 94, 0.15)",
@@ -80,12 +80,12 @@ export default function CaseStudyPage() {
               <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter leading-[0.95]">
                 How a Dubai agency went from signup to{" "}
                 <span className="bg-gradient-to-r from-brand-400 via-emerald-300 to-brand-500 bg-clip-text text-transparent">
-                  AI-powered in 4 hours
+                  AI-powered in minutes
                 </span>{" "}
                 — and never lost a lead again
               </h1>
               <div className="mt-6 flex flex-wrap gap-2">
-                {["Real estate", "Dubai Marina", "2 WhatsApp channels", "Persistent memory", "Live in hours"].map((tag) => (
+                {["Real estate", "Dubai Marina", "2 WhatsApp channels", "Persistent memory", "Voice notes", "Live web search", "Live in minutes"].map((tag) => (
                   <span key={tag} className="inline-flex items-center text-xs font-medium text-white/40 bg-white/5 rounded-full px-3 py-1.5 ring-1 ring-white/10">
                     {tag}
                   </span>
@@ -124,7 +124,7 @@ export default function CaseStudyPage() {
               The challenge
             </span>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter mt-4 mb-5">
-              400 WhatsApp messages a month. Zero memory. Zero system.
+              400 WhatsApp messages a month. Zero memory. Zero AI. Zero system.
             </h2>
             <div className="space-y-4 text-sm text-white/50 leading-relaxed max-w-[65ch]">
               <p>
@@ -157,19 +157,21 @@ export default function CaseStudyPage() {
             </span>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter mt-4 mb-6">
               Signed up at 10am. Live by{" "}
-              <span className="bg-gradient-to-r from-brand-400 to-sky-400 bg-clip-text text-transparent">2pm the same day</span>
+              <span className="bg-gradient-to-r from-brand-400 to-sky-400 bg-clip-text text-transparent">10:15am the same day</span>
             </h2>
             <div className="space-y-4 text-sm text-white/50 leading-relaxed max-w-[65ch] mb-8">
               <p>
-                Ahmed found AI Agent Systems on a Tuesday morning. He filled out the onboarding wizard — selected
-                &ldquo;Real Estate&rdquo; as his industry, connected his WhatsApp Business number, and entered his website URL.
+                Ahmed found AI Agent Systems on a Tuesday morning. Self-service onboarding: he selected
+                &ldquo;Real Estate&rdquo; as his industry, pasted his website URL, and picked his agents.
                 That was it. <span className="font-semibold text-white">No sales calls. No 3-week implementation. No technical setup.</span>
               </p>
               <p>
-                Our system crawled his entire website automatically — 127 property listings, team bios, service descriptions,
-                area guides — and built a complete knowledge base. Two WhatsApp channels were provisioned: one for customers,
-                one private channel just for Ahmed. By 2pm, the first customer inquiry was handled by AI. Ahmed watched it happen
-                from his phone and said: <span className="font-semibold text-white">&ldquo;It sounds exactly like my best agent.&rdquo;</span>
+                Our AI crawled his entire website automatically — 127 property listings, team bios, service descriptions,
+                area guides — and built a complete knowledge base in minutes. Instant WhatsApp Business API setup deployed
+                two channels: one for customers with voice message support and bilingual auto-detection, one private Owner
+                Brain channel for Ahmed with daily 9AM briefs. By 10:15am, the first customer inquiry was handled by MiniMax
+                M2.7 AI with sub-second response time. Ahmed watched it happen from his phone and said:
+                <span className="font-semibold text-white">&ldquo;It sounds exactly like my best agent — but faster, and it never forgets.&rdquo;</span>
               </p>
             </div>
             <div className="space-y-4">
@@ -220,11 +222,14 @@ export default function CaseStudyPage() {
                     </span>&rdquo;
                   </blockquote>
                   <p className="mt-5 text-sm text-white/40 leading-relaxed">
-                    &ldquo;And every morning at 7am I get a WhatsApp message from my Owner Brain:
-                    who&apos;s hot, who&apos;s cold, what needs attention. Last night at 9pm it told me:
-                    &lsquo;47 inquiries handled, 3 viewings booked, 2 hot leads scored above 90.&rsquo;
-                    I texted back &lsquo;Marina 2BR Tower C — price drop to AED 1.6M&rsquo; and it updated
-                    everywhere in seconds. I run my entire agency from WhatsApp now.&rdquo;
+                    &ldquo;Every morning at 9am I get my daily brief from my Owner Brain:
+                    who&apos;s hot, who&apos;s cold, what needs attention. Yesterday: &lsquo;47 inquiries
+                    handled, 3 viewings booked, 2 hot leads scored above 90.&rsquo; I texted back
+                    &lsquo;Marina 2BR Tower C — price drop to AED 1.6M&rsquo; and it updated everywhere
+                    in seconds. Clients send voice notes asking about properties and the AI
+                    transcribes and responds before I even see the message. One buyer asked about
+                    weather for a viewing and the AI told her it was 28 degrees with clear skies
+                    and suggested the rooftop terrace unit. I run my entire agency from WhatsApp now.&rdquo;
                   </p>
                   <div className="mt-8 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500/20 to-brand-500/5 flex items-center justify-center ring-1 ring-brand-500/20">
@@ -257,8 +262,8 @@ export default function CaseStudyPage() {
               <div className="relative">
                 <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter">Your competitors are still answering WhatsApp manually</h2>
                 <p className="mt-3 text-sm text-white/40 max-w-md mx-auto">
-                  Sign up today and be live by tonight. Self-service onboarding. No sales calls.
-                  Your AI agent will remember every customer, qualify every lead, and report to you on WhatsApp — while you sleep.
+                  Sign up and be live in minutes — not hours, not days. Self-service onboarding. No sales calls.
+                  MiniMax M2.7 AI handles WhatsApp messages, voice notes, and live web searches while your Owner Brain pushes you daily briefs and takes natural language commands. Your AI remembers every customer, qualifies every lead, and gets smarter every single day.
                 </p>
                 <a href="/book-audit/" className="group inline-flex items-center gap-3 mt-6 rounded-full bg-brand-500 hover:bg-brand-400 px-8 py-4 text-sm font-semibold text-white transition-all duration-500 active:scale-[0.97] shadow-[0_0_30px_rgba(34,197,94,0.3)] hover:shadow-[0_0_50px_rgba(34,197,94,0.4)]">
                   Book your free audit
@@ -267,7 +272,7 @@ export default function CaseStudyPage() {
                   </span>
                 </a>
                 <p className="mt-4 text-xs text-white/25">
-                  Live in hours &middot; Cancel anytime &middot; Your AI remembers every customer
+                  Live in minutes &middot; Cancel anytime &middot; Your AI remembers every customer
                 </p>
               </div>
             </div>

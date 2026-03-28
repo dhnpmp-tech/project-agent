@@ -10,7 +10,7 @@ const steps = [
     step: "01",
     title: "Sign up and tell us about your business",
     duration: "5 minutes",
-    description: "Enter your company profile and drop in your website URL. Our AI instantly crawls your site and auto-builds your FAQ, services list, team directory, social profiles, and review sources. No forms to fill. No PDFs to upload. Your knowledge base writes itself.",
+    description: "Enter your company profile and drop in your website URL. Our AI instantly crawls your entire site and auto-builds your FAQ, services list, team directory, social profiles, and review sources. No forms to fill. No PDFs to upload. No manual data entry. Your knowledge base writes itself — ready for your AI agents to use from minute one.",
     details: ["Company profile setup", "Auto website crawl", "AI-generated knowledge base"],
     color: "text-brand-400",
     border: "border-brand-500/20",
@@ -21,8 +21,8 @@ const steps = [
     step: "02",
     title: "Pick your agents and configure your industry",
     duration: "5 minutes",
-    description: "Select the AI agents you need — receptionist, sales closer, booking manager, support. Then configure your industry-specific setup: restaurants get SevenRooms integration with menu PDF and cuisine type. Real estate gets property types, service areas, and budget ranges. Healthcare and beauty get service lists with appointment durations. Every agent is pre-trained for your vertical.",
-    details: ["Agent selection", "Industry-specific setup", "Calendar and CRM integration"],
+    description: "Select the AI agents you need — receptionist, sales closer, booking manager, support. Then configure your industry-specific setup: restaurants get SevenRooms integration with menu management and dietary tracking down to individual guests. Real estate gets property search, viewing bookings, and automatic lead scoring. Healthcare and beauty get appointment booking with service pricing. Every agent is powered by MiniMax M2.7 and pre-trained for your vertical.",
+    details: ["Agent selection", "Industry-specific setup", "MiniMax M2.7 AI engine"],
     color: "text-sky-400",
     border: "border-sky-500/20",
     gradient: "from-sky-500/10 to-transparent",
@@ -32,8 +32,8 @@ const steps = [
     step: "03",
     title: "Connect WhatsApp and go live",
     duration: "Instant",
-    description: "Two WhatsApp channels deploy automatically. A customer-facing number handles inquiries, bookings, and support 24/7. A private Owner Brain channel sends you booking alerts, complaint escalations, lead notifications, and daily summaries. Text it back to update your business on the fly — \"add today's special: Wagyu Steak AED 280\" — and your agent knows instantly.",
-    details: ["Customer WhatsApp channel", "Private Owner Brain channel", "Real-time business updates via text"],
+    description: "Instant WhatsApp Business API setup — two channels deploy automatically. A customer-facing number handles inquiries, bookings, and support 24/7 with bilingual Arabic + English auto-detection and voice message support. A private Owner Brain channel pushes daily 9AM briefs, hot lead alerts, complaint escalations, and booking notifications. Text it back with natural language commands — \"Add today's special: Wagyu AED 280\" or \"86 the lamb\" — and your knowledge base updates instantly.",
+    details: ["Instant WhatsApp setup", "Owner Brain with 9AM daily briefs", "Voice message support"],
     color: "text-violet-400",
     border: "border-violet-500/20",
     gradient: "from-violet-500/10 to-transparent",
@@ -43,8 +43,8 @@ const steps = [
     step: "04",
     title: "Your agents learn and remember everything",
     duration: "From day one",
-    description: "Every customer interaction is stored with persistent memory — preferences, past orders, sentiment, conversation history — across months and years. Your regulars get recognized. Your new leads get nurtured. Your agents don't just respond, they build relationships. The longer they run, the smarter they get.",
-    details: ["Persistent customer memory", "Preference and sentiment tracking", "Agents that get smarter daily"],
+    description: "MiniMax M2.7 auto-improves with every conversation. Every customer interaction builds persistent memory — name, allergies, dietary restrictions (and who in the family has them), favorite dishes, usual party size, preferred seating, visit timing, booking history, and sentiment tracking. A guest who had a bad experience last time gets extra care. A returning customer in December is greeted by name with preferences from January. Voice messages are transcribed and remembered. Live web search enriches every response with weather, events, and local context.",
+    details: ["MiniMax M2.7 auto-improve", "Deep customer memory profiles", "Live web search enrichment"],
     color: "text-amber-400",
     border: "border-amber-500/20",
     gradient: "from-amber-500/10 to-transparent",
@@ -54,8 +54,8 @@ const steps = [
     step: "05",
     title: "Monitor, manage, and scale from your dashboard",
     duration: "Ongoing",
-    description: "Your live dashboard shows every agent's status, activity feeds, conversation logs, and performance reports in real-time. Manage WhatsApp channels, review escalations, and track ROI — all from one screen. Connect Google Calendar, Outlook, or SevenRooms to keep bookings in sync. Scale to new locations in minutes, not months.",
-    details: ["Live agent dashboard", "Calendar and booking sync", "One-click multi-location scaling"],
+    description: "Your live dashboard shows every agent's status, activity feeds, conversation logs, and performance reports in real-time. Manage WhatsApp channels, review escalations, and track ROI. Use multimodal AI capabilities — generate images for social posts, create HD voiceovers for TikTok, produce background music for content, and build promotional video clips. Connect Google Calendar, Outlook, or SevenRooms to keep bookings in sync. Scale to new locations in minutes.",
+    details: ["Live agent dashboard", "Multimodal AI: image, video, music, voice", "One-click multi-location scaling"],
     color: "text-emerald-400",
     border: "border-emerald-500/20",
     gradient: "from-emerald-500/10 to-transparent",
@@ -111,7 +111,7 @@ export default function ProcessPage() {
                 </span>
               </h1>
               <p className="mt-4 text-base text-white/50 leading-relaxed max-w-[52ch]">
-                You onboard yourself in minutes. Our AI builds your knowledge base automatically. Your agents get smarter every day.
+                Self-service onboarding. AI crawls your website and builds your knowledge base. MiniMax M2.7 powers every conversation and auto-improves daily. Live in minutes, not weeks.
               </p>
             </div>
           </FadeUp>
@@ -190,7 +190,7 @@ export default function ProcessPage() {
                 <div className="relative">
                   <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter">Your AI team is ready. Are you?</h2>
                   <p className="mt-3 text-sm text-white/40 leading-relaxed max-w-md">
-                    No demos. No sales calls. Sign up, paste your website, and watch your agents come alive.
+                    No demos. No sales calls. Sign up, paste your website, and your AI agents go live in minutes — with voice support, customer memory, and an AI Chief of Staff on WhatsApp.
                   </p>
                   <a href="/book-audit/" className="group inline-flex items-center gap-3 mt-6 rounded-full bg-brand-500 hover:bg-brand-400 px-8 py-4 text-sm font-semibold text-white transition-all duration-500 active:scale-[0.97] shadow-[0_0_30px_rgba(34,197,94,0.3)] hover:shadow-[0_0_50px_rgba(34,197,94,0.4)]">
                     Start onboarding now
