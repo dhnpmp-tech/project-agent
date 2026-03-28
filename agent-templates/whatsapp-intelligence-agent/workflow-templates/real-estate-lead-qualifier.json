@@ -1,0 +1,147 @@
+{
+  "name": "Real Estate Lead Qualifier (Kapso)",
+  "description": "Qualifies property inquiries through interactive WhatsApp conversations. Collects budget, area preference, property type via buttons, auto-scores leads, and books viewings.",
+  "trigger": "whatsapp.message.received",
+  "industry": "real_estate",
+  "kapso_features": ["interactive_buttons", "list_messages", "whatsapp_flows", "template_messages", "location_sharing"],
+  "steps": [
+    {
+      "id": "1-greeting",
+      "type": "send_text",
+      "description": "Welcome message with language detection",
+      "message": {
+        "en": "Welcome to {{COMPANY_NAME}}! Are you looking to buy, rent, or invest in property?",
+        "ar": "أهلاً بكم في {{COMPANY_NAME}}! هل تبحثون عن شراء أو إيجار أو استثمار عقاري؟"
+      }
+    },
+    {
+      "id": "2-intent",
+      "type": "send_interactive_buttons",
+      "description": "Capture intent with quick reply buttons",
+      "config": {
+        "body": "What are you looking for?",
+        "buttons": [
+          { "type": "reply", "id": "buy", "title": "Buy" },
+          { "type": "reply", "id": "rent", "title": "Rent" },
+          { "type": "reply", "id": "invest", "title": "Invest" }
+        ]
+      }
+    },
+    {
+      "id": "3-property-type",
+      "type": "send_interactive_list",
+      "description": "Property type selection",
+      "config": {
+        "header": "Property Type",
+        "body": "What type of property are you interested in?",
+        "button": "Select Type",
+        "sections": [
+          {
+            "title": "Residential",
+            "rows": [
+              { "id": "apartment", "title": "Apartment", "description": "Studio, 1BR, 2BR, 3BR+" },
+              { "id": "villa", "title": "Villa", "description": "Independent villa or townhouse" },
+              { "id": "penthouse", "title": "Penthouse", "description": "Luxury penthouse" }
+            ]
+          },
+          {
+            "title": "Commercial",
+            "rows": [
+              { "id": "office", "title": "Office Space", "description": "Office or co-working" },
+              { "id": "retail", "title": "Retail", "description": "Shop or showroom" },
+              { "id": "warehouse", "title": "Warehouse", "description": "Industrial or warehouse" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "4-qualification-flow",
+      "type": "whatsapp_flow",
+      "description": "Native WhatsApp Flow form for detailed qualification",
+      "flow_json": {
+        "screens": [
+          {
+            "id": "budget_area",
+            "title": "Tell Us More",
+            "layout": {
+              "type": "SingleColumnLayout",
+              "children": [
+                { "type": "Dropdown", "name": "budget", "label": "Budget Range (AED)", "required": true, "data-source": ["Under 500K", "500K - 1M", "1M - 2M", "2M - 5M", "5M - 10M", "10M+"] },
+                { "type": "Dropdown", "name": "area", "label": "Preferred Area", "required": true, "data-source": ["Dubai Marina", "Downtown Dubai", "JBR", "Palm Jumeirah", "Business Bay", "JVC", "Dubai Hills", "MBR City", "Other"] },
+                { "type": "Dropdown", "name": "bedrooms", "label": "Bedrooms", "data-source": ["Studio", "1", "2", "3", "4", "5+"] },
+                { "type": "Dropdown", "name": "timeline", "label": "When do you need it?", "required": true, "data-source": ["Immediately", "Within 1 month", "1-3 months", "3-6 months", "Just exploring"] },
+                { "type": "TextInput", "name": "additional_notes", "label": "Anything else?", "input-type": "text" },
+                { "type": "Footer", "label": "Submit", "on-click-action": { "name": "complete", "payload": {} } }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "5-ai-scoring",
+      "type": "llm_classification",
+      "description": "AI scores the lead based on collected data",
+      "config": {
+        "model": "claude-haiku-4-5-20251001",
+        "prompt": "Score this real estate lead 0-100 based on: intent={{intent}}, property_type={{property_type}}, budget={{budget}}, area={{area}}, timeline={{timeline}}. Respond with JSON: {\"score\": N, \"priority\": \"hot|warm|cold\", \"reason\": \"...\"}",
+        "thresholds": {
+          "hot": { "min_score": 75, "action": "book_viewing" },
+          "warm": { "min_score": 40, "action": "send_listings" },
+          "cold": { "min_score": 0, "action": "nurture" }
+        }
+      }
+    },
+    {
+      "id": "6-hot-lead",
+      "type": "send_interactive_buttons",
+      "trigger_on": "score >= 75",
+      "description": "Hot lead — offer immediate viewing",
+      "config": {
+        "body": "Great news! We have properties matching your criteria in {{area}}. Would you like to schedule a viewing?",
+        "buttons": [
+          { "type": "reply", "id": "book_viewing", "title": "Book Viewing" },
+          { "type": "reply", "id": "send_listings", "title": "See Listings First" },
+          { "type": "reply", "id": "call_me", "title": "Call Me" }
+        ]
+      }
+    },
+    {
+      "id": "7-send-listings",
+      "type": "send_image",
+      "trigger_on": "send_listings",
+      "description": "Send property images with details",
+      "config": {
+        "image_url": "{{listing_image_url}}",
+        "caption": "{{property_title}}\n📍 {{area}}\n🛏 {{bedrooms}} BR\n💰 AED {{price}}\n📐 {{sqft}} sqft"
+      }
+    },
+    {
+      "id": "8-log-to-supabase",
+      "type": "supabase_insert",
+      "description": "Log lead to activity_logs and business_knowledge",
+      "config": {
+        "table": "activity_logs",
+        "data": {
+          "event_type": "lead_qualified",
+          "summary": "Real estate lead: {{intent}} {{property_type}} in {{area}}, budget {{budget}}",
+          "payload": {
+            "score": "{{lead_score}}",
+            "priority": "{{priority}}",
+            "intent": "{{intent}}",
+            "property_type": "{{property_type}}",
+            "budget": "{{budget}}",
+            "area": "{{area}}",
+            "timeline": "{{timeline}}"
+          }
+        }
+      }
+    }
+  ],
+  "required_config": {
+    "kapsoApiKey": "Kapso API key",
+    "propertyListings": "Array of property objects with images, prices, areas",
+    "viewingCalendarLink": "Calendar booking URL for viewings"
+  }
+}

@@ -32,11 +32,18 @@ services:
       - REDIS_URL=redis://:{{REDIS_PASSWORD}}@redis:6379
     volumes:
       - n8n-{{CLIENT_SLUG}}-data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.n8n-{{CLIENT_SLUG}}.rule=Host(`{{CLIENT_SLUG}}.{{PLATFORM_DOMAIN}}`)"
       - "traefik.http.routers.n8n-{{CLIENT_SLUG}}.tls.certresolver=letsencrypt"
       - "traefik.http.services.n8n-{{CLIENT_SLUG}}.loadbalancer.server.port=5678"
+      - "traefik.http.routers.n8n-{{CLIENT_SLUG}}.middlewares=security-headers@file,rate-limit@file"
     networks:
       - agent-network
     depends_on:

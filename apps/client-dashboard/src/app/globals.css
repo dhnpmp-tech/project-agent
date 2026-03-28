@@ -16,3 +16,13 @@
     @apply bg-gray-50 text-gray-900 antialiased;
   }
 }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scan {
+  0%, 100% { transform: translateY(0); opacity: 0.3; }
+  50% { transform: translateY(40px); opacity: 1; }
+}

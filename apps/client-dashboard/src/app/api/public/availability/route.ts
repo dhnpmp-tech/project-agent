@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Return simplified slot format
-    const availableSlots = slots.map((slot) => ({
+    const availableSlots = slots.map((slot: { start: Date; end: Date }) => ({
       start: slot.start.toISOString(),
       end: slot.end.toISOString(),
       time: slot.start.toLocaleTimeString("en-US", {

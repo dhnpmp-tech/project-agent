@@ -42,7 +42,8 @@ export class CalDavAdapter implements CalendarAdapter {
       authMethod: "Basic",
       defaultAccountType: "caldav",
     });
-    return client;
+    // Cast needed: tsdav's createDAVClient returns a subset type
+    return client as unknown as DAVClient;
   }
 
   private async getCalendar(): Promise<DAVCalendar> {
