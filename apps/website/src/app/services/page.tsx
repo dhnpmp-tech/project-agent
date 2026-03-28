@@ -8,18 +8,18 @@ import { motion } from "framer-motion";
 const agents = [
   {
     name: "WhatsApp Intelligence Agent",
-    tagline: "Your 24/7 customer service team — powered by Kapso",
+    tagline: "Two channels. Persistent memory. Every customer remembered.",
     description:
-      "Connects your business to WhatsApp in 2 minutes via Kapso — no Meta approval wait. Handles all inbound messages, AI voice calls, lead qualification, appointment booking, and complaints in Arabic and English. Sub-second responses, conversation memory, and built-in team inbox.",
+      "Deploys two WhatsApp channels for your business in minutes via Kapso — a customer-facing channel that handles inquiries, bookings, and complaints 24/7 in Arabic and English, plus a private Owner channel for real-time alerts. Every customer gets persistent memory: preferences, past orders, sentiment, and key events are tracked across months and years. A guest who messaged in January is greeted by name in December. Auto Knowledge Base crawls your website and builds your FAQ, services, team bios, and social links automatically — zero manual data entry.",
     benefits: [
-      "2-minute WhatsApp setup via Kapso (no Meta approval)",
-      "AI voice calls — answer with real-time speech",
-      "400+ inquiries handled monthly",
-      "65-80% reduction in support workload",
-      "24/7 in Arabic and English",
-      "Built-in team inbox with message history",
-      "Smart escalation to human agents",
-      "Appointment booking via calendar integration",
+      "Persistent customer memory across months and years",
+      "2 WhatsApp channels: customer-facing + owner private",
+      "Auto Knowledge Base built from your website",
+      "AI voice calls with real-time speech",
+      "400+ inquiries handled monthly, sub-second response",
+      "Calendar sync: Google, Outlook, CalDAV, SevenRooms",
+      "24/7 bilingual support in Arabic and English",
+      "Smart escalation to human agents with full context",
     ],
     metric: "65-80%",
     metricLabel: "support load cut",
@@ -30,20 +30,45 @@ const agents = [
     check: "text-emerald-400",
   },
   {
-    name: "AI Sales Development Rep",
-    tagline: "Never miss a lead again",
+    name: "Owner Brain Agent",
+    tagline: "Your AI Chief of Staff — on WhatsApp",
     description:
-      "Autonomously manages your entire top-of-funnel: scores leads against your ideal customer profile, sends personalized multi-channel outreach, qualifies prospects through adaptive conversation, and books meetings with your sales team.",
+      "Every plan includes a private WhatsApp channel just for you, the owner. Your Owner Brain Agent is a proactive AI Chief of Staff that pushes booking notifications, complaint alerts, hot lead alerts, and daily business summaries directly to your phone. But it is not just one-way — text back commands like \"Add today's special: Wagyu burger AED 95\", \"We're fully booked tonight\", or \"New price for 2BR Marina: AED 1.8M\" and the AI interprets your intent and updates your business knowledge base instantly. No dashboards, no logins. Run your business from your pocket.",
     benefits: [
-      "500-5,000 leads processed monthly",
-      "Instant response (under 5 min vs 47hr avg)",
-      "Personalized email and WhatsApp outreach",
-      "ICP scoring and lead qualification",
-      "Automated follow-up sequences",
-      "70-80% lower cost vs human SDR",
+      "Private owner WhatsApp channel included in every plan",
+      "Real-time booking and complaint notifications",
+      "Hot lead alerts so you never miss a deal",
+      "Daily summary: inquiries, bookings, sentiment, revenue",
+      "Text-based commands to update menus, prices, availability",
+      "AI interprets natural language and updates knowledge base",
+      "No app to install, no dashboard to check",
+      "Proactive alerts — the AI comes to you, not the other way",
     ],
-    metric: "70-80%",
-    metricLabel: "lower cost per meeting",
+    metric: "0",
+    metricLabel: "dashboards needed",
+    gradient: "from-brand-500/20 to-brand-500/5",
+    glow: "rgba(34, 197, 94, 0.2)",
+    dot: "bg-brand-400",
+    textAccent: "text-brand-400",
+    check: "text-brand-400",
+  },
+  {
+    name: "Industry-Specific AI Setup",
+    tagline: "Pre-built for restaurants, real estate, clinics, and salons",
+    description:
+      "Not a generic chatbot — your agent is configured for your exact industry from day one. Restaurants get SevenRooms booking integration, menu management, cuisine-type handling, and dietary preference tracking. Real estate agencies get property search via WhatsApp, viewing bookings, and automatic lead scoring. Healthcare clinics and beauty salons get appointment booking, service pricing, and full calendar sync. Self-service onboarding walks you through 6 steps and you go live in minutes, not weeks.",
+    benefits: [
+      "Restaurant: SevenRooms, menu, dietary handling",
+      "Real Estate: property search, viewings, lead scoring",
+      "Healthcare/Beauty: appointments, pricing, calendar sync",
+      "6-step self-service onboarding wizard",
+      "Go live in minutes, not weeks",
+      "Industry-specific conversation flows pre-loaded",
+      "Auto Knowledge Base crawls your website on setup",
+      "Calendar integration: Google, Outlook, CalDAV, SevenRooms",
+    ],
+    metric: "<10 min",
+    metricLabel: "to go live",
     gradient: "from-amber-500/20 to-amber-500/5",
     glow: "rgba(245, 158, 11, 0.15)",
     dot: "bg-amber-400",
@@ -51,16 +76,41 @@ const agents = [
     check: "text-amber-400",
   },
   {
-    name: "Content Engine Agent",
-    tagline: "Social media on autopilot",
+    name: "AI Sales Development Rep",
+    tagline: "Never miss a lead — every one remembered and scored",
     description:
-      "Runs your entire organic content operation — researches trending topics, generates platform-specific posts, creates short-form video with Arabic and English voice, and publishes on schedule across LinkedIn, Instagram, and TikTok.",
+      "Autonomously manages your entire top-of-funnel with persistent memory that tracks every lead interaction across months. Scores leads against your ideal customer profile, sends personalized multi-channel outreach via WhatsApp and email, qualifies prospects through adaptive conversation that recalls prior exchanges, and books meetings with your sales team. Hot leads trigger instant Owner Brain alerts so you can act in seconds. Your agent gets smarter with every conversation — it never forgets a prospect.",
+    benefits: [
+      "Persistent lead memory across all conversations",
+      "Hot lead alerts pushed to your Owner WhatsApp channel",
+      "500-5,000 leads processed monthly",
+      "Instant response (under 5 min vs 47hr industry avg)",
+      "ICP scoring and adaptive lead qualification",
+      "Automated multi-touch follow-up sequences",
+      "70-80% lower cost vs human SDR",
+      "Lead history and sentiment tracked over months",
+    ],
+    metric: "70-80%",
+    metricLabel: "lower cost per meeting",
+    gradient: "from-orange-500/20 to-orange-500/5",
+    glow: "rgba(249, 115, 22, 0.15)",
+    dot: "bg-orange-400",
+    textAccent: "text-orange-400",
+    check: "text-orange-400",
+  },
+  {
+    name: "Content Engine Agent",
+    tagline: "Social media on autopilot — fed by your business brain",
+    description:
+      "Runs your entire organic content operation, powered by your Auto Knowledge Base and real-time business updates. When you text your Owner Brain \"Add today's special: Truffle pasta AED 65\", the Content Engine can turn that into an Instagram post, a TikTok video, and a LinkedIn update — automatically. Generates platform-specific posts, creates short-form video with Arabic and English voice synthesis, and publishes on schedule. Your brand voice stays consistent because the AI knows your business inside out.",
     benefits: [
       "7+ posts per week across platforms",
+      "Content generated from live business updates",
       "Arabic and English bilingual content",
       "AI-generated video with voice synthesis",
-      "Consistent brand voice",
-      "Performance analytics loop",
+      "Auto-pulls from your knowledge base for accuracy",
+      "Consistent brand voice trained on your data",
+      "Performance analytics loop for optimization",
       "From 30+ min to under 2 min per post",
     ],
     metric: "<2 min",
@@ -73,14 +123,17 @@ const agents = [
   },
   {
     name: "HR Screening and Scheduling",
-    tagline: "Hire faster, screen smarter",
+    tagline: "Hire faster — interviews booked into your calendar automatically",
     description:
-      "Ingests CVs, scores candidates against your criteria, sends personalized advancement or rejection messages, and books interviews directly into hiring manager calendars.",
+      "Ingests CVs, scores candidates against your criteria, sends personalized advancement or rejection messages in Arabic and English, and books interviews directly into hiring manager calendars via Google Calendar, Outlook, or CalDAV. Complaint and escalation alerts go straight to your Owner Brain channel. Every candidate interaction is remembered — re-applicants are recognized and their history is surfaced instantly.",
     benefits: [
       "10-15 hours saved per hiring cycle",
+      "Calendar sync: Google, Outlook, CalDAV",
+      "Persistent candidate memory across applications",
       "Consistent, fair candidate scoring",
-      "Personalized communication to every applicant",
+      "Personalized bilingual communication",
       "Automated interview scheduling",
+      "Owner Brain alerts for top candidates",
       "Full audit trail for compliance",
     ],
     metric: "10-15h",
@@ -93,15 +146,18 @@ const agents = [
   },
   {
     name: "Financial Intelligence Agent",
-    tagline: "Your weekly financial advisor",
+    tagline: "Weekly reports pushed to your WhatsApp — not buried in a dashboard",
     description:
-      "Connects to your financial data, categorizes transactions, detects anomalies, and delivers weekly financial health reports in plain language.",
+      "Connects to your financial data, categorizes transactions, detects anomalies, and delivers weekly financial health reports in plain language — directly to your Owner Brain WhatsApp channel. Unusual spend? You get an alert. Cash flow running thin? You know before it is a crisis. Text back questions like \"What did we spend on marketing last month?\" and get instant answers. No spreadsheets, no logins.",
     benefits: [
+      "Reports delivered to your Owner WhatsApp channel",
       "12 hours per month returned to you",
+      "Anomaly alerts pushed in real time",
       "Automated transaction categorization",
-      "Anomaly detection and flagging",
-      "Weekly and monthly reports",
-      "Cash flow forecasting",
+      "Cash flow forecasting with plain-language summaries",
+      "Text-back queries for instant financial answers",
+      "Weekly and monthly trend reports",
+      "Zero spreadsheets or dashboards required",
     ],
     metric: "12h/mo",
     metricLabel: "time returned",
@@ -131,6 +187,10 @@ export default function ServicesPage() {
             <a href="/services/" className="text-white transition-colors duration-300">Services</a>
             <a href="/process/" className="hover:text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
+            <a href="https://project-agent-chi.vercel.app/login" className="hover:text-white transition-colors duration-300">Login</a>
+            <a href="https://project-agent-chi.vercel.app/signup" className="group inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/20 px-5 py-2 text-[13px] font-semibold text-white transition-all duration-300 active:scale-[0.97]">
+              Sign up
+            </a>
             <a href="/book-audit/" className="group inline-flex items-center gap-2 rounded-full bg-brand-500 hover:bg-brand-400 px-5 py-2 text-[13px] font-semibold text-white transition-all duration-300 active:scale-[0.97]">
               Book free audit
               <svg className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
@@ -150,15 +210,16 @@ export default function ServicesPage() {
                 Our services
               </span>
               <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter leading-none mt-4">
-                5 AI agents,
+                7 AI agents,
                 <br />
                 <span className="bg-gradient-to-r from-brand-400 via-emerald-300 to-brand-500 bg-clip-text text-transparent">
-                  battle-tested
+                  persistent memory,
                 </span>
+                <br />
+                your own AI Chief of Staff
               </h1>
               <p className="mt-4 text-base text-white/50 leading-relaxed max-w-[52ch]">
-                Each agent is ready to deploy for your business in under two weeks.
-                Pick one or deploy them all as a unified system.
+                Every agent remembers every customer. Your Owner Brain pushes alerts and takes commands via WhatsApp. Industry-specific setup, self-service onboarding, go live in minutes.
               </p>
             </div>
           </FadeUp>
@@ -254,7 +315,7 @@ export default function ServicesPage() {
               <div className="relative max-w-xl">
                 <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter">Not sure which agents you need?</h2>
                 <p className="mt-3 text-sm text-white/40 leading-relaxed">
-                  Book a free 30-minute audit. We map your operations and recommend the right configuration.
+                  Book a free 30-minute audit. We map your operations, configure your industry-specific agents, and get your Owner Brain channel live — so you can run your business from WhatsApp.
                 </p>
                 <a href="/book-audit/" className="group inline-flex items-center gap-3 mt-6 rounded-full bg-brand-500 hover:bg-brand-400 px-8 py-4 text-sm font-semibold text-white transition-all duration-500 active:scale-[0.97] shadow-[0_0_30px_rgba(34,197,94,0.3)] hover:shadow-[0_0_50px_rgba(34,197,94,0.4)]">
                   Book free AI audit
@@ -283,6 +344,8 @@ export default function ServicesPage() {
             <a href="/services/" className="text-white/60">Services</a>
             <a href="/process/" className="hover:text-white/60 transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white/60 transition-colors duration-300">Case study</a>
+            <a href="https://project-agent-chi.vercel.app/login" className="hover:text-white/60 transition-colors duration-300">Login</a>
+            <a href="https://project-agent-chi.vercel.app/signup" className="hover:text-white/60 transition-colors duration-300">Sign up</a>
             <a href="/book-audit/" className="hover:text-white/60 transition-colors duration-300">Book audit</a>
           </div>
           <p className="text-xs text-white/20">

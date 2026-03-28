@@ -24,6 +24,10 @@ export default function BookAuditPage() {
             <a href="/services/" className="hover:text-white transition-colors duration-300">Services</a>
             <a href="/process/" className="hover:text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
+            <a href="https://project-agent-chi.vercel.app/login" className="hover:text-white transition-colors duration-300">Login</a>
+            <a href="https://project-agent-chi.vercel.app/signup" className="group inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/20 px-5 py-2 text-[13px] font-semibold text-white transition-all duration-300 active:scale-[0.97]">
+              Sign up
+            </a>
           </div>
         </div>
       </nav>
@@ -176,6 +180,8 @@ export default function BookAuditPage() {
             <a href="/services/" className="hover:text-white/60 transition-colors duration-300">Services</a>
             <a href="/process/" className="hover:text-white/60 transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white/60 transition-colors duration-300">Case study</a>
+            <a href="https://project-agent-chi.vercel.app/login" className="hover:text-white/60 transition-colors duration-300">Login</a>
+            <a href="https://project-agent-chi.vercel.app/signup" className="hover:text-white/60 transition-colors duration-300">Sign up</a>
             <a href="/book-audit/" className="text-white/60">Book audit</a>
           </div>
           <p className="text-xs text-white/20">

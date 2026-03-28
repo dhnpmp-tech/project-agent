@@ -176,6 +176,10 @@ export default function OnboardingPage() {
         data: { client_id: clientId },
       });
 
+      // 1c. Force session refresh so the JWT cookie includes the new client_id
+      // Without this, the dashboard's server-side queries will fail RLS checks
+      await supabase.auth.refreshSession();
+
       // 2. Build merged knowledge from crawl + overrides
       const finalDesc =
         knowledgeOverrides.businessDescription ||
@@ -293,6 +297,13 @@ export default function OnboardingPage() {
         setLoading(false);
         return;
       }
+
+      // 5. Trigger auto-provisioning (non-blocking)
+      fetch("/api/provisioning/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: clientId }),
+      }).catch(() => {}); // Non-blocking — don't fail onboarding if this errors
 
       window.location.href = "/dashboard";
     } catch {

@@ -8,10 +8,10 @@ import { motion } from "framer-motion";
 const steps = [
   {
     step: "01",
-    title: "Free AI audit",
-    duration: "30 minutes",
-    description: "We map your business operations and identify exactly which tasks can be automated. You get a written roadmap with ROI estimates — usable even if you choose not to work with us.",
-    details: ["Map current workflows", "Identify automation wins", "Estimate time and cost savings"],
+    title: "Sign up and tell us about your business",
+    duration: "5 minutes",
+    description: "Enter your company profile and drop in your website URL. Our AI instantly crawls your site and auto-builds your FAQ, services list, team directory, social profiles, and review sources. No forms to fill. No PDFs to upload. Your knowledge base writes itself.",
+    details: ["Company profile setup", "Auto website crawl", "AI-generated knowledge base"],
     color: "text-brand-400",
     border: "border-brand-500/20",
     gradient: "from-brand-500/10 to-transparent",
@@ -19,10 +19,10 @@ const steps = [
   },
   {
     step: "02",
-    title: "Agent selection and customization",
-    duration: "1-2 days",
-    description: "Based on the audit, we select the right agents for your business. You fill a simple intake form with your business FAQ, brand voice, and integration details. Takes about 20 minutes.",
-    details: ["Select agent configuration", "20-min intake form", "Define brand voice and tone"],
+    title: "Pick your agents and configure your industry",
+    duration: "5 minutes",
+    description: "Select the AI agents you need — receptionist, sales closer, booking manager, support. Then configure your industry-specific setup: restaurants get SevenRooms integration with menu PDF and cuisine type. Real estate gets property types, service areas, and budget ranges. Healthcare and beauty get service lists with appointment durations. Every agent is pre-trained for your vertical.",
+    details: ["Agent selection", "Industry-specific setup", "Calendar and CRM integration"],
     color: "text-sky-400",
     border: "border-sky-500/20",
     gradient: "from-sky-500/10 to-transparent",
@@ -30,10 +30,10 @@ const steps = [
   },
   {
     step: "03",
-    title: "Build and deploy",
-    duration: "5-10 days",
-    description: "We configure your agents with your business knowledge, connect them to your WhatsApp, CRM, and calendar, and deploy them on isolated, secure infrastructure.",
-    details: ["Connect integrations", "Train on your knowledge base", "Deploy to secure infrastructure"],
+    title: "Connect WhatsApp and go live",
+    duration: "Instant",
+    description: "Two WhatsApp channels deploy automatically. A customer-facing number handles inquiries, bookings, and support 24/7. A private Owner Brain channel sends you booking alerts, complaint escalations, lead notifications, and daily summaries. Text it back to update your business on the fly — \"add today's special: Wagyu Steak AED 280\" — and your agent knows instantly.",
+    details: ["Customer WhatsApp channel", "Private Owner Brain channel", "Real-time business updates via text"],
     color: "text-violet-400",
     border: "border-violet-500/20",
     gradient: "from-violet-500/10 to-transparent",
@@ -41,10 +41,10 @@ const steps = [
   },
   {
     step: "04",
-    title: "Test and launch",
-    duration: "1-2 days",
-    description: "We run comprehensive tests — send test messages, simulate leads, verify all integrations. You review and approve every detail. Then we go live.",
-    details: ["End-to-end testing", "Your review and approval", "Go live"],
+    title: "Your agents learn and remember everything",
+    duration: "From day one",
+    description: "Every customer interaction is stored with persistent memory — preferences, past orders, sentiment, conversation history — across months and years. Your regulars get recognized. Your new leads get nurtured. Your agents don't just respond, they build relationships. The longer they run, the smarter they get.",
+    details: ["Persistent customer memory", "Preference and sentiment tracking", "Agents that get smarter daily"],
     color: "text-amber-400",
     border: "border-amber-500/20",
     gradient: "from-amber-500/10 to-transparent",
@@ -52,10 +52,10 @@ const steps = [
   },
   {
     step: "05",
-    title: "Monitor and optimize",
+    title: "Monitor, manage, and scale from your dashboard",
     duration: "Ongoing",
-    description: "You get a branded dashboard showing agent performance in real-time. Monthly reports track ROI. We continuously optimize based on conversation data and your feedback.",
-    details: ["Real-time dashboard", "Monthly ROI reports", "Continuous optimization"],
+    description: "Your live dashboard shows every agent's status, activity feeds, conversation logs, and performance reports in real-time. Manage WhatsApp channels, review escalations, and track ROI — all from one screen. Connect Google Calendar, Outlook, or SevenRooms to keep bookings in sync. Scale to new locations in minutes, not months.",
+    details: ["Live agent dashboard", "Calendar and booking sync", "One-click multi-location scaling"],
     color: "text-emerald-400",
     border: "border-emerald-500/20",
     gradient: "from-emerald-500/10 to-transparent",
@@ -81,6 +81,10 @@ export default function ProcessPage() {
             <a href="/services/" className="hover:text-white transition-colors duration-300">Services</a>
             <a href="/process/" className="text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
+            <a href="https://project-agent-chi.vercel.app/login" className="hover:text-white transition-colors duration-300">Login</a>
+            <a href="https://project-agent-chi.vercel.app/signup" className="group inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/20 px-5 py-2 text-[13px] font-semibold text-white transition-all duration-300 active:scale-[0.97]">
+              Sign up
+            </a>
             <a href="/book-audit/" className="group inline-flex items-center gap-2 rounded-full bg-brand-500 hover:bg-brand-400 px-5 py-2 text-[13px] font-semibold text-white transition-all duration-300 active:scale-[0.97]">
               Book free audit
               <svg className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
@@ -100,14 +104,14 @@ export default function ProcessPage() {
                 Our process
               </span>
               <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter leading-none mt-4">
-                From first call to
+                Onboard yourself.
                 <br />
                 <span className="bg-gradient-to-r from-brand-400 via-sky-400 to-violet-400 bg-clip-text text-transparent">
-                  live AI agents
+                  Go live in minutes.
                 </span>
               </h1>
               <p className="mt-4 text-base text-white/50 leading-relaxed max-w-[52ch]">
-                Under two weeks. No technical knowledge required from you.
+                You onboard yourself in minutes. Our AI builds your knowledge base automatically. Your agents get smarter every day.
               </p>
             </div>
           </FadeUp>
@@ -184,12 +188,12 @@ export default function ProcessPage() {
                   transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
                 />
                 <div className="relative">
-                  <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter">Start with a free AI audit</h2>
+                  <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter">Your AI team is ready. Are you?</h2>
                   <p className="mt-3 text-sm text-white/40 leading-relaxed max-w-md">
-                    30 minutes. Written roadmap. No commitment.
+                    No demos. No sales calls. Sign up, paste your website, and watch your agents come alive.
                   </p>
                   <a href="/book-audit/" className="group inline-flex items-center gap-3 mt-6 rounded-full bg-brand-500 hover:bg-brand-400 px-8 py-4 text-sm font-semibold text-white transition-all duration-500 active:scale-[0.97] shadow-[0_0_30px_rgba(34,197,94,0.3)] hover:shadow-[0_0_50px_rgba(34,197,94,0.4)]">
-                    Book your free audit
+                    Start onboarding now
                     <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center transition-transform duration-500 group-hover:translate-x-0.5">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                     </span>
@@ -216,6 +220,8 @@ export default function ProcessPage() {
             <a href="/services/" className="hover:text-white/60 transition-colors duration-300">Services</a>
             <a href="/process/" className="text-white/60">Process</a>
             <a href="/case-study/" className="hover:text-white/60 transition-colors duration-300">Case study</a>
+            <a href="https://project-agent-chi.vercel.app/login" className="hover:text-white/60 transition-colors duration-300">Login</a>
+            <a href="https://project-agent-chi.vercel.app/signup" className="hover:text-white/60 transition-colors duration-300">Sign up</a>
             <a href="/book-audit/" className="hover:text-white/60 transition-colors duration-300">Book audit</a>
           </div>
           <p className="text-xs text-white/20">

@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 const agents = [
   {
     title: "WhatsApp Intelligence",
-    desc: "Powered by Kapso — connects in 2 minutes, no Meta approval wait. Handles 400+ inquiries/month in Arabic and English. AI voice calls, lead qualification, appointment booking, and human escalation. Sub-second responses.",
+    desc: "Powered by Kapso — connects in 2 minutes, no Meta approval wait. Handles 400+ inquiries/month in Arabic and English. Remembers every customer across months — their name, preferences, past orders, complaints. A returning customer in December gets greeted like a regular, not a stranger. Two channels: one for customers, one private line for the owner to get alerts and update the business by text.",
     metric: "65-80%",
     metricLabel: "support load reduction",
     color: "emerald",
@@ -21,7 +21,7 @@ const agents = [
   },
   {
     title: "AI Sales Rep",
-    desc: "Scores leads against your ICP, sends personalized outreach via email and WhatsApp, qualifies through conversation, and books meetings with your team.",
+    desc: "Scores leads against your ICP, sends personalized outreach via email and WhatsApp, qualifies through conversation, and books meetings directly into your calendar. Builds a memory of every prospect — tracks sentiment, key events, and lifetime value. Your owner gets a WhatsApp alert when a hot lead scores 75+, with full context ready.",
     metric: "70-80%",
     metricLabel: "lower cost per meeting",
     color: "amber",
@@ -33,7 +33,7 @@ const agents = [
   },
   {
     title: "Content Engine",
-    desc: "Runs your entire content operation across LinkedIn, Instagram, and TikTok. Generates posts, creates video with AI voice, publishes on schedule. Bilingual.",
+    desc: "Runs your entire content operation across LinkedIn, Instagram, and TikTok. Generates posts from your knowledge base, creates video with AI voice, publishes on schedule. Bilingual Arabic and English. Owner texts 'post about our new special' on WhatsApp — content goes live within minutes.",
     metric: "<2 min",
     metricLabel: "per post (was 30+)",
     color: "rose",
@@ -45,7 +45,7 @@ const agents = [
   },
   {
     title: "HR Screening",
-    desc: "Parses CVs, scores candidates against your criteria, sends personalized messages, and books interviews directly into hiring manager calendars.",
+    desc: "Parses CVs, scores candidates against your criteria, sends personalized messages, and books interviews directly into hiring manager calendars. Connected to your Google Calendar or Outlook. The owner gets a WhatsApp summary: '12 applications received, 3 shortlisted, 2 interviews booked for Thursday.'",
     metric: "10-15h",
     metricLabel: "saved per hiring cycle",
     color: "sky",
@@ -57,7 +57,7 @@ const agents = [
   },
   {
     title: "Financial Intelligence",
-    desc: "Connects to your financial data, categorizes transactions, flags anomalies, and delivers weekly health reports in plain language.",
+    desc: "Connects to your financial data, categorizes transactions, flags anomalies, and delivers weekly health reports in plain language. Supports AED and SAR. Owner gets a daily WhatsApp snapshot: revenue, expenses, anomalies — no dashboard login needed.",
     metric: "12h/mo",
     metricLabel: "returned to owner",
     color: "violet",
@@ -77,9 +77,10 @@ const pricing = [
     setup: "AED 2,999 one-time setup",
     features: [
       "1 AI agent (WhatsApp or Content)",
-      "Arabic + English",
-      "24/7 autonomous operation",
-      "Monthly performance report",
+      "Arabic + English bilingual",
+      "Persistent customer memory",
+      "Owner WhatsApp alerts",
+      "Self-service onboarding",
       "Email support",
     ],
   },
@@ -90,12 +91,12 @@ const pricing = [
     setup: "AED 15,000 one-time setup",
     popular: true,
     features: [
-      "3-5 AI agents",
-      "Full CRM integration (HubSpot, Zoho)",
-      "Custom knowledge base",
-      "Weekly reports and live dashboard",
-      "Priority support",
-      "Dedicated Slack channel",
+      "3-5 AI agents with shared brain",
+      "Customer memory across all channels",
+      "Owner Brain — daily summaries via WhatsApp",
+      "Auto knowledge base from website crawl",
+      "Live dashboard + calendar integration",
+      "Industry setup (restaurant, real estate, clinic)",
     ],
   },
   {
@@ -104,10 +105,10 @@ const pricing = [
     price: "30,000+",
     setup: "Custom setup and integration",
     features: [
-      "Unlimited agents",
-      "Dedicated infrastructure",
-      "UAE data residency",
+      "Unlimited agents with full memory",
+      "Dedicated infrastructure + UAE data residency",
       "Custom integrations and API access",
+      "Owner Brain with custom alert rules",
       "SLA guarantee",
       "Dedicated account manager",
     ],
@@ -132,6 +133,10 @@ export default function HomePage() {
             <a href="/services/" className="hover:text-white transition-colors duration-300">Services</a>
             <a href="/process/" className="hover:text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
+            <a href="https://project-agent-chi.vercel.app/login" className="hover:text-white transition-colors duration-300">Login</a>
+            <a href="https://project-agent-chi.vercel.app/signup" className="group inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 ring-1 ring-white/20 px-5 py-2 text-[13px] font-semibold text-white transition-all duration-300 active:scale-[0.97]">
+              Sign up
+            </a>
             <a href="/book-audit/" className="group inline-flex items-center gap-2 rounded-full bg-brand-500 hover:bg-brand-400 px-5 py-2 text-[13px] font-semibold text-white transition-all duration-300 active:scale-[0.97]">
               Book free audit
               <svg className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
@@ -165,8 +170,9 @@ export default function HomePage() {
 
             <p className="mt-6 text-lg text-white/50 leading-relaxed max-w-[52ch]">
               We deploy fully-managed AI agent systems for SMBs in the Middle East.
-              WhatsApp support (powered by Kapso — live in 2 minutes), sales automation,
-              content, HR, and finance — deployed in under two weeks.
+              WhatsApp support, sales automation, content, HR, and finance — with
+              persistent customer memory, an owner brain that reports to you via
+              WhatsApp, and self-service onboarding that goes live in minutes.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-3">
@@ -267,12 +273,12 @@ export default function HomePage() {
           <FadeUp>
             <div className="max-w-2xl mb-16">
               <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] uppercase tracking-[0.15em] font-semibold bg-white/5 text-white/40 ring-1 ring-white/10 mb-6">
-                5 agents, one system
+                5 agents, one brain, total memory
               </span>
               <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter leading-[1.05]">
-                Each agent works autonomously.
+                They remember every customer.
                 <br />
-                <span className="text-white/40">Together, they transform your business.</span>
+                <span className="text-white/40">They report to you via WhatsApp.</span>
               </h2>
             </div>
           </FadeUp>
@@ -352,10 +358,10 @@ export default function HomePage() {
             <FadeUp delay={0.2}>
               <div className="space-y-5">
                 {[
-                  { step: "01", title: "Free audit", desc: "30-minute call. We map what to automate and estimate your ROI.", color: "text-brand-400", border: "border-brand-500/20", bg: "bg-brand-500/5" },
-                  { step: "02", title: "Configure", desc: "We build your agents with your knowledge base and connect your tools.", color: "text-sky-400", border: "border-sky-500/20", bg: "bg-sky-500/5" },
-                  { step: "03", title: "Launch", desc: "Full testing, your approval, then go live. Usually 5-10 business days.", color: "text-violet-400", border: "border-violet-500/20", bg: "bg-violet-500/5" },
-                  { step: "04", title: "Optimize", desc: "Live dashboard, monthly ROI reports, continuous performance improvements.", color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
+                  { step: "01", title: "Sign up & onboard yourself", desc: "Create your account, enter your company details, and our AI crawls your website to auto-build your knowledge base — FAQ, services, team, socials. Six steps, done in minutes.", color: "text-brand-400", border: "border-brand-500/20", bg: "bg-brand-500/5" },
+                  { step: "02", title: "Pick your agents", desc: "Choose from 5 AI agents. We auto-configure them with your knowledge base, industry setup (restaurant menus, property listings, appointment types), and connect your calendar.", color: "text-sky-400", border: "border-sky-500/20", bg: "bg-sky-500/5" },
+                  { step: "03", title: "Connect WhatsApp & go live", desc: "Click a link, connect your WhatsApp Business number in 2 minutes via Kapso. Your customer-facing AI is live. Your private owner channel starts sending you alerts.", color: "text-violet-400", border: "border-violet-500/20", bg: "bg-violet-500/5" },
+                  { step: "04", title: "Your AI gets smarter every day", desc: "Every customer interaction builds memory. Your owner brain sends you daily summaries. Update your business by texting your AI — menus, prices, availability, all by WhatsApp.", color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
                 ].map((s) => (
                   <motion.div
                     key={s.step}
@@ -403,9 +409,9 @@ export default function HomePage() {
                 Case study
               </span>
               <blockquote className="text-3xl md:text-5xl font-extrabold tracking-tighter leading-[1.1]">
-                &ldquo;I was skeptical about AI handling our customer conversations.
-                But the WhatsApp agent sounds like one of our best agents.
-                <span className="bg-gradient-to-r from-brand-400 to-emerald-300 bg-clip-text text-transparent"> I got my weekends back.</span>&rdquo;
+                &ldquo;A client texted us three months after their first viewing.
+                The AI remembered their name, budget, and that they wanted sea view.
+                <span className="bg-gradient-to-r from-brand-400 to-emerald-300 bg-clip-text text-transparent">It closed the deal before I woke up.</span>&rdquo;
               </blockquote>
               <div className="mt-8 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500/20 to-brand-500/5 flex items-center justify-center ring-1 ring-brand-500/20">
@@ -580,6 +586,8 @@ export default function HomePage() {
             <a href="/services/" className="hover:text-white/60 transition-colors duration-300">Services</a>
             <a href="/process/" className="hover:text-white/60 transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white/60 transition-colors duration-300">Case study</a>
+            <a href="https://project-agent-chi.vercel.app/login" className="hover:text-white/60 transition-colors duration-300">Login</a>
+            <a href="https://project-agent-chi.vercel.app/signup" className="hover:text-white/60 transition-colors duration-300">Sign up</a>
             <a href="/book-audit/" className="hover:text-white/60 transition-colors duration-300">Book audit</a>
           </div>
           <p className="text-xs text-white/20">

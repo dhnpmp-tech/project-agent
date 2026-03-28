@@ -1,6 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { AgentStatusCard } from "@/components/agent-status-card";
 import { ActivityFeed } from "@/components/activity-feed";
+import { SessionRefresh } from "@/components/session-refresh";
 import type { AgentDeployment, ActivityLog } from "@project-agent/shared-types";
 
 export default async function DashboardPage() {
@@ -23,8 +24,12 @@ export default async function DashboardPage() {
     .select("company_name, plan, status")
     .single();
 
+  // If no client data found, the JWT may be stale — trigger a client-side refresh
+  const hasData = !!client;
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <SessionRefresh hasData={hasData} />
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
