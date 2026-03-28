@@ -85,7 +85,13 @@ export async function POST(request: Request) {
   }
 
   // --- Parse body ---
-  let body: { message?: string; mode?: string; restaurantId?: string };
+  let body: {
+    message?: string;
+    mode?: string;
+    restaurantId?: string;
+    sessionId?: string;
+    history?: { role: string; content: string }[];
+  };
   try {
     body = await request.json();
   } catch {
@@ -358,6 +364,16 @@ Response style examples:
 - Customer: "Menu please" → Share the menu categories with prices, keep it clean and scannable.
 - Customer: "Book a table" → "Sure! For how many guests, and when were you thinking?"
 
+For BOOKINGS, naturally collect these before confirming:
+1. Name (if not already known)
+2. Date and time
+3. Number of guests
+4. Any dietary requirements or allergies
+5. Seating preference (indoor/outdoor/private)
+6. Special occasion? (birthday, anniversary, corporate)
+7. Contact number (if not on WhatsApp)
+Don't ask all at once — collect naturally through conversation. Confirm the full booking details at the end.
+
 NEVER use markdown formatting like **bold** or --- dividers. This is WhatsApp, not a document.`;
   }
 
@@ -425,6 +441,35 @@ NEVER use markdown formatting like **bold** or --- dividers. This is WhatsApp, n
 
     // Strip markdown formatting for WhatsApp-style display
     reply = reply.replace(/\*\*/g, "").replace(/^---$/gm, "").trim();
+
+    // Fire-and-forget memory update (non-blocking)
+    // Build conversation messages from history + current exchange
+    const memoryMessages: { role: string; content: string }[] = [];
+    if (body.history && Array.isArray(body.history)) {
+      for (const h of body.history.slice(-10)) {
+        memoryMessages.push({ role: h.role, content: h.content });
+      }
+    }
+    memoryMessages.push({ role: "user", content: message });
+    memoryMessages.push({ role: "assistant", content: reply });
+
+    const baseUrl = request.headers.get("host") || "agents.dcp.sa";
+    const protocol = baseUrl.includes("localhost") ? "http" : "https";
+    fetch(`${protocol}://${baseUrl}/api/memory/update`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({
+        clientId: "3bd50557-6680-43b9-bb8e-261c7f8a19d2",
+        customerPhone: body.sessionId || "demo-user-" + Date.now(),
+        customerName: "Demo User",
+        messages: memoryMessages,
+        industry: "restaurant",
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
 
     return NextResponse.json({ reply });
   } catch (err) {

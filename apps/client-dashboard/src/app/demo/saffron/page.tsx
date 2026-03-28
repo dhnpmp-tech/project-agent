@@ -29,6 +29,11 @@ export default function SaffronCustomerDemo() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [sessionId] = useState(() =>
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `session-${Date.now()}`
+  );
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -53,6 +58,15 @@ export default function SaffronCustomerDemo() {
     setIsTyping(true);
 
     try {
+      // Build conversation history from recent messages (last 10)
+      const recentMessages = messages
+        .filter((m) => m.id !== "welcome")
+        .slice(-10)
+        .map((m) => ({
+          role: m.sender === "user" ? "user" : "assistant",
+          content: m.text,
+        }));
+
       const res = await fetch("/api/demo/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -60,6 +74,8 @@ export default function SaffronCustomerDemo() {
           message: text.trim(),
           mode: "customer",
           restaurantId: "saffron",
+          sessionId,
+          history: recentMessages,
         }),
       });
 
