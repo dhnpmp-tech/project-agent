@@ -56,7 +56,7 @@ Each client gets **two WhatsApp channels**:
 | Website | Next.js 15 + Framer Motion |
 | Database | Supabase (PostgreSQL 17 + Auth + RLS) |
 | WhatsApp | Kapso Platform API (multi-tenant) |
-| AI | MiniMax M2.5 (230B params MoE) |
+| AI | MiniMax M2.7 (230B params MoE) |
 | Web Search | Firecrawl API |
 | Workflows | n8n (self-hosted) |
 | Email | Resend (6 templates) |
@@ -104,7 +104,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
 # AI
-MINIMAX_API_KEY=              # MiniMax M2.5 for agent responses
+MINIMAX_API_KEY=              # MiniMax M2.7 for agent responses
 FIRECRAWL_API_KEY=            # Web search for live context
 
 # WhatsApp

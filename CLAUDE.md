@@ -15,7 +15,7 @@ HR screening, and financial intelligence — deployed in under two weeks.
 | Database | Supabase (PostgreSQL + Auth + RLS) |
 | WhatsApp API | Kapso (kapso.ai) — multi-tenant platform API |
 | AI (customer agents) | Claude Sonnet 4.6 (responses) + Claude Haiku 4.5 (classification) |
-| AI (owner brain) | MiniMax M2.7 via OpenRouter (15x cheaper, 200K context) |
+| AI (owner brain) | MiniMax M2.7 (230B MoE, auto-improve, native on api.minimax.io) |
 | AI (memory analysis) | MiniMax M2.7 (post-conversation analysis, ~$0.001/convo) |
 | Workflow orchestration | n8n (self-hosted, one container per client) |
 | Infrastructure | Docker + Traefik v3 (reverse proxy, auto-SSL) |

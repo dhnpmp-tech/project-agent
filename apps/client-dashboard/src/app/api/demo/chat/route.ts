@@ -373,7 +373,7 @@ NEVER use markdown formatting like **bold** or --- dividers. This is WhatsApp, n
   // --- Call MiniMax M2.5 API ---
   const apiUrl = "https://api.minimax.io/v1/chat/completions";
   const apiKey = process.env.MINIMAX_API_KEY;
-  const modelName = "MiniMax-M2.5";
+  const modelName = "MiniMax-M2.7";
 
   if (!apiKey) {
     console.error("[demo/chat] MINIMAX_API_KEY not configured");
