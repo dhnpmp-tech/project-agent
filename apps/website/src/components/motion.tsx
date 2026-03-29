@@ -22,11 +22,10 @@ export function FadeUp({
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      animate={inView ? { opacity: 1, y: 0, filter: "blur(0px)" } : { opacity: 1, y: 0, filter: "blur(0px)" }}
+      initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
+      animate={inView ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
       transition={{ ...smooth, delay }}
       className={className}
-      style={{ opacity: 1 }}
     >
       {children}
     </motion.div>
@@ -40,7 +39,7 @@ const staggerContainer: Variants = {
 };
 
 const staggerItem: Variants = {
-  hidden: { opacity: 1, y: 0, filter: "blur(0px)" },
+  hidden: { opacity: 0, y: 30, filter: "blur(6px)" },
   show: { opacity: 1, y: 0, filter: "blur(0px)", transition: smooth },
 };
 
@@ -58,10 +57,9 @@ export function StaggerList({
     <motion.div
       ref={ref}
       variants={staggerContainer}
-      initial="show"
-      animate={inView ? "show" : "show"}
+      initial="hidden"
+      animate={inView ? "show" : "hidden"}
       className={className}
-      style={{ opacity: 1 }}
     >
       {children}
     </motion.div>
@@ -76,7 +74,7 @@ export function StaggerItem({
   className?: string;
 }) {
   return (
-    <motion.div variants={staggerItem} className={className} style={{ opacity: 1 }}>
+    <motion.div variants={staggerItem} className={className}>
       {children}
     </motion.div>
   );
@@ -98,11 +96,10 @@ export function ScaleIn({
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 1, scale: 1 }}
-      animate={inView ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={inView ? { opacity: 1, scale: 1 } : {}}
       transition={{ ...spring, delay }}
       className={className}
-      style={{ opacity: 1 }}
     >
       {children}
     </motion.div>
@@ -121,10 +118,41 @@ export function Counter({
   prefix?: string;
   className?: string;
 }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true });
+
   return (
-    <span className={className}>
-      {prefix}{value}{suffix}
-    </span>
+    <motion.span
+      ref={ref}
+      className={className}
+      initial={{ opacity: 0 }}
+      animate={inView ? { opacity: 1 } : {}}
+    >
+      {prefix}
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={inView ? { opacity: 1 } : {}}
+      >
+        {inView ? (
+          <CounterNumber value={value} />
+        ) : (
+          "0"
+        )}
+      </motion.span>
+      {suffix}
+    </motion.span>
+  );
+}
+
+function CounterNumber({ value }: { value: number }) {
+  return (
+    <motion.span
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      {value}
+    </motion.span>
   );
 }
 
@@ -146,7 +174,6 @@ export function GlowCard({
         y: -4,
       }}
       transition={spring}
-      style={{ opacity: 1 }}
     >
       {children}
     </motion.div>
