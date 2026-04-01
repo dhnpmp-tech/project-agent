@@ -39,9 +39,17 @@ export async function middleware(request: NextRequest) {
   const authPages = ["/login", "/signup", "/password-reset"];
 
   // Redirect unauthenticated users to login
-  if (!user && (pathname.startsWith("/dashboard") || pathname === "/onboarding")) {
+  if (!user && (pathname.startsWith("/dashboard") || pathname === "/onboarding" || pathname.startsWith("/admin"))) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // Admin route protection — only specific admin emails allowed
+  const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "setup@dcp.sa").split(",").map(e => e.trim());
+  if (pathname.startsWith("/admin") && user && !ADMIN_EMAILS.includes(user.email || "")) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/dashboard";
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -57,5 +65,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/onboarding", "/login", "/signup", "/password-reset"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/onboarding", "/login", "/signup", "/password-reset"],
 };
