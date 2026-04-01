@@ -2,6 +2,7 @@ import { createServerSupabase } from "@/lib/supabase-server";
 import { AgentStatusCard } from "@/components/agent-status-card";
 import { ActivityFeed } from "@/components/activity-feed";
 import { SessionRefresh } from "@/components/session-refresh";
+import { NeuralBrain } from "@/components/neural-brain";
 import type { AgentDeployment, ActivityLog } from "@project-agent/shared-types";
 
 export default async function DashboardPage() {
@@ -92,6 +93,18 @@ export default async function DashboardPage() {
               </p>
             )}
           </div>
+        </section>
+
+        {/* AI Brain */}
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Your AI Brain
+          </h2>
+          <NeuralBrain
+            totalCustomers={12}
+            totalFacts={42}
+            isLoading={false}
+          />
         </section>
 
         {/* Activity Feed */}
