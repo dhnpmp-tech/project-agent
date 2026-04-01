@@ -66,6 +66,20 @@ export async function POST(request: NextRequest) {
       `[provisioning] Started for "${client.company_name}" (${clientId})`
     );
 
+    // Generate AI persona (non-blocking — runs in background)
+    if (process.env.MINIMAX_API_KEY) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agents.dcp.sa";
+      fetch(`${appUrl}/api/provisioning/generate-persona`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", cookie: request.headers.get("cookie") || "" },
+        body: JSON.stringify({ clientId }),
+      }).then(() => {
+        console.log(`[provisioning] Persona generation triggered for "${client.company_name}"`);
+      }).catch((err) => {
+        console.error(`[provisioning] Persona generation failed:`, err);
+      });
+    }
+
     // Send onboarding complete email via Resend (if configured)
     if (process.env.RESEND_API_KEY && client.contact_email) {
       try {
