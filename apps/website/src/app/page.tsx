@@ -179,10 +179,9 @@ export default function HomePage() {
             </h1>
 
             <p className="mt-8 text-lg text-white/50 leading-[1.7] max-w-[44ch]">
-              AI employees with real personalities, real memory, and real results.
-              They answer your customers, chase your leads, post your content,
-              screen your hires, and track your finances. In Arabic and English,
-              around the clock. Your AI Chief of Staff reports every morning.
+              AI employees that remember every customer, improve themselves
+              nightly from real conversations, and proactively follow up — so
+              no booking is ever lost. In Arabic and English, around the clock.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-4">
@@ -199,9 +198,9 @@ export default function HomePage() {
 
             <div className="mt-14 flex gap-12">
               {[
-                { value: "380+", label: "inquiries handled monthly" },
-                { value: "19h", label: "owner time saved weekly" },
-                { value: "<10m", label: "to go live" },
+                { value: "380+", label: "inquiries monthly" },
+                { value: "2 min", label: "to go live" },
+                { value: "24/7", label: "self-improving" },
               ].map((s) => (
                 <div key={s.label}>
                   <p className="text-2xl font-extrabold tracking-tighter font-mono text-white">{s.value}</p>
@@ -317,6 +316,118 @@ export default function HomePage() {
               </a>
             </div>
           </FadeUp>
+        </div>
+      </section>
+
+      {/* ═══ THE INTELLIGENCE ENGINE ═══ */}
+      <section id="intelligence" className="px-6 py-24 relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-emerald-500/[0.03] rounded-full blur-[120px] pointer-events-none" />
+        <div className="max-w-[1400px] mx-auto relative z-10">
+          <FadeUp>
+            <div className="max-w-2xl mb-14">
+              <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] uppercase tracking-[0.15em] font-semibold bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20 mb-8">
+                The Intelligence Engine
+              </span>
+              <h2 className="text-3xl md:text-[2.75rem] font-extrabold tracking-[-0.03em] leading-[1.1]">
+                Gets smarter
+                <br />
+                <span className="text-white/30">every single night.</span>
+              </h2>
+              <p className="mt-6 text-white/40 text-[15px] leading-relaxed max-w-[50ch]">
+                Most AI stays static after deployment. Ours analyzes its own performance, writes new rules, and proactively reaches out to customers — without you lifting a finger.
+              </p>
+            </div>
+          </FadeUp>
+
+          <StaggerList className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <StaggerItem>
+              <GlowCard
+                glowColor={colorMap.emerald.glow}
+                className={cn(
+                  "rounded-2xl p-7 bg-white/[0.02] ring-1 ring-white/[0.06] transition-all duration-500 h-full",
+                  colorMap.emerald.ring
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", colorMap.emerald.bg, colorMap.emerald.text)}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-white">Self-Improving AI</h3>
+                    <p className="mt-2 text-sm text-white/40 leading-relaxed max-w-[50ch]">Your agent analyzes every conversation overnight. What converted? Where did customers drop off? It writes new behavioral rules and applies them to its own prompt. By morning, it&apos;s measurably better than yesterday.</p>
+                  </div>
+                </div>
+              </GlowCard>
+            </StaggerItem>
+
+            <StaggerItem>
+              <GlowCard
+                glowColor={colorMap.amber.glow}
+                className={cn(
+                  "rounded-2xl p-7 bg-white/[0.02] ring-1 ring-white/[0.06] transition-all duration-500 h-full",
+                  colorMap.amber.ring
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", colorMap.amber.bg, colorMap.amber.text)}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-white">Proactive Follow-ups</h3>
+                    <p className="mt-2 text-sm text-white/40 leading-relaxed max-w-[50ch]">Reservation reminders before the visit. Feedback requests after. Re-engagement offers when a customer hasn&apos;t been back in 14 days. All automatic, all via WhatsApp templates approved by Meta.</p>
+                  </div>
+                </div>
+              </GlowCard>
+            </StaggerItem>
+
+            <StaggerItem>
+              <GlowCard
+                glowColor={colorMap.sky.glow}
+                className={cn(
+                  "rounded-2xl p-7 bg-white/[0.02] ring-1 ring-white/[0.06] transition-all duration-500 h-full",
+                  colorMap.sky.ring
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", colorMap.sky.bg, colorMap.sky.text)}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-white">Weekly Intelligence Reports</h3>
+                    <p className="mt-2 text-sm text-white/40 leading-relaxed max-w-[50ch]">Every Sunday, the owner gets a WhatsApp brief: bookings, trends, occasions, dietary patterns, drop-off rates, and AI-generated recommendations. Data that tells you what to do, not just what happened.</p>
+                  </div>
+                </div>
+              </GlowCard>
+            </StaggerItem>
+
+            <StaggerItem>
+              <GlowCard
+                glowColor={colorMap.violet.glow}
+                className={cn(
+                  "rounded-2xl p-7 bg-white/[0.02] ring-1 ring-white/[0.06] transition-all duration-500 h-full",
+                  colorMap.violet.ring
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", colorMap.violet.bg, colorMap.violet.text)}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-white">WhatsApp Onboarding</h3>
+                    <p className="mt-2 text-sm text-white/40 leading-relaxed max-w-[50ch]">No website needed. Text our setup number on WhatsApp, answer 5 questions in 2 minutes, and your AI agent is live. Works in Arabic and English.</p>
+                  </div>
+                </div>
+              </GlowCard>
+            </StaggerItem>
+          </StaggerList>
         </div>
       </section>
 
