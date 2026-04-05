@@ -8,10 +8,10 @@ import { motion } from "framer-motion";
 const steps = [
   {
     step: "01",
-    title: "Sign up and tell us about your business",
-    duration: "5 minutes",
-    description: "Enter your company profile and drop in your website URL. Our AI instantly crawls your entire site and auto-builds your FAQ, services list, team directory, social profiles, and review sources. No forms to fill. No PDFs to upload. No manual data entry. Your knowledge base writes itself — ready for your AI agents to use from minute one.",
-    details: ["Company profile setup", "Auto website crawl", "AI-generated knowledge base"],
+    title: "Text us on WhatsApp — tell us what you sell",
+    duration: "2 minutes",
+    description: "No forms, no website needed. Just send a WhatsApp message to our setup number. We ask 5 questions: your business name, what you sell with prices, where you deliver, how customers pay, and your contact info. That's it. Two minutes, and your AI agent knows everything about your business.",
+    details: ["WhatsApp-based setup", "5 questions only", "Works in Arabic and English"],
     color: "text-emerald-400",
     bg: "bg-emerald-500/10",
     border: "border-emerald-500/20",
@@ -34,10 +34,10 @@ const steps = [
   },
   {
     step: "03",
-    title: "Connect WhatsApp and go live",
+    title: "Your agent goes live on WhatsApp",
     duration: "Instant",
-    description: "Instant WhatsApp Business API setup — two channels deploy automatically. Your AI persona starts texting customers like a real person: short messages, natural timing, never a wall of text. She handles inquiries, bookings, and support 24/7 in Arabic and English. A private Owner Brain channel pushes daily briefs, hot lead alerts, and complaint escalations. Text it back with natural language commands — \"Add today's special: Wagyu AED 280\" — and your knowledge base updates instantly.",
-    details: ["Multi-message replies like a real person", "Owner Brain with daily briefs", "Bilingual Arabic + English"],
+    description: "Your AI agent starts handling customers immediately. She texts like a real person — short messages, natural timing, never a wall of text. She takes bookings, collects delivery addresses, confirms payment, and follows up after every order. Arabic and English. 24/7. She proactively sells — suggests larger quantities, gift wrapping, repeat orders. Every conversation builds customer memory that lasts forever.",
+    details: ["Multi-message replies like a real person", "Proactive selling and follow-up", "Bilingual Arabic + English"],
     color: "text-violet-400",
     bg: "bg-violet-500/10",
     border: "border-violet-500/20",
