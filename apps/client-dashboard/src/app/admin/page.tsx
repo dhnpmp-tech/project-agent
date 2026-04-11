@@ -178,6 +178,21 @@ export default function AdminOverviewPage() {
         </div>
       )}
 
+      {/* New Feature Stats */}
+      {loading ? (
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatSkeleton />
+          <StatSkeleton />
+          <StatSkeleton />
+        </div>
+      ) : (
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label="Total Pipeline Value" value="-" accent />
+          <StatCard label="Active AI Rules" value="-" />
+          <StatCard label="Content Generated (Week)" value="-" />
+        </div>
+      )}
+
       {/* Error */}
       {error && (
         <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">

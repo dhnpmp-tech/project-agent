@@ -23,8 +23,8 @@ const steps = [
     step: "02",
     title: "We generate your AI persona and configure your industry",
     duration: "5 minutes",
-    description: "We create a custom AI persona for your business — a character with a backstory, personality quirks, and a voice that matches your brand. She never breaks character, never says she's an AI. Then we configure your industry setup: restaurants get menu management and dietary tracking. Real estate gets property search and lead scoring. Healthcare and beauty get appointment booking. Every agent is powered by MiniMax M2.7 and pre-trained for your vertical.",
-    details: ["Custom AI persona with backstory and voice", "Industry-specific configuration", "MiniMax M2.7 AI engine"],
+    description: "We create a custom AI persona for your business — a character with a backstory, personality quirks, and a voice that matches your brand. She never breaks character, never says she's an AI. Then we configure your industry setup: restaurants get menu management and dietary tracking. Real estate gets property search and lead scoring. Healthcare and beauty get appointment booking. Every agent is pre-trained for your vertical.",
+    details: ["Custom AI persona with backstory and voice", "Industry-specific configuration", "Pre-trained AI engine for your vertical"],
     color: "text-sky-400",
     bg: "bg-sky-500/10",
     border: "border-sky-500/20",
@@ -49,8 +49,8 @@ const steps = [
     step: "04",
     title: "Your agents learn and remember everything",
     duration: "From day one",
-    description: "MiniMax M2.7 auto-improves with every conversation. Every customer interaction builds persistent memory — name, allergies, dietary restrictions (and who in the family has them), favorite dishes, usual party size, preferred seating, visit timing, booking history, and sentiment tracking. A guest who had a bad experience last time gets extra care. A returning customer in December is greeted by name with preferences from January. Voice messages are transcribed and remembered. Live web search enriches every response with weather, events, and local context.",
-    details: ["MiniMax M2.7 auto-improve", "Deep customer memory profiles", "Live web search enrichment"],
+    description: "Your AI auto-improves with every conversation. Every customer interaction builds persistent memory — name, allergies, dietary restrictions (and who in the family has them), favorite dishes, usual party size, preferred seating, visit timing, booking history, and sentiment tracking. A guest who had a bad experience last time gets extra care. A returning customer in December is greeted by name with preferences from January. Voice messages are transcribed and remembered. Live web search enriches every response with weather, events, and local context.",
+    details: ["Self-improving AI engine", "Deep customer memory profiles", "Live web search enrichment"],
     color: "text-amber-400",
     bg: "bg-amber-500/10",
     border: "border-amber-500/20",
@@ -89,6 +89,7 @@ export default function ProcessPage() {
           </a>
           <div className="hidden md:flex items-center gap-7 text-[13px] font-medium text-white/40">
             <a href="/services/" className="hover:text-white transition-colors duration-300">Services</a>
+            <a href="/pricing/" className="hover:text-white transition-colors duration-300">Pricing</a>
             <a href="/process/" className="text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
             <a href="https://agents.dcp.sa/login" className="hover:text-white transition-colors duration-300">Login</a>
@@ -121,7 +122,7 @@ export default function ProcessPage() {
                 </span>
               </h1>
               <p className="mt-4 text-base text-white/40 leading-relaxed max-w-[52ch]">
-                Self-service onboarding. AI crawls your website and builds your knowledge base. MiniMax M2.7 powers every conversation and auto-improves daily. Live in minutes, not weeks.
+                Self-service onboarding. AI crawls your website and builds your knowledge base. Your AI powers every conversation and auto-improves daily. Live in minutes, not weeks.
               </p>
             </div>
           </FadeUp>
@@ -230,6 +231,7 @@ export default function ProcessPage() {
           </div>
           <div className="flex items-center gap-8 text-xs text-white/30 font-medium">
             <a href="/services/" className="hover:text-white/50 transition-colors">Services</a>
+            <a href="/pricing/" className="hover:text-white/50 transition-colors">Pricing</a>
             <a href="/process/" className="hover:text-white/50 transition-colors">Process</a>
             <a href="/case-study/" className="hover:text-white/50 transition-colors">Case study</a>
             <a href="https://agents.dcp.sa/login" className="hover:text-white/50 transition-colors">Login</a>

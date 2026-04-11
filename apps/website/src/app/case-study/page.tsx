@@ -26,7 +26,7 @@ const agents = [
   },
   {
     name: "Auto Knowledge Base — Crawled & Ready",
-    desc: "During self-service onboarding, Ahmed pasted his website URL and our AI crawled the agency's entire site — 127 property listings, team bios, service pages, and FAQs. The knowledge base built itself in minutes. No manual data entry. No CSV uploads. It knew the difference between off-plan projects in Dubai Hills and ready units in Marina before the first customer ever texted. MiniMax M2.7 auto-improves from every conversation, getting smarter about properties, pricing, and customer preferences every single day.",
+    desc: "During self-service onboarding, Ahmed pasted his website URL and our AI crawled the agency's entire site — 127 property listings, team bios, service pages, and FAQs. The knowledge base built itself in minutes. No manual data entry. No CSV uploads. It knew the difference between off-plan projects in Dubai Hills and ready units in Marina before the first customer ever texted. The AI auto-improves from every conversation, getting smarter about properties, pricing, and customer preferences every single day.",
     dot: "bg-rose-500",
     border: "hover:ring-rose-500/30",
   },
@@ -48,6 +48,7 @@ export default function CaseStudyPage() {
           </a>
           <div className="hidden md:flex items-center gap-7 text-[13px] font-medium text-white/40">
             <a href="/services/" className="hover:text-white transition-colors duration-300">Services</a>
+            <a href="/pricing/" className="hover:text-white transition-colors duration-300">Pricing</a>
             <a href="/process/" className="hover:text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="text-white transition-colors duration-300">Case study</a>
             <a href="https://agents.dcp.sa/login" className="hover:text-white transition-colors duration-300">Login</a>
@@ -166,8 +167,8 @@ export default function CaseStudyPage() {
                 Our AI crawled his entire website automatically — 127 property listings, team bios, service descriptions,
                 area guides — and built a complete knowledge base in minutes. Instant WhatsApp Business API setup deployed
                 two channels: one for customers with voice message support and bilingual auto-detection, one private Owner
-                Brain channel for Ahmed with daily 9AM briefs. By 10:15am, the first customer inquiry was handled by MiniMax
-                M2.7 AI with sub-second response time. Ahmed watched it happen from his phone and said:
+                Brain channel for Ahmed with daily 9AM briefs. By 10:15am, the first customer inquiry was handled by the
+                AI with sub-second response time. Ahmed watched it happen from his phone and said:
                 <span className="font-semibold text-white">&ldquo;It sounds exactly like my best agent — but faster, and it never forgets.&rdquo;</span>
               </p>
             </div>
@@ -259,7 +260,7 @@ export default function CaseStudyPage() {
                 <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter text-white">Your competitors are still answering WhatsApp manually</h2>
                 <p className="mt-3 text-sm text-white/30 max-w-md mx-auto">
                   Sign up and be live in minutes — not hours, not days. Self-service onboarding. No sales calls.
-                  MiniMax M2.7 AI handles WhatsApp messages, voice notes, and live web searches while your Owner Brain pushes you daily briefs and takes natural language commands. Your AI remembers every customer, qualifies every lead, and gets smarter every single day.
+                  Your AI handles WhatsApp messages, voice notes, and live web searches while your Owner Brain pushes you daily briefs and takes natural language commands. It remembers every customer, qualifies every lead, and gets smarter every single day.
                 </p>
                 <a href="/book-audit/" className="group inline-flex items-center gap-3 mt-6 rounded-full bg-emerald-600 hover:bg-emerald-500 px-8 py-4 text-sm font-semibold text-white transition-all duration-500 active:scale-[0.97] shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:shadow-[0_0_50px_rgba(16,185,129,0.4)]">
                   Book your free audit
@@ -289,6 +290,7 @@ export default function CaseStudyPage() {
           </div>
           <div className="flex items-center gap-8 text-xs text-white/30 font-medium">
             <a href="/services/" className="hover:text-white/50 transition-colors">Services</a>
+            <a href="/pricing/" className="hover:text-white/50 transition-colors">Pricing</a>
             <a href="/process/" className="hover:text-white/50 transition-colors">Process</a>
             <a href="/case-study/" className="hover:text-white/50 transition-colors">Case study</a>
             <a href="https://agents.dcp.sa/login" className="hover:text-white/50 transition-colors">Login</a>

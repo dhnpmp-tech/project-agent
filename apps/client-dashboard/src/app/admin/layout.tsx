@@ -10,6 +10,9 @@ const navItems = [
   { label: "Overview", href: "/admin" },
   { label: "Clients", href: "/admin/clients" },
   { label: "System", href: "/admin/system" },
+  { label: "Sales Rep", href: "/admin/sales" },
+  { label: "Content Engine", href: "/admin/content" },
+  { label: "AI Rules", href: "/admin/ai-rules" },
 ];
 
 export default function AdminLayout({

@@ -10,7 +10,7 @@ const agents = [
     name: "WhatsApp Intelligence Agent",
     tagline: "A real personality that remembers everything. Not a chatbot.",
     description:
-      "Every business gets a custom AI persona — a character with a full backstory, personality, and voice. She never breaks character. Never says she's an AI. She texts like a real person: 2-3 short messages with natural timing, not a wall of text. Powered by MiniMax M2.7 that auto-improves with every conversation. Every customer gets persistent memory across conversations: name, allergies, dietary restrictions (and WHO has them — 'wife is gluten-free'), favorite dishes, usual party size, preferred seating, visit timing, booking history, and sentiment tracking. A guest who messaged in January is greeted by name in December. Birthday? She gets genuinely excited. Bad experience last time? Extra care this time. The persona produces behavior you never programmed — because she's a person, not a script.",
+      "Every business gets a custom AI persona — a character with a full backstory, personality, and voice. She never breaks character. Never says she's an AI. She texts like a real person: 2-3 short messages with natural timing, not a wall of text. The AI auto-improves with every conversation. Every customer gets persistent memory across conversations: name, allergies, dietary restrictions (and WHO has them — 'wife is gluten-free'), favorite dishes, usual party size, preferred seating, visit timing, booking history, and sentiment tracking. A guest who messaged in January is greeted by name in December. Birthday? She gets genuinely excited. Bad experience last time? Extra care this time. The persona produces behavior you never programmed — because she's a person, not a script.",
     benefits: [
       "Custom AI persona with unique backstory, personality, and voice",
       "Multi-message replies — texts like a real person, not a bot",
@@ -79,9 +79,9 @@ const agents = [
     name: "AI Sales Development Rep",
     tagline: "Never miss a lead — every one remembered and scored",
     description:
-      "Autonomously manages your entire top-of-funnel with persistent memory that tracks every lead interaction across months and years. Powered by MiniMax M2.7 that auto-improves with every conversation — it never forgets a prospect. Scores leads against your ICP, sends personalized multi-channel outreach via WhatsApp and email, qualifies through adaptive conversation that recalls prior exchanges, and books meetings with your sales team. Hot leads trigger instant Owner Brain alerts so you can act in seconds. Voice message support means leads can speak naturally and get intelligent responses.",
+      "Autonomously manages your entire top-of-funnel with persistent memory that tracks every lead interaction across months and years. The AI auto-improves with every conversation — it never forgets a prospect. Scores leads against your ICP, sends personalized multi-channel outreach via WhatsApp and email, qualifies through adaptive conversation that recalls prior exchanges, and books meetings with your sales team. Hot leads trigger instant Owner Brain alerts so you can act in seconds. Voice message support means leads can speak naturally and get intelligent responses.",
     benefits: [
-      "MiniMax M2.7 — gets smarter with every lead conversation",
+      "Self-improving AI — gets smarter with every lead conversation",
       "Persistent lead memory across months and years",
       "Hot lead alerts pushed to your Owner WhatsApp channel",
       "Voice message support for natural lead qualification",
@@ -148,7 +148,7 @@ const agents = [
     name: "Financial Intelligence Agent",
     tagline: "Weekly reports pushed to your WhatsApp — not buried in a dashboard",
     description:
-      "Connects to your financial data, categorizes transactions, detects anomalies, and delivers weekly financial health reports in plain language — directly to your Owner Brain WhatsApp channel. Unusual spend? You get an alert. Cash flow running thin? You know before it is a crisis. Text back natural language questions like \"What did we spend on marketing last month?\" and get instant answers powered by MiniMax M2.7. No spreadsheets, no logins, no dashboards.",
+      "Connects to your financial data, categorizes transactions, detects anomalies, and delivers weekly financial health reports in plain language — directly to your Owner Brain WhatsApp channel. Unusual spend? You get an alert. Cash flow running thin? You know before it is a crisis. Text back natural language questions like \"What did we spend on marketing last month?\" and get instant answers. No spreadsheets, no logins, no dashboards.",
     benefits: [
       "Reports delivered to your Owner WhatsApp channel",
       "12 hours per month returned to you",
@@ -185,6 +185,7 @@ export default function ServicesPage() {
           </a>
           <div className="hidden md:flex items-center gap-7 text-[13px] font-medium text-white/40">
             <a href="/services/" className="text-white transition-colors duration-300">Services</a>
+            <a href="/pricing/" className="hover:text-white transition-colors duration-300">Pricing</a>
             <a href="/process/" className="hover:text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
             <a href="https://agents.dcp.sa/login" className="hover:text-white transition-colors duration-300">Login</a>
@@ -341,6 +342,7 @@ export default function ServicesPage() {
           </div>
           <div className="flex items-center gap-8 text-xs text-white/40 font-medium">
             <a href="/services/" className="hover:text-white/60 transition-colors">Services</a>
+            <a href="/pricing/" className="hover:text-white/60 transition-colors">Pricing</a>
             <a href="/process/" className="hover:text-white/60 transition-colors">Process</a>
             <a href="/case-study/" className="hover:text-white/60 transition-colors">Case study</a>
             <a href="https://agents.dcp.sa/login" className="hover:text-white/60 transition-colors">Login</a>

@@ -22,6 +22,7 @@ export default function BookAuditPage() {
           </a>
           <div className="hidden md:flex items-center gap-7 text-[13px] font-medium text-white/40">
             <a href="/services/" className="hover:text-white transition-colors duration-300">Services</a>
+            <a href="/pricing/" className="hover:text-white transition-colors duration-300">Pricing</a>
             <a href="/process/" className="hover:text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
             <a href="https://agents.dcp.sa/login" className="hover:text-white transition-colors duration-300">Login</a>
@@ -178,6 +179,7 @@ export default function BookAuditPage() {
           </div>
           <div className="flex items-center gap-8 text-xs text-white/40 font-medium">
             <a href="/services/" className="hover:text-white/60 transition-colors">Services</a>
+            <a href="/pricing/" className="hover:text-white/60 transition-colors">Pricing</a>
             <a href="/process/" className="hover:text-white/60 transition-colors">Process</a>
             <a href="/case-study/" className="hover:text-white/60 transition-colors">Case study</a>
             <a href="https://agents.dcp.sa/login" className="hover:text-white/60 transition-colors">Login</a>
