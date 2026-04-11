@@ -1,0 +1,113 @@
+{
+  "name": "Content Engine Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "cronExpression", "expression": "0 6 * * 1"}]
+        }
+      },
+      "id": "cea-trigger",
+      "name": "Weekly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 400],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "url": "=https://sybzqktipimbmujtowoz.supabase.co/rest/v1/business_knowledge?client_id=eq.3bd50557-6680-43b9-bb8e-261c7f8a19d2&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"},
+            {"name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"},
+            {"name": "Accept", "value": "application/vnd.pgrst.object+json"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "cea-fetch-kb",
+      "name": "Fetch KB",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [420, 400],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const kb = $input.first().json;\nconst cd = kb.crawl_data || {};\nconst persona = cd.persona || {};\nconst brandVoice = kb.brand_voice || '';\nconst services = (kb.services || []).join(', ');\nconst specials = (cd.daily_specials || []).map(s => `${s.name} - ${s.description}`).join('\\n');\nconst industry = cd.industry || 'business';\n\nconst prompt = `You are a content strategist for ${kb.company_name || 'the business'}.\n\nBrand voice: ${brandVoice}\nIndustry: ${industry}\nServices: ${services}\n${specials ? 'Current specials:\\n' + specials : ''}\n\nCreate 7 social media content pieces for this week. For each piece, provide:\n1. Platform (Instagram, LinkedIn, or TikTok)\n2. Content pillar (Educational, Behind-the-scenes, Social proof, Thought leadership, or Engagement)\n3. Hook (first line to grab attention)\n4. Full post text (platform-optimized length)\n5. Suggested hashtags\n6. Best posting time\n\nMix platforms and pillars across the week. Make content feel authentic, not corporate. Use the brand voice naturally.`;\n\nreturn [{ json: { prompt, companyName: kb.company_name, clientId: kb.client_id } }];"
+      },
+      "id": "cea-build-prompt",
+      "name": "Build Content Brief",
+      "type": "n8n-nodes-base.code",
+      "position": [640, 400],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Authorization", "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"},
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"model\":\"qwen/qwen3.6-plus-preview:free\",\"messages\":[{\"role\":\"system\",\"content\":\"You are an expert social media content strategist. Create engaging, platform-optimized content. Output as structured JSON array.\"},{\"role\":\"user\",\"content\":{{ JSON.stringify($json.prompt) }}}],\"max_tokens\":3000,\"temperature\":0.9}",
+        "options": {}
+      },
+      "id": "cea-generate",
+      "name": "Generate Content (OpenRouter Free)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [880, 400],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nlet content = r?.choices?.[0]?.message?.content || 'No content generated';\n// Clean thinking tags if present\ncontent = content.replace(/<think>[\\s\\S]*?<\\/think>\\s*/g, '').trim();\n\nconst prev = $node['Build Content Brief'].json;\n\n// Log to Supabase\nreturn [{ json: {\n  content: content,\n  companyName: prev.companyName,\n  clientId: prev.clientId,\n  generatedAt: new Date().toISOString(),\n  model: 'qwen/qwen3.6-plus-preview:free',\n  cost: 0\n}}];"
+      },
+      "id": "cea-parse",
+      "name": "Parse Content",
+      "type": "n8n-nodes-base.code",
+      "position": [1120, 400],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sybzqktipimbmujtowoz.supabase.co/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"},
+            {"name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"},
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "Prefer", "value": "return=minimal"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"client_id\":{{ JSON.stringify($json.clientId) }},\"agent_type\":\"content_engine\",\"event_type\":\"content_generated\",\"payload\":{{ JSON.stringify({content: $json.content, model: $json.model, generated_at: $json.generatedAt}) }}}",
+        "options": {}
+      },
+      "id": "cea-log",
+      "name": "Log to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1360, 400],
+      "typeVersion": 4.2
+    }
+  ],
+  "connections": {
+    "Weekly Trigger": {"main": [[{"node": "Fetch KB", "type": "main", "index": 0}]]},
+    "Fetch KB": {"main": [[{"node": "Build Content Brief", "type": "main", "index": 0}]]},
+    "Build Content Brief": {"main": [[{"node": "Generate Content (OpenRouter Free)", "type": "main", "index": 0}]]},
+    "Generate Content (OpenRouter Free)": {"main": [[{"node": "Parse Content", "type": "main", "index": 0}]]},
+    "Parse Content": {"main": [[{"node": "Log to Supabase", "type": "main", "index": 0}]]}
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true
+}

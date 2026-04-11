@@ -1,0 +1,222 @@
+{
+  "name": "Financial Intelligence Agent — Saffron Kitchen",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * 0"
+            }
+          ]
+        }
+      },
+      "id": "f1a1b1c1-0001-4000-8000-000000000001",
+      "name": "Weekly Sunday 6AM Dubai",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Placeholder: In production, this pulls from Plaid/Lean/Xero/QuickBooks API\n// For now, simulate with sample restaurant transaction data for Saffron Kitchen\nconst now = new Date();\nconst weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);\nconst formatDate = (d) => d.toISOString().split('T')[0];\n\nconst sampleTransactions = [\n  { date: formatDate(new Date(now.getTime() - 6 * 86400000)), description: 'Daily sales — dine-in', amount: 12500, type: 'credit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 6 * 86400000)), description: 'Daily sales — delivery (Talabat/Deliveroo)', amount: 4200, type: 'credit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 5 * 86400000)), description: 'Daily sales — dine-in', amount: 15800, type: 'credit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 5 * 86400000)), description: 'Supplier — fresh produce (Al Aweer Market)', amount: -3200, type: 'debit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 5 * 86400000)), description: 'Supplier — meat & poultry', amount: -5600, type: 'debit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 4 * 86400000)), description: 'Daily sales — dine-in', amount: 11200, type: 'credit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 4 * 86400000)), description: 'Daily sales — delivery', amount: 3800, type: 'credit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 4 * 86400000)), description: 'DEWA utilities', amount: -2800, type: 'debit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 3 * 86400000)), description: 'Daily sales — dine-in', amount: 18500, type: 'credit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 3 * 86400000)), description: 'Staff salary — kitchen team', amount: -14000, type: 'debit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 3 * 86400000)), description: 'Staff salary — service team', amount: -9500, type: 'debit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 2 * 86400000)), description: 'Daily sales — dine-in + catering', amount: 22000, type: 'credit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 2 * 86400000)), description: 'Supplier — spices & dry goods', amount: -1800, type: 'debit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 1 * 86400000)), description: 'Daily sales — dine-in', amount: 16300, type: 'credit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 1 * 86400000)), description: 'Daily sales — delivery', amount: 5100, type: 'credit', category: '' },\n  { date: formatDate(new Date(now.getTime() - 1 * 86400000)), description: 'Rent — monthly installment', amount: -18000, type: 'debit', category: '' },\n  { date: formatDate(now), description: 'POS software subscription', amount: -450, type: 'debit', category: '' },\n  { date: formatDate(now), description: 'Marketing — Instagram ad campaign', amount: -1500, type: 'debit', category: '' },\n  { date: formatDate(now), description: 'Bank transfer fees', amount: -120, type: 'debit', category: '' }\n];\n\nreturn [{\n  json: {\n    transactions: sampleTransactions,\n    period: 'weekly',\n    weekOf: formatDate(weekAgo),\n    weekEnd: formatDate(now),\n    transactionCount: sampleTransactions.length\n  }\n}];"
+      },
+      "id": "f1a1b1c1-0002-4000-8000-000000000002",
+      "name": "Fetch Transactions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${OPENROUTER_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'nvidia/nemotron-3-nano-30b-a3b:free', messages: [ { role: 'system', content: 'You are a financial transaction categorizer for a restaurant business (Saffron Kitchen, Dubai). Categorize each transaction into exactly one of these categories: Revenue, COGS, Payroll, Rent & Utilities, Marketing, Software, Professional Services, Travel, Office Supplies, Banking Fees, Government, Other.\\n\\nReturn ONLY a valid JSON array with each transaction plus a \"category\" field added. No explanation, no markdown, just the JSON array.' }, { role: 'user', content: JSON.stringify($json.transactions) } ], max_tokens: 2000, temperature: 0 }) }}",
+        "options": {}
+      },
+      "id": "f1a1b1c1-0003-4000-8000-000000000003",
+      "name": "Categorize Transactions (Nemotron)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.choices?.[0]?.message?.content || '[]';\n\nlet categorized;\ntry {\n  // Extract JSON array from response (handle markdown code blocks)\n  const jsonMatch = content.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  categorized = JSON.parse(jsonMatch ? jsonMatch[0] : content);\n} catch (e) {\n  // Fallback: use original transactions with empty categories\n  categorized = $('Fetch Transactions').first().json.transactions;\n}\n\n// Calculate KPIs\nconst totalRevenue = categorized.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);\nconst totalExpenses = Math.abs(categorized.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0));\nconst netCashFlow = totalRevenue - totalExpenses;\n\n// Group expenses by category\nconst expensesByCategory = {};\nfor (const t of categorized.filter(t => t.amount < 0)) {\n  const cat = t.category || 'Other';\n  expensesByCategory[cat] = (expensesByCategory[cat] || 0) + Math.abs(t.amount);\n}\n\nreturn [{\n  json: {\n    categorizedTransactions: categorized,\n    kpis: {\n      totalRevenue,\n      totalExpenses,\n      netCashFlow,\n      profitMargin: totalRevenue > 0 ? ((netCashFlow / totalRevenue) * 100).toFixed(1) + '%' : '0%',\n      transactionCount: categorized.length\n    },\n    expensesByCategory,\n    weekOf: $('Fetch Transactions').first().json.weekOf,\n    weekEnd: $('Fetch Transactions').first().json.weekEnd\n  }\n}];"
+      },
+      "id": "f1a1b1c1-0004-4000-8000-000000000004",
+      "name": "Calculate KPIs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${OPENROUTER_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen/qwen3.6-plus-preview:free', messages: [ { role: 'system', content: 'You are a financial analyst for Saffron Kitchen, a restaurant in Dubai. Generate a concise weekly financial report.\\n\\nInclude:\\n1. Revenue this week (total credits) — compare to restaurant industry benchmarks\\n2. Total expenses (total debits) broken down by category\\n3. Net cash flow and profit margin\\n4. Top 3 expense categories\\n5. Any anomalies (unusually large transactions, spikes)\\n6. Executive summary (3-4 sentences, plain language, actionable)\\n\\nCurrency: AED. Keep it under 400 words. Format for WhatsApp readability (use bullet points, emojis sparingly).' }, { role: 'user', content: 'Week of ' + $json.weekOf + ' to ' + $json.weekEnd + '\\n\\nKPIs: ' + JSON.stringify($json.kpis) + '\\n\\nExpenses by category: ' + JSON.stringify($json.expensesByCategory) + '\\n\\nAll categorized transactions:\\n' + JSON.stringify($json.categorizedTransactions) } ], max_tokens: 1000, temperature: 0.3 }) }}",
+        "options": {}
+      },
+      "id": "f1a1b1c1-0005-4000-8000-000000000005",
+      "name": "Generate Report (Qwen)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst report = response.choices?.[0]?.message?.content || 'Report generation failed. Raw KPIs: ' + JSON.stringify($('Calculate KPIs').first().json.kpis);\nconst kpis = $('Calculate KPIs').first().json.kpis;\nconst weekOf = $('Calculate KPIs').first().json.weekOf;\n\nreturn [{\n  json: {\n    report: report,\n    kpis: kpis,\n    weekOf: weekOf\n  }\n}];"
+      },
+      "id": "f1a1b1c1-0006-4000-8000-000000000006",
+      "name": "Extract Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sybzqktipimbmujtowoz.supabase.co/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ client_id: '3bd50557-6680-43b9-bb8e-261c7f8a19d2', event_type: 'report_generated', summary: 'Weekly financial report — ' + $json.weekOf + ' | Revenue: AED ' + $json.kpis.totalRevenue + ' | Net: AED ' + $json.kpis.netCashFlow, payload: { report: $json.report, kpis: $json.kpis, report_type: 'weekly_financial' } }) }}",
+        "options": {}
+      },
+      "id": "f1a1b1c1-0007-4000-8000-000000000007",
+      "name": "Log Report to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1640, 300]
+    }
+  ],
+  "connections": {
+    "Weekly Sunday 6AM Dubai": {
+      "main": [
+        [
+          {
+            "node": "Fetch Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Transactions": {
+      "main": [
+        [
+          {
+            "node": "Categorize Transactions (Nemotron)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Transactions (Nemotron)": {
+      "main": [
+        [
+          {
+            "node": "Calculate KPIs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate KPIs": {
+      "main": [
+        [
+          {
+            "node": "Generate Report (Qwen)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report (Qwen)": {
+      "main": [
+        [
+          {
+            "node": "Extract Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Report": {
+      "main": [
+        [
+          {
+            "node": "Log Report to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "tags": [
+    { "name": "finance" },
+    { "name": "reporting" },
+    { "name": "ai-agent" },
+    { "name": "saffron-kitchen" }
+  ]
+}

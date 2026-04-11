@@ -1,0 +1,442 @@
+{
+  "name": "HR Screening Agent — Saffron Kitchen",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hr-application",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "h1a1b1c1-0001-4000-8000-000000000001",
+      "name": "New Application Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nreturn [{\n  json: {\n    candidateName: body.name || '',\n    email: body.email || '',\n    phone: body.phone || '',\n    position: body.position || body.role || '',\n    cvText: body.cv_text || body.resume_text || '',\n    cvUrl: body.cv_url || '',\n    source: body.source || 'direct',\n    appliedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "h1a1b1c1-0002-4000-8000-000000000002",
+      "name": "Parse Application",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${OPENROUTER_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'nvidia/nemotron-3-nano-30b-a3b:free', messages: [ { role: 'system', content: 'Extract structured data from this CV/resume text. Return ONLY a valid JSON object, no markdown, no explanation:\\n{\\n  \"name\": \"\",\\n  \"email\": \"\",\\n  \"phone\": \"\",\\n  \"location\": \"\",\\n  \"years_experience\": 0,\\n  \"current_title\": \"\",\\n  \"skills\": [],\\n  \"education\": [{\"degree\": \"\", \"institution\": \"\", \"year\": \"\"}],\\n  \"languages\": [],\\n  \"visa_status\": \"\",\\n  \"summary\": \"<2 sentence professional summary>\"\\n}' }, { role: 'user', content: $json.cvText || 'No CV text provided. Candidate: ' + $json.candidateName + ', applying for: ' + $json.position } ], max_tokens: 600, temperature: 0 }) }}",
+        "options": {}
+      },
+      "id": "h1a1b1c1-0003-4000-8000-000000000003",
+      "name": "Parse CV (Nemotron-Nano)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.choices?.[0]?.message?.content || '{}';\n\nlet parsed;\ntry {\n  const match = content.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(match ? match[0] : content);\n} catch {\n  parsed = {\n    name: $('Parse Application').first().json.candidateName,\n    email: $('Parse Application').first().json.email,\n    phone: $('Parse Application').first().json.phone,\n    location: '',\n    years_experience: 0,\n    current_title: '',\n    skills: [],\n    education: [],\n    languages: [],\n    visa_status: '',\n    summary: 'CV parsing failed — manual review required'\n  };\n}\n\nreturn [{\n  json: {\n    parsedCV: parsed,\n    position: $('Parse Application').first().json.position,\n    candidateName: parsed.name || $('Parse Application').first().json.candidateName,\n    email: parsed.email || $('Parse Application').first().json.email\n  }\n}];"
+      },
+      "id": "h1a1b1c1-0004-4000-8000-000000000004",
+      "name": "Extract Parsed CV",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${OPENROUTER_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'nvidia/nemotron-3-super-120b-a12b:free', messages: [ { role: 'system', content: 'You are an HR screening engine for Saffron Kitchen, a restaurant in Dubai. Score this candidate against the job criteria. Return ONLY a valid JSON object, no markdown, no explanation.\\n\\n{\\n  \"score\": <0-100>,\\n  \"tier\": \"advance|hold|decline\",\\n  \"breakdown\": {\\n    \"relevant_experience\": <0-30>,\\n    \"required_skills_match\": <0-25>,\\n    \"education_relevance\": <0-15>,\\n    \"location_visa_suitability\": <0-15>,\\n    \"language_skills\": <0-15>\\n  },\\n  \"strengths\": [\"<strength 1>\", \"<strength 2>\"],\\n  \"gaps\": [\"<gap 1>\"],\\n  \"recommendation\": \"<1-2 sentences>\",\\n  \"interview_questions\": [\"<question about gap 1>\", \"<question about experience>\"]\\n}\\n\\nTriage thresholds:\\n- Score >= 75: advance (send interview invitation)\\n- Score 50-74: hold (flag for manual review)\\n- Score < 50: decline (send respectful rejection)\\n\\nBias prevention: Evaluate ONLY on job-relevant criteria. Do not score based on name, nationality, gender, or age.' }, { role: 'user', content: 'Position: ' + $json.position + '\\n\\nCandidate parsed CV data:\\n' + JSON.stringify($json.parsedCV) } ], max_tokens: 500, temperature: 0 }) }}",
+        "options": {}
+      },
+      "id": "h1a1b1c1-0005-4000-8000-000000000005",
+      "name": "Score Candidate (Nemotron-Super)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.choices?.[0]?.message?.content || '{}';\n\nlet scoring;\ntry {\n  const match = content.match(/\\{[\\s\\S]*\\}/);\n  scoring = JSON.parse(match ? match[0] : content);\n} catch {\n  scoring = { score: 50, tier: 'hold', recommendation: 'Manual review needed — scoring parse failed', strengths: [], gaps: [], interview_questions: [] };\n}\n\nconst application = $('Parse Application').first().json;\nconst parsedCV = $('Extract Parsed CV').first().json.parsedCV;\n\nreturn [{\n  json: {\n    candidateName: application.candidateName || parsedCV.name || '',\n    email: application.email || parsedCV.email || '',\n    phone: application.phone || parsedCV.phone || '',\n    position: application.position,\n    source: application.source,\n    appliedAt: application.appliedAt,\n    score: scoring.score || 50,\n    tier: scoring.tier || 'hold',\n    breakdown: scoring.breakdown || {},\n    strengths: scoring.strengths || [],\n    gaps: scoring.gaps || [],\n    recommendation: scoring.recommendation || '',\n    interviewQuestions: scoring.interview_questions || [],\n    parsedCV: parsedCV\n  }\n}];"
+      },
+      "id": "h1a1b1c1-0006-4000-8000-000000000006",
+      "name": "Parse Scoring",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputIndex": 0,
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "advance",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputIndex": 1,
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "hold",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputIndex": 2,
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "decline",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "h1a1b1c1-0007-4000-8000-000000000007",
+      "name": "Route by Tier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1640, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${OPENROUTER_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'nvidia/nemotron-3-nano-30b-a3b:free', messages: [ { role: 'system', content: 'Write a professional interview invitation email for Saffron Kitchen (restaurant in Dubai).\\n\\nInclude:\\n- Warm congratulations on advancing to the interview stage\\n- Position title\\n- Request to reply with their availability for a 30-minute interview\\n- What to prepare (brief overview of the role, any documents to bring)\\n- Contact info: hr@saffronkitchen.ae\\n\\nKeep it concise (100-150 words). Tone: warm, professional, welcoming.\\nIf the candidate name suggests Arabic speaker, include a brief Arabic greeting at the top.\\n\\nReturn format:\\nSubject: <subject line>\\n\\n<email body>' }, { role: 'user', content: 'Candidate: ' + $json.candidateName + '\\nPosition: ' + $json.position + '\\nEmail: ' + $json.email + '\\nStrengths: ' + JSON.stringify($json.strengths) } ], max_tokens: 400, temperature: 0.5 }) }}",
+        "options": {}
+      },
+      "id": "h1a1b1c1-0008-4000-8000-000000000008",
+      "name": "Generate Interview Invite",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1880, 140]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${OPENROUTER_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'nvidia/nemotron-3-nano-30b-a3b:free', messages: [ { role: 'system', content: 'Write a respectful, warm rejection email for Saffron Kitchen.\\n\\nRules:\\n- Thank them sincerely for their time and interest\\n- Do NOT mention scoring, ranking, or comparison with other candidates\\n- Encourage them to apply for future openings\\n- Wish them well in their career\\n- Keep it to 80-100 words\\n- Tone: warm, respectful, genuine\\n- If candidate name suggests Arabic speaker, include a brief Arabic closing\\n\\nReturn format:\\nSubject: <subject line>\\n\\n<email body>' }, { role: 'user', content: 'Candidate: ' + $json.candidateName + '\\nPosition: ' + $json.position } ], max_tokens: 250, temperature: 0.5 }) }}",
+        "options": {}
+      },
+      "id": "h1a1b1c1-0009-4000-8000-000000000009",
+      "name": "Generate Rejection Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1880, 460]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst emailContent = response.choices?.[0]?.message?.content || 'Interview invitation — email generation pending';\nconst candidate = $('Parse Scoring').first().json;\n\nreturn [{\n  json: {\n    ...candidate,\n    emailGenerated: emailContent,\n    emailType: 'interview_invitation'\n  }\n}];"
+      },
+      "id": "h1a1b1c1-0010-4000-8000-000000000010",
+      "name": "Parse Invite Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2120, 140]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hold candidates: log for manual review, no email generated\nconst candidate = $json;\n\nreturn [{\n  json: {\n    ...candidate,\n    emailGenerated: null,\n    emailType: 'hold_for_review',\n    action: 'Flagged for manual hiring manager review'\n  }\n}];"
+      },
+      "id": "h1a1b1c1-0011-4000-8000-000000000011",
+      "name": "Hold for Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1880, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst emailContent = response.choices?.[0]?.message?.content || 'Rejection email — generation pending';\nconst candidate = $('Parse Scoring').first().json;\n\nreturn [{\n  json: {\n    ...candidate,\n    emailGenerated: emailContent,\n    emailType: 'rejection'\n  }\n}];"
+      },
+      "id": "h1a1b1c1-0012-4000-8000-000000000012",
+      "name": "Parse Rejection Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2120, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sybzqktipimbmujtowoz.supabase.co/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ client_id: '3bd50557-6680-43b9-bb8e-261c7f8a19d2', event_type: 'cv_screened', summary: ($json.candidateName || 'Unknown') + ' for ' + ($json.position || 'N/A') + ' — ' + ($json.tier || 'unknown') + ' (' + ($json.score || 0) + '/100)', payload: { candidateName: $json.candidateName, email: $json.email, position: $json.position, score: $json.score, tier: $json.tier, breakdown: $json.breakdown, strengths: $json.strengths, gaps: $json.gaps, recommendation: $json.recommendation, interviewQuestions: $json.interviewQuestions, emailType: $json.emailType, emailGenerated: $json.emailGenerated, source: $json.source, appliedAt: $json.appliedAt } }) }}",
+        "options": {}
+      },
+      "id": "h1a1b1c1-0013-4000-8000-000000000013",
+      "name": "Log to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2360, 300]
+    }
+  ],
+  "connections": {
+    "New Application Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Application",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Application": {
+      "main": [
+        [
+          {
+            "node": "Parse CV (Nemotron-Nano)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse CV (Nemotron-Nano)": {
+      "main": [
+        [
+          {
+            "node": "Extract Parsed CV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Parsed CV": {
+      "main": [
+        [
+          {
+            "node": "Score Candidate (Nemotron-Super)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Candidate (Nemotron-Super)": {
+      "main": [
+        [
+          {
+            "node": "Parse Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Scoring": {
+      "main": [
+        [
+          {
+            "node": "Route by Tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Tier": {
+      "main": [
+        [
+          {
+            "node": "Generate Interview Invite",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hold for Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Rejection Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Interview Invite": {
+      "main": [
+        [
+          {
+            "node": "Parse Invite Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Invite Email": {
+      "main": [
+        [
+          {
+            "node": "Log to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hold for Review": {
+      "main": [
+        [
+          {
+            "node": "Log to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Rejection Email": {
+      "main": [
+        [
+          {
+            "node": "Parse Rejection Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Rejection Email": {
+      "main": [
+        [
+          {
+            "node": "Log to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "tags": [
+    { "name": "hr" },
+    { "name": "screening" },
+    { "name": "ai-agent" },
+    { "name": "saffron-kitchen" }
+  ]
+}

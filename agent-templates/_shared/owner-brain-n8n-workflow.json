@@ -1,0 +1,453 @@
+{
+  "name": "Owner Brain Agent — Saffron Kitchen",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 5 * * *"
+            }
+          ]
+        }
+      },
+      "id": "d1a1b1c1-0001-4000-8000-000000000001",
+      "name": "Daily Briefing 9AM Dubai",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "owner-brain-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d1a1b1c1-0002-4000-8000-000000000002",
+      "name": "Owner WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://sybzqktipimbmujtowoz.supabase.co/rest/v1/activity_logs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "client_id",
+              "value": "eq.3bd50557-6680-43b9-bb8e-261c7f8a19d2"
+            },
+            {
+              "name": "order",
+              "value": "created_at.desc"
+            },
+            {
+              "name": "limit",
+              "value": "50"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ${SUPABASE_SERVICE_ROLE_KEY}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d1a1b1c1-0003-4000-8000-000000000003",
+      "name": "Fetch Activity Logs (Briefing)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const logs = $input.first().json;\nconst now = new Date();\nconst yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);\n\n// Filter to last 24 hours\nconst recentLogs = Array.isArray(logs) ? logs.filter(l => new Date(l.created_at) >= yesterday) : [];\n\n// Count by event type\nconst counts = {};\nfor (const log of recentLogs) {\n  counts[log.event_type] = (counts[log.event_type] || 0) + 1;\n}\n\nconst summaries = recentLogs.map(l => `[${l.event_type}] ${l.summary || ''}`).join('\\n');\n\nreturn [{\n  json: {\n    totalEvents: recentLogs.length,\n    eventCounts: counts,\n    summaries: summaries,\n    period: 'last_24h',\n    date: now.toISOString().split('T')[0]\n  }\n}];"
+      },
+      "id": "d1a1b1c1-0004-4000-8000-000000000004",
+      "name": "Summarize Activity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.minimax.io/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${MINIMAX_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'minimax-m2.7', messages: [ { role: 'system', content: 'You are the AI business assistant for Saffron Kitchen. You communicate with the business owner via WhatsApp. You are their AI Chief of Staff. Be concise — they are busy running a restaurant. Use bullet points, include numbers when available. Be proactive, not just reactive. Keep the morning briefing under 500 characters. Use emoji sparingly.' }, { role: 'user', content: 'Compile a concise daily morning briefing from these activity logs from the last 24 hours. Include: total inquiries, bookings, leads, complaints, and any items needing attention.\\n\\nDate: ' + $json.date + '\\nTotal events: ' + $json.totalEvents + '\\nEvent breakdown: ' + JSON.stringify($json.eventCounts) + '\\nActivity summaries:\\n' + $json.summaries } ], max_tokens: 500, temperature: 0.4 }) }}",
+        "options": {}
+      },
+      "id": "d1a1b1c1-0005-4000-8000-000000000005",
+      "name": "Generate Briefing (MiniMax)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst briefing = response.choices?.[0]?.message?.content || 'No briefing data available today.';\n\nreturn [{\n  json: {\n    briefingText: briefing,\n    date: $('Summarize Activity').first().json.date\n  }\n}];"
+      },
+      "id": "d1a1b1c1-0006-4000-8000-000000000006",
+      "name": "Extract Briefing Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1160, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sybzqktipimbmujtowoz.supabase.co/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ client_id: '3bd50557-6680-43b9-bb8e-261c7f8a19d2', event_type: 'brain_briefing', summary: 'Daily morning briefing sent — ' + $json.date, payload: { briefing: $json.briefingText, direction: 'outbound' } }) }}",
+        "options": {}
+      },
+      "id": "d1a1b1c1-0007-4000-8000-000000000007",
+      "name": "Log Briefing to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the owner's incoming WhatsApp message from webhook\nconst body = $input.first().json.body || $input.first().json;\n\nconst ownerMessage = body.message?.text || body.text || body.Body || body.message || '';\nconst ownerPhone = body.from || body.From || body.sender || '';\nconst messageId = body.message_id || body.MessageSid || '';\n\nreturn [{\n  json: {\n    ownerMessage: typeof ownerMessage === 'string' ? ownerMessage : JSON.stringify(ownerMessage),\n    ownerPhone: ownerPhone,\n    messageId: messageId,\n    receivedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "d1a1b1c1-0008-4000-8000-000000000008",
+      "name": "Parse Owner Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://sybzqktipimbmujtowoz.supabase.co/rest/v1/activity_logs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "client_id",
+              "value": "eq.3bd50557-6680-43b9-bb8e-261c7f8a19d2"
+            },
+            {
+              "name": "order",
+              "value": "created_at.desc"
+            },
+            {
+              "name": "limit",
+              "value": "20"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ${SUPABASE_SERVICE_ROLE_KEY}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d1a1b1c1-0009-4000-8000-000000000009",
+      "name": "Fetch Recent Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ownerData = $('Parse Owner Message').first().json;\nconst recentLogs = $('Fetch Recent Context').first().json;\n\nconst contextSummary = Array.isArray(recentLogs)\n  ? recentLogs.map(l => `[${l.event_type}] ${l.summary || ''}`).join('\\n')\n  : 'No recent activity logs available.';\n\nreturn [{\n  json: {\n    ownerMessage: ownerData.ownerMessage,\n    ownerPhone: ownerData.ownerPhone,\n    context: contextSummary\n  }\n}];"
+      },
+      "id": "d1a1b1c1-0010-4000-8000-000000000010",
+      "name": "Build LLM Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.minimax.io/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${MINIMAX_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'minimax-m2.7', messages: [ { role: 'system', content: 'You are the AI business assistant for Saffron Kitchen. You communicate with the business owner via WhatsApp. You are their AI Chief of Staff.\\n\\nYour role:\\n1. Reports — tell them what is happening with their business\\n2. Asks — proactively request information needed to serve customers better\\n3. Learns — absorb every piece of information the owner shares\\n4. Advises — share insights, trends, and suggestions based on data\\n\\nCommunication style: concise, bullet points, include numbers. Be direct. Casual but professional.\\n\\nWhen the owner sends updates (menu changes, closures, pricing, etc.), acknowledge and confirm what you understood. When they ask questions, answer from activity logs context.\\n\\nRecent activity context:\\n' + $json.context }, { role: 'user', content: $json.ownerMessage } ], max_tokens: 600, temperature: 0.5 }) }}",
+        "options": {}
+      },
+      "id": "d1a1b1c1-0011-4000-8000-000000000011",
+      "name": "Owner Brain Response (MiniMax)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst replyText = response.choices?.[0]?.message?.content || 'I received your message but could not process it right now. I will follow up shortly.';\nconst ownerPhone = $('Build LLM Context').first().json.ownerPhone;\nconst ownerMessage = $('Build LLM Context').first().json.ownerMessage;\n\nreturn [{\n  json: {\n    replyText: replyText,\n    ownerPhone: ownerPhone,\n    ownerMessage: ownerMessage\n  }\n}];"
+      },
+      "id": "d1a1b1c1-0012-4000-8000-000000000012",
+      "name": "Extract Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sybzqktipimbmujtowoz.supabase.co/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ client_id: '3bd50557-6680-43b9-bb8e-261c7f8a19d2', event_type: 'brain_interaction', summary: 'Owner message handled: ' + ($json.ownerMessage || '').substring(0, 100), payload: { direction: 'inbound', owner_message: $json.ownerMessage, reply: $json.replyText } }) }}",
+        "options": {}
+      },
+      "id": "d1a1b1c1-0013-4000-8000-000000000013",
+      "name": "Log Interaction to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1640, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'ok', reply: $('Extract Reply').first().json.replyText }) }}",
+        "options": {}
+      },
+      "id": "d1a1b1c1-0014-4000-8000-000000000014",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1880, 500]
+    }
+  ],
+  "connections": {
+    "Daily Briefing 9AM Dubai": {
+      "main": [
+        [
+          {
+            "node": "Fetch Activity Logs (Briefing)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Activity Logs (Briefing)": {
+      "main": [
+        [
+          {
+            "node": "Summarize Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Activity": {
+      "main": [
+        [
+          {
+            "node": "Generate Briefing (MiniMax)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Briefing (MiniMax)": {
+      "main": [
+        [
+          {
+            "node": "Extract Briefing Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Briefing Text": {
+      "main": [
+        [
+          {
+            "node": "Log Briefing to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Owner WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Owner Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Owner Message": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recent Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recent Context": {
+      "main": [
+        [
+          {
+            "node": "Build LLM Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build LLM Context": {
+      "main": [
+        [
+          {
+            "node": "Owner Brain Response (MiniMax)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Owner Brain Response (MiniMax)": {
+      "main": [
+        [
+          {
+            "node": "Extract Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Reply": {
+      "main": [
+        [
+          {
+            "node": "Log Interaction to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Interaction to Supabase": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "tags": [
+    { "name": "owner-brain" },
+    { "name": "whatsapp" },
+    { "name": "ai-agent" },
+    { "name": "saffron-kitchen" }
+  ]
+}

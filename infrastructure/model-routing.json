@@ -1,0 +1,194 @@
+{
+  "_description": "Centralized model routing config. Maps each agent/task to optimal model + endpoint.",
+  "_updated": "2026-03-31",
+
+  "endpoints": {
+    "minimax": {
+      "url": "https://api.minimax.io/v1/chat/completions",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "key_env": "MINIMAX_API_KEY"
+    },
+    "minimax_image": {
+      "url": "https://api.minimax.io/v1/image_generation",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "key_env": "MINIMAX_API_KEY"
+    },
+    "openrouter": {
+      "url": "https://openrouter.ai/api/v1/chat/completions",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "key_env": "OPENROUTER_API_KEY"
+    },
+    "openai": {
+      "url": "https://api.openai.com/v1/chat/completions",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "key_env": "OPENAI_API_KEY"
+    },
+    "openai_embeddings": {
+      "url": "https://api.openai.com/v1/embeddings",
+      "auth_header": "Authorization",
+      "auth_prefix": "Bearer",
+      "key_env": "OPENAI_API_KEY"
+    }
+  },
+
+  "agents": {
+    "whatsapp_intelligence": {
+      "_description": "Customer-facing WhatsApp persona agent. Quality is critical.",
+      "endpoint": "minimax",
+      "model": "MiniMax-M2.7",
+      "max_tokens": 300,
+      "temperature": 0.8,
+      "reason": "Best conversational quality + persona embodiment. Covered by $80/mo plan."
+    },
+
+    "owner_brain": {
+      "_description": "Chief of Staff — daily briefs, event alerts, KB updates. Talks to owner.",
+      "endpoint": "minimax",
+      "model": "MiniMax-M2.7",
+      "max_tokens": 500,
+      "temperature": 0.7,
+      "reason": "Owner-facing, needs good quality. Covered by $80/mo plan."
+    },
+
+    "content_engine": {
+      "_description": "Weekly social media content generation. Backend, not customer-facing.",
+      "endpoint": "openrouter",
+      "model": "qwen/qwen3.6-plus-preview:free",
+      "max_tokens": 2000,
+      "temperature": 0.9,
+      "fallback_model": "nousresearch/hermes-3-llama-3.1-405b:free",
+      "reason": "Free. High quality creative writing. Not customer-facing so no brand risk."
+    },
+
+    "financial_intelligence": {
+      "_description": "Transaction categorization + weekly reports.",
+      "categorization": {
+        "endpoint": "openrouter",
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "max_tokens": 200,
+        "temperature": 0.1,
+        "reason": "Free. Simple classification task. Low temperature for consistency."
+      },
+      "reporting": {
+        "endpoint": "openrouter",
+        "model": "qwen/qwen3.6-plus-preview:free",
+        "max_tokens": 1500,
+        "temperature": 0.5,
+        "reason": "Free. Needs analytical writing quality."
+      }
+    },
+
+    "ai_sdr": {
+      "_description": "Lead scoring + outreach email generation.",
+      "scoring": {
+        "endpoint": "openrouter",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "max_tokens": 500,
+        "temperature": 0.3,
+        "reason": "Free. 120B model, strong reasoning for ICP scoring."
+      },
+      "outreach": {
+        "endpoint": "openrouter",
+        "model": "qwen/qwen3.6-plus-preview:free",
+        "max_tokens": 800,
+        "temperature": 0.8,
+        "reason": "Free. Good creative writing for personalized emails."
+      }
+    },
+
+    "hr_screening": {
+      "_description": "CV parsing + candidate scoring.",
+      "parsing": {
+        "endpoint": "openrouter",
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "max_tokens": 500,
+        "temperature": 0.1,
+        "reason": "Free. Structured extraction task."
+      },
+      "scoring": {
+        "endpoint": "openrouter",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "max_tokens": 800,
+        "temperature": 0.3,
+        "reason": "Free. Needs nuanced judgment for candidate evaluation."
+      }
+    },
+
+    "persona_generator": {
+      "_description": "One-time persona generation for new clients.",
+      "text": {
+        "endpoint": "openrouter",
+        "model": "qwen/qwen3.6-plus-preview:free",
+        "max_tokens": 3000,
+        "temperature": 0.9,
+        "reason": "Free. 1M context. Creative writing at high temperature."
+      },
+      "visual_description": {
+        "endpoint": "openrouter",
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "max_tokens": 200,
+        "temperature": 0.7,
+        "reason": "Free. Simple descriptive task."
+      },
+      "images": {
+        "endpoint": "minimax_image",
+        "model": "image-01",
+        "reason": "Covered by $80/mo plan (200 images/day)."
+      }
+    },
+
+    "karpathy_loop": {
+      "_description": "Self-improvement: eval suites, prompt mutation, A/B testing.",
+      "evaluation": {
+        "endpoint": "openrouter",
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "max_tokens": 500,
+        "temperature": 0.1,
+        "reason": "Free. Run thousands of evals at zero cost. Consistency matters."
+      },
+      "mutation": {
+        "endpoint": "openrouter",
+        "model": "qwen/qwen3.6-plus-preview:free",
+        "max_tokens": 2000,
+        "temperature": 0.9,
+        "reason": "Free. Creative prompt rewriting."
+      }
+    },
+
+    "auto_research": {
+      "_description": "Competitor monitoring, trend detection, review analysis.",
+      "endpoint": "openrouter",
+      "model": "qwen/qwen3.6-plus-preview:free",
+      "max_tokens": 1500,
+      "temperature": 0.5,
+      "reason": "Free. Analytical summarization."
+    }
+  },
+
+  "embeddings": {
+    "graphiti": {
+      "endpoint": "openai_embeddings",
+      "model": "text-embedding-3-small",
+      "dimensions": 1536,
+      "reason": "$0.02/1M tokens. Pennies per month. Required for temporal knowledge graph."
+    },
+    "mem0": {
+      "provider": "ollama",
+      "model": "nomic-embed-text",
+      "url": "http://172.17.0.1:11434",
+      "dimensions": 768,
+      "reason": "Free. Local on VPS. Already deployed and working."
+    }
+  },
+
+  "api_keys": {
+    "_note": "Keys must be set as environment variables. Never commit real keys to git.",
+    "MINIMAX_API_KEY": "${MINIMAX_API_KEY}",
+    "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}",
+    "OPENAI_API_KEY": "${OPENAI_API_KEY}"
+  }
+}

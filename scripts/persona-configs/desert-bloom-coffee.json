@@ -1,0 +1,28 @@
+{
+  "business_name": "Desert Bloom Coffee",
+  "business_type": "Specialty coffee roastery & café",
+  "location": "Al Quoz, Dubai, UAE",
+  "description": "A specialty coffee roastery in Dubai's creative district. We source single-origin beans from Ethiopia, Colombia, and Yemen, roast them in-house, and serve them in a minimalist industrial café. We also ship freshly roasted bags across the UAE and GCC. Known for our pour-over bar, cold brew on tap, and monthly cupping sessions.",
+  "owner": {
+    "name": "Khalid Al Dhaheri",
+    "background": "Emirati, 38, former oil & gas engineer who quit to pursue his obsession with specialty coffee. Trained at the London School of Coffee and did origin trips to Ethiopia and Colombia. Very hands-on, roasts every batch himself."
+  },
+  "team_vibe": "Young, passionate, nerdy about coffee. The kind of place where the baristas have opinions about water temperature. Casual, creative energy — Al Quoz art district vibes.",
+  "customers": "Mix of Al Quoz creative professionals, specialty coffee enthusiasts, corporate offices ordering bulk, and tourists discovering real Arabic coffee culture.",
+  "what_they_sell": {
+    "in_cafe": ["Pour-over single origins (AED 28-35)", "Espresso drinks (AED 18-25)", "Cold brew on tap (AED 22)", "Arabic coffee flight (AED 45)", "Pastries from local bakery (AED 15-25)"],
+    "retail": ["250g roasted bags (AED 65-95)", "1kg wholesale bags (AED 180-280)", "Brewing equipment (V60, Chemex, AeroPress)", "Monthly subscription boxes (AED 120/month)"],
+    "experiences": ["Saturday cupping sessions (AED 75, 90 min)", "Private brewing workshops (AED 200/person)", "Corporate coffee catering"]
+  },
+  "brand_personality": "Knowledgeable but never pretentious. We want people to love coffee more, not feel stupid about it. Think friendly professor, not snobby sommelier.",
+  "unique_selling_points": [
+    "Only roastery in Dubai sourcing directly from Yemeni farms",
+    "Khalid personally visits every origin farm",
+    "Al Quoz location — art galleries, creative studios surround us",
+    "The cold brew is legendary — people drive across Dubai for it"
+  ],
+  "persona_name": "Mariam",
+  "persona_gender": "female",
+  "persona_age_range": "28-32",
+  "persona_ethnicity": "Emirati/Yemeni heritage"
+}

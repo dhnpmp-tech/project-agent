@@ -1,0 +1,382 @@
+{
+  "name": "AI SDR Agent — Saffron Kitchen",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sdr-lead-inbound",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "s1a1b1c1-0001-4000-8000-000000000001",
+      "name": "Inbound Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process inbound lead from form, CRM, or website contact\nconst body = $input.first().json.body || $input.first().json;\n\nreturn [{\n  json: {\n    source: body.source || 'inbound',\n    name: body.name || body.contact_name || '',\n    email: body.email || body.contact_email || '',\n    phone: body.phone || '',\n    company: body.company || body.company_name || '',\n    industry: body.industry || '',\n    employeeCount: body.employee_count || body.size || '',\n    message: body.message || body.inquiry || '',\n    website: body.website || '',\n    receivedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "s1a1b1c1-0002-4000-8000-000000000002",
+      "name": "Parse Lead Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${OPENROUTER_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'nvidia/nemotron-3-super-120b-a12b:free', messages: [ { role: 'system', content: 'You are an ICP (Ideal Customer Profile) scoring engine for Kapso, an AI agent deployment platform for SMBs in UAE and Saudi Arabia.\\n\\nScore this lead against the ICP on a scale of 0-100. Return ONLY a valid JSON object, no markdown, no explanation.\\n\\nICP Criteria:\\n- UAE/Saudi based SMB (1-50 employees): +20\\n- Decision maker (CEO/Founder/Owner/Head of Operations): +20\\n- Revenue AED 500K-50M annually: +15\\n- Currently NOT using AI automation: +15\\n- Has clear pain points matching our services (manual customer follow-up, content creation, lead management): +25\\n- Industry fit (restaurant, real estate, healthcare, beauty, professional services): +5\\n\\nReturn: {\"score\": <0-100>, \"tier\": \"hot|warm|cold\", \"reasoning\": \"<1 sentence>\", \"personalization_angle\": \"<what to mention in outreach>\"}' }, { role: 'user', content: 'Lead:\\nName: ' + $json.name + '\\nCompany: ' + $json.company + '\\nIndustry: ' + $json.industry + '\\nEmployees: ' + $json.employeeCount + '\\nMessage: ' + $json.message + '\\nWebsite: ' + $json.website } ], max_tokens: 300, temperature: 0 }) }}",
+        "options": {}
+      },
+      "id": "s1a1b1c1-0003-4000-8000-000000000003",
+      "name": "Score Lead ICP (Nemotron-Super)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.choices?.[0]?.message?.content || '{}';\n\nlet scoring;\ntry {\n  const match = content.match(/\\{[\\s\\S]*\\}/);\n  scoring = JSON.parse(match ? match[0] : content);\n} catch {\n  scoring = { score: 50, tier: 'warm', reasoning: 'Unable to parse scoring response', personalization_angle: '' };\n}\n\nconst lead = $('Parse Lead Data').first().json;\n\nreturn [{\n  json: {\n    ...lead,\n    icpScore: scoring.score || 50,\n    tier: scoring.tier || 'warm',\n    reasoning: scoring.reasoning || '',\n    personalizationAngle: scoring.personalization_angle || ''\n  }\n}];"
+      },
+      "id": "s1a1b1c1-0004-4000-8000-000000000004",
+      "name": "Parse Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 400]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputIndex": 0,
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "hot",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputIndex": 1,
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "warm",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputIndex": 2,
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "cold",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "s1a1b1c1-0005-4000-8000-000000000005",
+      "name": "Route by Tier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1160, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${OPENROUTER_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen/qwen3.6-plus-preview:free', messages: [ { role: 'system', content: 'You are a sales outreach writer for Kapso, an AI agent deployment platform for SMBs in UAE and Saudi Arabia. Write a personalized email to this HOT lead.\\n\\nRules:\\n- Subject line: specific, under 50 characters\\n- Body: 80-120 words max\\n- Open with a specific observation about their business\\n- One clear value proposition (AI agents that handle WhatsApp customer service, booking, lead qualification — deployed in under 2 weeks)\\n- End with a soft CTA (suggest a 15-minute call)\\n- Tone: professional, not salesy\\n- If the lead name suggests Arabic speaker, include a warm Arabic greeting\\n\\nReturn format:\\nSubject: <subject line>\\n\\n<email body>' }, { role: 'user', content: 'Lead: ' + $json.name + ' at ' + $json.company + '\\nIndustry: ' + $json.industry + '\\nPersonalization: ' + $json.personalizationAngle + '\\nMessage they sent: ' + $json.message } ], max_tokens: 500, temperature: 0.7 }) }}",
+        "options": {}
+      },
+      "id": "s1a1b1c1-0006-4000-8000-000000000006",
+      "name": "Generate Hot Outreach (Qwen)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 250]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${OPENROUTER_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'qwen/qwen3.6-plus-preview:free', messages: [ { role: 'system', content: 'You are a sales outreach writer for Kapso, an AI agent deployment platform for SMBs. Write a nurture email for this WARM lead.\\n\\nRules:\\n- Subject line: value-oriented, under 50 chars\\n- Body: 60-100 words\\n- Share one relevant insight about their industry and AI automation\\n- Mention how Kapso helps similar businesses save 20+ hours/week on customer inquiries\\n- Soft CTA: offer a free AI readiness audit\\n- Tone: helpful, not pushy\\n\\nReturn format:\\nSubject: <subject line>\\n\\n<email body>' }, { role: 'user', content: 'Lead: ' + $json.name + ' at ' + $json.company + '\\nIndustry: ' + $json.industry + '\\nPersonalization: ' + $json.personalizationAngle } ], max_tokens: 400, temperature: 0.7 }) }}",
+        "options": {}
+      },
+      "id": "s1a1b1c1-0007-4000-8000-000000000007",
+      "name": "Generate Warm Outreach (Qwen)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 450]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cold leads: just log, no outreach generated\nreturn [{ json: { ...$json, action: 'logged_cold', outreach: false, emailGenerated: null } }];"
+      },
+      "id": "s1a1b1c1-0008-4000-8000-000000000008",
+      "name": "Log Cold Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 620]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst emailContent = response.choices?.[0]?.message?.content || 'Email generation failed';\nconst lead = $('Parse Score').first().json;\n\nreturn [{\n  json: {\n    ...lead,\n    emailGenerated: emailContent,\n    action: 'hot_outreach_generated'\n  }\n}];"
+      },
+      "id": "s1a1b1c1-0009-4000-8000-000000000009",
+      "name": "Parse Hot Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 250]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst emailContent = response.choices?.[0]?.message?.content || 'Email generation failed';\nconst lead = $('Parse Score').first().json;\n\nreturn [{\n  json: {\n    ...lead,\n    emailGenerated: emailContent,\n    action: 'warm_outreach_generated'\n  }\n}];"
+      },
+      "id": "s1a1b1c1-0010-4000-8000-000000000010",
+      "name": "Parse Warm Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 450]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sybzqktipimbmujtowoz.supabase.co/rest/v1/activity_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ${SUPABASE_SERVICE_ROLE_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ client_id: '3bd50557-6680-43b9-bb8e-261c7f8a19d2', event_type: 'lead_scored', summary: ($json.name || 'Unknown') + ' (' + ($json.company || 'N/A') + ') scored ' + ($json.icpScore || 0) + ' — ' + ($json.tier || 'unknown') + ' — ' + ($json.action || ''), payload: { name: $json.name, company: $json.company, email: $json.email, phone: $json.phone, industry: $json.industry, icpScore: $json.icpScore, tier: $json.tier, reasoning: $json.reasoning, personalizationAngle: $json.personalizationAngle, emailGenerated: $json.emailGenerated, action: $json.action } }) }}",
+        "options": {}
+      },
+      "id": "s1a1b1c1-0011-4000-8000-000000000011",
+      "name": "Log Lead to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1880, 400]
+    }
+  ],
+  "connections": {
+    "Inbound Lead Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Score Lead ICP (Nemotron-Super)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Lead ICP (Nemotron-Super)": {
+      "main": [
+        [
+          {
+            "node": "Parse Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Score": {
+      "main": [
+        [
+          {
+            "node": "Route by Tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Tier": {
+      "main": [
+        [
+          {
+            "node": "Generate Hot Outreach (Qwen)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Warm Outreach (Qwen)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Cold Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Hot Outreach (Qwen)": {
+      "main": [
+        [
+          {
+            "node": "Parse Hot Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Warm Outreach (Qwen)": {
+      "main": [
+        [
+          {
+            "node": "Parse Warm Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Hot Email": {
+      "main": [
+        [
+          {
+            "node": "Log Lead to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Warm Email": {
+      "main": [
+        [
+          {
+            "node": "Log Lead to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Cold Lead": {
+      "main": [
+        [
+          {
+            "node": "Log Lead to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "tags": [
+    { "name": "sdr" },
+    { "name": "sales" },
+    { "name": "ai-agent" },
+    { "name": "saffron-kitchen" }
+  ]
+}
