@@ -118,6 +118,26 @@ const agents = [
       </svg>
     ),
   },
+  {
+    name: "Voice Notes",
+    desc: "Nadia listens and responds with voice messages. Customers send voice notes, she transcribes, understands, and replies with her own voice — in Arabic or English. No typing needed. Just talk to your business like you talk to a friend.",
+    color: "teal",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+      </svg>
+    ),
+  },
+  {
+    name: "Multi-Channel",
+    desc: "One AI brain across WhatsApp, your website, Telegram, and Instagram DM. Same personality, same memory, every channel. A customer who messages on Instagram at noon and WhatsApp at night gets one continuous conversation — not two strangers.",
+    color: "cyan",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+      </svg>
+    ),
+  },
 ];
 
 const colorMap: Record<string, { bg: string; text: string; ring: string; glow: string }> = {
@@ -183,9 +203,10 @@ export default function HomePage() {
             </h1>
 
             <p className="mt-8 text-lg text-white/50 leading-[1.7] max-w-[44ch]">
-              AI employees that remember every customer, improve themselves
-              nightly from real conversations, and proactively follow up — so
-              no booking is ever lost. In Arabic and English, around the clock.
+              Your AI handles WhatsApp, voice notes, Instagram DMs, and your
+              website chat — in Arabic and English. She remembers every
+              customer, improves herself nightly, and proactively follows up
+              so no booking is ever lost. Around the clock.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-4">
@@ -275,7 +296,7 @@ export default function HomePage() {
                 Your AI team
               </span>
               <h2 className="text-3xl md:text-[2.75rem] font-extrabold tracking-[-0.03em] leading-[1.1]">
-                6 AI employees.
+                8 AI employees.
                 <br />
                 <span className="text-white/30">Each one has a name.</span>
               </h2>
@@ -493,6 +514,28 @@ export default function HomePage() {
                   <div>
                     <h3 className="text-[15px] font-bold text-white">Risk Surfacing</h3>
                     <p className="mt-2 text-sm text-white/40 leading-relaxed max-w-[50ch]">The AI doesn&apos;t wait for you to ask. It surfaces what you&apos;re missing: declining repeat visits, unanswered complaints, booking patterns that signal trouble. Proactive alerts so nothing slips through the cracks.</p>
+                  </div>
+                </div>
+              </GlowCard>
+            </StaggerItem>
+
+            <StaggerItem>
+              <GlowCard
+                glowColor={colorMap.emerald.glow}
+                className={cn(
+                  "rounded-2xl p-7 bg-white/[0.02] ring-1 ring-white/[0.06] transition-all duration-500 h-full",
+                  colorMap.emerald.ring
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", colorMap.emerald.bg, colorMap.emerald.text)}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-white">Native Gulf Arabic</h3>
+                    <p className="mt-2 text-sm text-white/40 leading-relaxed max-w-[50ch]">Arabic messages automatically route to a model that speaks native Gulf Arabic. English stays on the primary engine. Your customers get natural conversations in their language — not broken translation.</p>
                   </div>
                 </div>
               </GlowCard>
@@ -805,6 +848,50 @@ export default function HomePage() {
                   <div>
                     <h3 className="text-[15px] font-bold text-white">Trending Topic Awareness</h3>
                     <p className="mt-2 text-sm text-white/40 leading-relaxed max-w-[50ch]">Culturally aware of the UAE and KSA calendar. From Ramadan iftar trends to National Day celebrations — the engine knows what your audience cares about right now.</p>
+                  </div>
+                </div>
+              </GlowCard>
+            </StaggerItem>
+
+            <StaggerItem>
+              <GlowCard
+                glowColor={colorMap.violet.glow}
+                className={cn(
+                  "rounded-2xl p-7 bg-white/[0.02] ring-1 ring-white/[0.06] transition-all duration-500 h-full",
+                  colorMap.violet.ring
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", colorMap.violet.bg, colorMap.violet.text)}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-1.5A1.125 1.125 0 0118 18.375M20.625 4.5H3.375m17.25 0c.621 0 1.125.504 1.125 1.125M20.625 4.5h-1.5C18.504 4.5 18 5.004 18 5.625m3.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 4.5c-.621 0-1.125.504-1.125 1.125M3.375 4.5h1.5C5.496 4.5 6 5.004 6 5.625m-3.75 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 8.25 6 7.746 6 7.125v-1.5M4.875 8.25C5.496 8.25 6 8.754 6 9.375v1.5m0-5.25v5.25m0-5.25C6 5.004 6.504 4.5 7.125 4.5h9.75c.621 0 1.125.504 1.125 1.125m1.125 2.625h1.5m-1.5 0A1.125 1.125 0 0118 7.125v-1.5m1.125 2.625c-.621 0-1.125.504-1.125 1.125v1.5m2.625-2.625c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125M18 5.625v5.25M7.125 12h9.75m-9.75 0A1.125 1.125 0 016 10.875M7.125 12C6.504 12 6 12.504 6 13.125m0-2.25c0 .621.504 1.125 1.125 1.125M18 10.875c0 .621-.504 1.125-1.125 1.125M18 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m-12 5.25v-5.25m0 5.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125m-12 0v-1.5c0-.621-.504-1.125-1.125-1.125M18 18.375v-5.25m0 5.25v-1.5c0-.621.504-1.125 1.125-1.125M18 13.125v1.5c0 .621.504 1.125 1.125 1.125M18 13.125c0-.621.504-1.125 1.125-1.125M6 13.125v1.5c0 .621-.504 1.125-1.125 1.125M6 13.125C6 12.504 5.496 12 4.875 12m-1.5 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M19.125 12h1.5m0 0c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h1.5m14.25 0h1.5" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-white">AI Video Generation</h3>
+                    <p className="mt-2 text-sm text-white/40 leading-relaxed max-w-[50ch]">TikTok and Instagram Reels generated automatically. Product showcases, behind-the-scenes, tutorials — all with Arabic or English voiceovers. From idea to published video without opening an editor.</p>
+                  </div>
+                </div>
+              </GlowCard>
+            </StaggerItem>
+
+            <StaggerItem>
+              <GlowCard
+                glowColor={colorMap.orange.glow}
+                className={cn(
+                  "rounded-2xl p-7 bg-white/[0.02] ring-1 ring-white/[0.06] transition-all duration-500 h-full",
+                  colorMap.orange.ring
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", colorMap.orange.bg, colorMap.orange.text)}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.15c0 .415.336.75.75.75z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-white">Marketplace Auto-Posting</h3>
+                    <p className="mt-2 text-sm text-white/40 leading-relaxed max-w-[50ch]">Daily Haraj posts, Reddit community engagement, Facebook group promotions — all automated in natural Saudi Arabic. Your products and services show up where your customers are already browsing.</p>
                   </div>
                 </div>
               </GlowCard>
@@ -1125,7 +1212,7 @@ export default function HomePage() {
                 {[
                   { num: "1", title: "We learn your business", desc: "We scan your website, interview you about your vibe, and study your industry. In 30 minutes we know your business better than a new hire would in a month." },
                   { num: "2", title: "We create your AI team", desc: "Each agent gets a unique persona — a name, a backstory, a personality, even a profile photo. Your WhatsApp agent isn't a bot. It's someone your customers will remember." },
-                  { num: "3", title: "Connect and go live", desc: "WhatsApp connected, agents activated, knowledge loaded. Your AI team starts working. You get a morning brief. Take a photo of today's special — it's on Instagram in minutes." },
+                  { num: "3", title: "Pay, we build, you go live", desc: "We build your website, activate your AI across WhatsApp, your website widget, Telegram, and Instagram DM — with voice note support on every channel. Your AI team starts handling customers on day one. You get a morning brief. Take a photo of today's special — it's everywhere in minutes." },
                 ].map((step) => (
                   <motion.div
                     key={step.num}

@@ -34,10 +34,10 @@ const steps = [
   },
   {
     step: "03",
-    title: "Your agent goes live on WhatsApp",
+    title: "Your AI goes live across every channel",
     duration: "Instant",
-    description: "Your AI agent starts handling customers immediately. She texts like a real person — short messages, natural timing, never a wall of text. She takes bookings, collects delivery addresses, confirms payment, and follows up after every order. Arabic and English. 24/7. She proactively sells — suggests larger quantities, gift wrapping, repeat orders. Every conversation builds customer memory that lasts forever.",
-    details: ["Multi-message replies like a real person", "Proactive selling and follow-up", "Bilingual Arabic + English"],
+    description: "Your AI agent starts handling customers immediately on WhatsApp, your website widget, Telegram, and Instagram DM — with voice note support on every channel. She texts like a real person: short messages, natural timing, never a wall of text. Customers can send voice notes and get voice replies back in Arabic or English. She takes bookings, collects delivery addresses, confirms payment, and follows up after every order. 24/7. Every conversation builds customer memory that lasts forever.",
+    details: ["Multi-channel: WhatsApp, website, Telegram, Instagram DM", "Voice notes: listens and responds with voice", "Bilingual Arabic + English"],
     color: "text-violet-400",
     bg: "bg-violet-500/10",
     border: "border-violet-500/20",
