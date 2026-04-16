@@ -20,10 +20,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               window.__kapsoConfig = {
-                clientId: '3bd50557-6680-43b9-bb8e-261c7f8a19d2',
+                clientId: 'bde4efa3-33a2-42a4-ba2c-e803a09aa936',
                 color: '#10b981',
-                personaName: 'Nadia',
-                greeting: 'Hi! I am Nadia from Saffron Kitchen. Want to see how our AI works? Ask me anything.',
+                personaName: 'Rami',
+                greeting: 'Ahlan! I\\'m Rami, CEO of AI Agent Systems. Curious how AI agents can run your customer service 24/7? Ask me anything.',
                 lang: 'en',
                 theme: 'dark',
                 apiBase: 'https://n8n.dcp.sa'

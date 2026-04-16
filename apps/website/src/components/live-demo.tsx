@@ -14,23 +14,23 @@ interface Message {
 
 /* ── Constants ─────────────────────────────────── */
 const API_URL = "https://n8n.dcp.sa/chat/message";
-const CLIENT_ID = "3bd50557-6680-43b9-bb8e-261c7f8a19d2";
+const CLIENT_ID = "bde4efa3-33a2-42a4-ba2c-e803a09aa936";
 
 const INITIAL_MESSAGES: Message[] = [
   {
     id: "init-1",
     role: "assistant",
     content:
-      "Hey! Welcome to Saffron Kitchen. Looking for a table tonight? We have a beautiful terrace with sea views.",
+      "Ahlan! I\u2019m Rami, CEO of AI Agent Systems. Want to see what our AI agents can do for your business? Ask me anything \u2014 pricing, features, how fast we deploy.",
     time: formatTime(new Date()),
   },
 ];
 
 const SUGGESTED_PROMPTS = [
-  "Book a table for 4 on Friday",
-  "What\u2019s on the menu?",
-  "Do you have vegan options?",
-  "I have a birthday dinner",
+  "What do your AI agents do?",
+  "How much does it cost?",
+  "How fast can you deploy?",
+  "Do you support Arabic?",
 ];
 
 /* ── Helpers ───────────────────────────────────── */
@@ -146,7 +146,7 @@ export function LiveDemo() {
                 Don&apos;t take our word for it.
               </h2>
               <p className="mt-6 text-white/40 text-lg leading-relaxed max-w-[50ch] mx-auto">
-                Talk to Nadia yourself. This is a live AI &mdash; not a recording.
+                Talk to Rami yourself. This is a live AI &mdash; not a recording.
               </p>
             </div>
           </FadeUp>
@@ -194,11 +194,11 @@ export function LiveDemo() {
                   </svg>
                   {/* Avatar */}
                   <div className="w-9 h-9 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-emerald-400 font-bold text-sm">N</span>
+                    <span className="text-emerald-400 font-bold text-sm">R</span>
                   </div>
                   {/* Name + status */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-semibold text-white leading-tight">Nadia Khoury</p>
+                    <p className="text-[14px] font-semibold text-white leading-tight">Rami Mansour</p>
                     <div className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       <span className="text-[11px] text-white/40">online</span>

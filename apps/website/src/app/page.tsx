@@ -120,7 +120,7 @@ const agents = [
   },
   {
     name: "Voice Notes",
-    desc: "Nadia listens and responds with voice messages. Customers send voice notes, she transcribes, understands, and replies with her own voice — in Arabic or English. No typing needed. Just talk to your business like you talk to a friend.",
+    desc: "Your AI listens and responds with voice messages. Customers send voice notes — it transcribes, understands, and replies with its own voice in Arabic or English. No typing needed. Just talk to your business like you talk to a friend.",
     color: "teal",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
