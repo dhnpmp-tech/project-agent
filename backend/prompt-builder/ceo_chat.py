@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Cookie, HTTPException, Query, Response
+from fastapi import APIRouter, Cookie, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from ceo_persona import _supabase_query
-from ceo_chat_sessions import bind_identity, forget, history
+from ceo_chat_sessions import bind_identity, forget, history, resolve_or_create
+import ceo_chat_engine
 
 router = APIRouter(prefix="/ceo/chat")
 
@@ -129,3 +131,66 @@ async def history_route(
     if ceo_session_id != session_id:
         raise HTTPException(status_code=403, detail="cookie/session mismatch")
     return {"messages": await history(session_id)}
+
+
+# ── Chat endpoint (SSE streaming) ────────────────────────────────────
+
+class ChatBody(BaseModel):
+    message: str
+    page_url: str = "/"
+    lang: Optional[str] = None
+
+
+@router.post("")
+async def chat(
+    body: ChatBody,
+    request: Request,
+    ceo_session_id: Optional[str] = Cookie(default=None),
+):
+    ip = request.client.host if request.client else "0.0.0.0"
+    lang = (body.lang or "en").lower()
+    if lang not in ("en", "ar"):
+        lang = "en"
+
+    # Pre-pipeline rate-limit so we can respond with 429 + JSON
+    rl = await ceo_chat_engine.check_and_record(ip)
+    if not rl.allowed:
+        text = (
+            "Easy, brother — slow down a sec. Try again in a minute."
+            if lang == "en" else
+            "على مهلك يا حبيبي — جرّب بعد دقيقة."
+        )
+        return JSONResponse(
+            status_code=429,
+            content={
+                "text": text,
+                "reason": rl.reason,
+                "retry_after_seconds": rl.retry_after_seconds,
+            },
+        )
+
+    # Resolve session (creates one if missing)
+    session_id = await resolve_or_create(
+        cookie_id=ceo_session_id, browser_lang=lang, page=body.page_url,
+    )
+
+    # Stream the pipeline. NOTE: we already burned a rate-limit slot above; the
+    # pipeline's internal rate-limit branch is now a no-op (allowed=True comes
+    # back since we didn't exceed) — but injection penalty path can still burn 3.
+    async def _gen():
+        async for chunk in ceo_chat_engine.run_pipeline(
+            session_id=session_id, message=body.message,
+            page_url=body.page_url, ip=ip, lang=lang,
+        ):
+            yield chunk
+
+    headers = {"X-Ceo-Session-Id": session_id}
+    response = StreamingResponse(
+        _gen(), media_type="text/event-stream", headers=headers,
+    )
+    if session_id != ceo_session_id:
+        response.set_cookie(
+            "ceo_session_id", session_id, httponly=True, samesite="lax",
+            secure=False, max_age=60 * 60 * 24 * 365,
+        )
+    return response
