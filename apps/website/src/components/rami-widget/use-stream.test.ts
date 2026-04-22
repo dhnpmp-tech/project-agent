@@ -28,7 +28,8 @@ function sseResponse(chunks: string[], opts: { failAt?: number } = {}) {
 }
 
 describe("useStream", () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let fetchSpy: any;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(globalThis, "fetch");

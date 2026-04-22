@@ -30,7 +30,8 @@ function sseResp(chunks: string[]) {
 }
 
 describe("RamiWidget", () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let fetchSpy: any;
 
   beforeEach(() => {
     document.cookie = "ceo_session_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
@@ -81,7 +82,7 @@ describe("RamiWidget", () => {
       await userEvent.keyboard("{Meta>}{Enter}{/Meta}");
     });
     await waitFor(() => {
-      const chatCall = fetchSpy.mock.calls.find((c) => String(c[0]).includes("/api/rami/chat"));
+      const chatCall = fetchSpy.mock.calls.find((c: unknown[]) => String(c[0]).includes("/api/rami/chat"));
       expect(chatCall).toBeTruthy();
     });
     await waitFor(() => expect(screen.getByText("Hello")).toBeInTheDocument());

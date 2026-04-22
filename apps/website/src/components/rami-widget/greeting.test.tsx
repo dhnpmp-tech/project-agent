@@ -10,7 +10,8 @@ const mkResponse = (greeting: string, chips: string[]) =>
   });
 
 describe("Greeting", () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let fetchSpy: any;
 
   beforeEach(() => {
     // Default: English browser, no cookie
