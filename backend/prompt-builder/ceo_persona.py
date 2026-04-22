@@ -150,6 +150,26 @@ async def _supabase_update(table: str, record_id: str, data: dict) -> dict:
         return rows[0] if rows else {}
 
 
+async def _supabase_delete(table: str, eq: Optional[dict] = None, lt: Optional[dict] = None) -> None:
+    """DELETE rows from a Supabase table. eq is exact-match, lt is less-than."""
+    params: dict = {}
+    for k, v in (eq or {}).items():
+        params[k] = f"eq.{v}"
+    for k, v in (lt or {}).items():
+        params[k] = f"lt.{v}"
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.request(
+            "DELETE",
+            f"{_SUPA_URL}/rest/v1/{table}",
+            params=params,
+            headers={
+                "apikey": _SUPA_KEY,
+                "Authorization": f"Bearer {_SUPA_KEY}",
+            },
+        )
+        resp.raise_for_status()
+
+
 # ── LLM ───────────────────────────────────────────────
 
 async def _llm_generate(prompt: str, system: str = None, temperature: float = 0.8, max_tokens: int = 500) -> str:
