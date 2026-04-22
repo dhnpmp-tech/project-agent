@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiUrl } from "@/lib/api-url";
 
 interface Conversation {
   id: string;
@@ -42,7 +43,7 @@ export function WhatsAppInbox({ companyName }: Props) {
 
   async function checkKapsoConfig() {
     // Check if KAPSO_API_KEY is stored
-    const res = await fetch("/api/kapso/status");
+    const res = await fetch(apiUrl("/api/kapso/status"));
     if (res.ok) {
       const data = await res.json();
       if (data.configured) {
@@ -54,7 +55,7 @@ export function WhatsAppInbox({ companyName }: Props) {
   }
 
   async function loadConversations() {
-    const res = await fetch("/api/kapso/conversations");
+    const res = await fetch(apiUrl("/api/kapso/conversations"));
     if (res.ok) {
       const data = await res.json();
       setConversations(data.conversations || []);
@@ -63,7 +64,7 @@ export function WhatsAppInbox({ companyName }: Props) {
 
   async function loadMessages(convoId: string) {
     setSelectedConvo(convoId);
-    const res = await fetch(`/api/kapso/messages?conversation_id=${convoId}`);
+    const res = await fetch(apiUrl(`/api/kapso/messages?conversation_id=${convoId}`));
     if (res.ok) {
       const data = await res.json();
       setMessages(data.messages || []);
@@ -78,7 +79,7 @@ export function WhatsAppInbox({ companyName }: Props) {
     const convo = conversations.find((c) => c.id === selectedConvo);
     if (!convo) return;
 
-    await fetch("/api/kapso/send", {
+    await fetch(apiUrl("/api/kapso/send"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -94,7 +95,7 @@ export function WhatsAppInbox({ companyName }: Props) {
 
   async function saveKapsoConfig(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/kapso/setup", {
+    const res = await fetch(apiUrl("/api/kapso/setup"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ apiKey: kapsoApiKey, phoneNumberId }),

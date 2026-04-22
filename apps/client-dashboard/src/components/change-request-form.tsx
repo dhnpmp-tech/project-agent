@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiUrl } from "@/lib/api-url";
 
 export function ChangeRequestForm() {
   const [category, setCategory] = useState("config_change");
@@ -11,7 +12,7 @@ export function ChangeRequestForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch("/api/webhooks/n8n", {
+    const res = await fetch(apiUrl("/api/webhooks/n8n"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

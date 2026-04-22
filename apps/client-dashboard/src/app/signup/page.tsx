@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 
 export default function SignupPage() {
@@ -74,12 +75,12 @@ export default function SignupPage() {
             We sent a confirmation link to <strong className="text-white/70">{email}</strong>.
             Click the link to activate your account.
           </p>
-          <a
+          <Link
             href="/login"
             className="mt-6 inline-block text-sm text-brand-400 hover:text-brand-300 transition-colors"
           >
             Back to sign in
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -97,14 +98,14 @@ export default function SignupPage() {
       <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <a href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center">
               <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8 2L2 5.5l6 3.5 6-3.5L8 2zM2 10.5l6 3.5 6-3.5M2 8l6 3.5 6-3.5" />
               </svg>
             </div>
             <span className="text-sm font-bold text-white tracking-tight">AI Agent Systems</span>
-          </a>
+          </Link>
         </div>
 
         <div className="text-center mb-8">
@@ -189,9 +190,9 @@ export default function SignupPage() {
 
         <p className="mt-6 text-center text-sm text-white/40">
           Already have an account?{" "}
-          <a href="/login" className="text-brand-400 hover:text-brand-300 font-medium transition-colors">
+          <Link href="/login" className="text-brand-400 hover:text-brand-300 font-medium transition-colors">
             Sign in
-          </a>
+          </Link>
         </p>
       </div>
     </div>

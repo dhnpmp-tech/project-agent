@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 
 export default function UpdatePasswordPage() {
@@ -57,12 +58,12 @@ export default function UpdatePasswordPage() {
           <p className="mt-2 text-sm text-gray-500">
             Your password has been changed successfully.
           </p>
-          <a
+          <Link
             href="/dashboard"
             className="mt-6 inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Go to dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );

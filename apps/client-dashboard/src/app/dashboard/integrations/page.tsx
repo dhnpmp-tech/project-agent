@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
+import { apiUrl } from "@/lib/api-url";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -291,7 +293,7 @@ export default function IntegrationsPage() {
 
   const handleSave = useCallback(async (integrationId: string, values: Record<string, string>) => {
     try {
-      const res = await fetch("/api/integrations/save", {
+      const res = await fetch(apiUrl("/api/integrations/save"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ integrationId, credentials: values }),
@@ -356,9 +358,9 @@ export default function IntegrationsPage() {
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <a href="/dashboard" className="text-gray-400 hover:text-gray-600">
+            <Link href="/dashboard" className="text-gray-400 hover:text-gray-600">
               &larr; Back
-            </a>
+            </Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900">Integrations</h1>
               <p className="text-sm text-gray-500">

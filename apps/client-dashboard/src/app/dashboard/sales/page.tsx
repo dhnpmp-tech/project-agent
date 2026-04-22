@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 
 /* ------------------------------------------------------------------ */
@@ -352,12 +353,12 @@ export default function SalesRepPage() {
       <header className="border-b border-surface-800 bg-surface-900 px-6 py-4">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <a
+            <Link
               href="/dashboard"
               className="text-surface-500 hover:text-surface-300 transition-colors"
             >
               &larr; Back
-            </a>
+            </Link>
             <div>
               <h1 className="text-xl font-bold text-surface-0">Sales Pipeline</h1>
               <p className="text-sm text-surface-500">

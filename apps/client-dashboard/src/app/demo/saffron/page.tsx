@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { apiUrl } from "@/lib/api-url";
 
 interface Message {
   id: string;
@@ -67,7 +68,7 @@ export default function SaffronCustomerDemo() {
           content: m.text,
         }));
 
-      const res = await fetch("/api/demo/chat", {
+      const res = await fetch(apiUrl("/api/demo/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

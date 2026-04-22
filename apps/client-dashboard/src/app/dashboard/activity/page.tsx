@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { ActivityFeed } from "@/components/activity-feed";
 import type { ActivityLog } from "@project-agent/shared-types";
@@ -15,9 +16,9 @@ export default async function ActivityPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center gap-4">
-          <a href="/dashboard" className="text-gray-400 hover:text-gray-600">
+          <Link href="/dashboard" className="text-gray-400 hover:text-gray-600">
             &larr; Back
-          </a>
+          </Link>
           <h1 className="text-xl font-bold text-gray-900">Activity Log</h1>
         </div>
       </header>

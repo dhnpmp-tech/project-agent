@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
+import { apiUrl } from "@/lib/api-url";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -604,7 +605,7 @@ export default function ClientDetailPage({
     async function load() {
       try {
         // Fetch clients list and find the one we need
-        const res = await fetch("/api/admin/clients");
+        const res = await fetch(apiUrl("/api/admin/clients"));
         if (!res.ok) throw new Error(`Failed to fetch clients (${res.status})`);
         const data: AdminClient[] = await res.json();
         const found = data.find((c) => c.id === clientId);
@@ -617,7 +618,7 @@ export default function ClientDetailPage({
 
         // Fetch knowledge data for persona
         try {
-          const kbRes = await fetch(`/api/admin/clients/${clientId}/knowledge`);
+          const kbRes = await fetch(apiUrl(`/api/admin/clients/${clientId}/knowledge`));
           if (kbRes.ok) {
             const kbData = await kbRes.json();
             setKnowledge(kbData);
@@ -628,7 +629,7 @@ export default function ClientDetailPage({
 
         // Fetch agent deployments
         try {
-          const depRes = await fetch(`/api/admin/clients/${clientId}/deployments`);
+          const depRes = await fetch(apiUrl(`/api/admin/clients/${clientId}/deployments`));
           if (depRes.ok) {
             const depData = await depRes.json();
             setDeployments(depData);

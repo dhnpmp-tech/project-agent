@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 /* ------------------------------------------------------------------ */
 /*  Constants & Types                                                  */
@@ -864,12 +865,12 @@ export default function ContentEnginePage() {
       <header className="border-b border-surface-800 bg-surface-900 px-6 py-4">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-3 mb-1">
-            <a
+            <Link
               href="/dashboard"
               className="text-sm text-surface-500 hover:text-surface-300 transition-colors"
             >
               Dashboard
-            </a>
+            </Link>
             <span className="text-surface-700">/</span>
             <span className="text-sm text-surface-300">Content Engine</span>
           </div>

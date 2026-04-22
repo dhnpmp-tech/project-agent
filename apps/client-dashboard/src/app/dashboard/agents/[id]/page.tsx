@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { AGENT_DISPLAY_NAMES, type AgentDeployment, type ActivityLog } from "@project-agent/shared-types";
 import { notFound } from "next/navigation";
@@ -44,9 +45,9 @@ export default async function AgentDetailPage({
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-1">
-            <a href="/dashboard" className="text-sm text-gray-400 hover:text-gray-600">
+            <Link href="/dashboard" className="text-sm text-gray-400 hover:text-gray-600">
               Dashboard
-            </a>
+            </Link>
             <span className="text-gray-300">/</span>
             <span className="text-sm text-gray-600">Agent</span>
           </div>

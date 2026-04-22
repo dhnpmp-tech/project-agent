@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 
 /* ------------------------------------------------------------------ */
@@ -1201,12 +1202,12 @@ export default function GoogleBusinessPage() {
       <header className="border-b border-zinc-800 bg-zinc-900 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <a
+            <Link
               href="/dashboard"
               className="text-zinc-500 hover:text-zinc-300 transition-colors"
             >
               &larr; Back
-            </a>
+            </Link>
             <div>
               <h1 className="text-xl font-bold text-zinc-100">
                 Google Business Profile

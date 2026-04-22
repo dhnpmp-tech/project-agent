@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { apiUrl } from "@/lib/api-url";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -127,7 +128,7 @@ export default function AdminOverviewPage() {
   useEffect(() => {
     async function fetchClients() {
       try {
-        const res = await fetch("/api/admin/clients");
+        const res = await fetch(apiUrl("/api/admin/clients"));
         if (!res.ok) {
           throw new Error(`Failed to fetch clients (${res.status})`);
         }

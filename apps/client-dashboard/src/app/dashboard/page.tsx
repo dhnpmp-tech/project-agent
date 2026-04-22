@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { apiUrl } from "@/lib/api-url";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { AgentStatusCard } from "@/components/agent-status-card";
 import { ActivityFeed } from "@/components/activity-feed";
@@ -42,61 +44,61 @@ export default async function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <a
+            <Link
               href="/dashboard/whatsapp"
               className="rounded-md border border-green-300 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-100"
             >
               WhatsApp
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/reports"
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Reports
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/sales"
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Sales
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/content"
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Content
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/google-business"
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Google Business
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/channels"
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Channels
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/widget"
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Widget
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/booking-settings"
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Booking Settings
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/support"
               className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
             >
               Request a Change
-            </a>
-            <form action="/api/auth/signout" method="POST">
+            </Link>
+            <form action={apiUrl("/api/auth/signout")} method="POST">
               <button
                 type="submit"
                 className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-50"
@@ -143,7 +145,7 @@ export default async function DashboardPage() {
             Sales, Content & Tools
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <a
+            <Link
               href="/dashboard/reports"
               className="group rounded-lg border border-gray-200 bg-white p-5 transition-all hover:border-brand-300 hover:shadow-md"
             >
@@ -158,8 +160,8 @@ export default async function DashboardPage() {
               <p className="text-sm text-gray-500">
                 Analytics, conversion funnels, AI performance, and channel insights.
               </p>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/sales"
               className="group rounded-lg border border-gray-200 bg-white p-5 transition-all hover:border-brand-300 hover:shadow-md"
             >
@@ -174,8 +176,8 @@ export default async function DashboardPage() {
               <p className="text-sm text-gray-500">
                 Manage your AI sales pipeline, leads, and outreach campaigns.
               </p>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/content"
               className="group rounded-lg border border-gray-200 bg-white p-5 transition-all hover:border-brand-300 hover:shadow-md"
             >
@@ -190,8 +192,8 @@ export default async function DashboardPage() {
               <p className="text-sm text-gray-500">
                 Generate and schedule social media posts, blogs, and newsletters.
               </p>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/google-business"
               className="group rounded-lg border border-gray-200 bg-white p-5 transition-all hover:border-brand-300 hover:shadow-md"
             >
@@ -207,8 +209,8 @@ export default async function DashboardPage() {
               <p className="text-sm text-gray-500">
                 Optimize your Google profile, manage reviews, and boost local SEO.
               </p>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/channels"
               className="group rounded-lg border border-gray-200 bg-white p-5 transition-all hover:border-brand-300 hover:shadow-md"
             >
@@ -223,8 +225,8 @@ export default async function DashboardPage() {
               <p className="text-sm text-gray-500">
                 Manage WhatsApp, Widget, Telegram, and Instagram connections.
               </p>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/widget"
               className="group rounded-lg border border-gray-200 bg-white p-5 transition-all hover:border-brand-300 hover:shadow-md"
             >
@@ -239,7 +241,7 @@ export default async function DashboardPage() {
               <p className="text-sm text-gray-500">
                 Customize and embed your chat widget on any website.
               </p>
-            </a>
+            </Link>
           </div>
         </section>
 
@@ -249,12 +251,12 @@ export default async function DashboardPage() {
             <h2 className="text-lg font-semibold text-gray-900">
               Recent Activity
             </h2>
-            <a
+            <Link
               href="/dashboard/activity"
               className="text-sm text-brand-600 hover:underline"
             >
               View all
-            </a>
+            </Link>
           </div>
           <ActivityFeed activities={(activities as ActivityLog[]) || []} />
         </section>

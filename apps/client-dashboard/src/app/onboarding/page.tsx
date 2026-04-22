@@ -9,6 +9,7 @@ import { StepSelectAgents } from "@/components/onboarding/step-select-agents";
 import { StepIndustrySetup, type IndustryConfig } from "@/components/onboarding/step-industry-setup";
 import { OnboardingTutorial } from "@/components/onboarding/onboarding-tutorial";
 import { AGENT_DISPLAY_NAMES, type AgentType } from "@project-agent/shared-types";
+import { apiUrl } from "@/lib/api-url";
 
 const STEPS = [
   "Company Profile",
@@ -299,13 +300,13 @@ export default function OnboardingPage() {
       }
 
       // 5. Trigger auto-provisioning (non-blocking)
-      fetch("/api/provisioning/trigger", {
+      fetch(apiUrl("/api/provisioning/trigger"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clientId: clientId }),
       }).catch(() => {}); // Non-blocking — don't fail onboarding if this errors
 
-      window.location.href = "/dashboard";
+      window.location.href = apiUrl("/dashboard");
     } catch {
       setError("An unexpected error occurred. Please try again.");
       setLoading(false);

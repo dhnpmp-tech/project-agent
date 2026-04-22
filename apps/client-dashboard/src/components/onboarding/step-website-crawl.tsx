@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiUrl } from "@/lib/api-url";
 
 export interface CrawlData {
   businessDescription: string;
@@ -45,7 +46,7 @@ export function StepWebsiteCrawl({
     setLoading(true);
 
     try {
-      const res = await fetch("/api/crawl", {
+      const res = await fetch(apiUrl("/api/crawl"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: websiteUrl.trim() }),

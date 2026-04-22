@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { apiUrl } from "@/lib/api-url";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -213,7 +215,7 @@ export default function BookingSettingsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/booking-requirements");
+        const res = await fetch(apiUrl("/api/booking-requirements"));
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error || `HTTP ${res.status}`);
@@ -303,7 +305,7 @@ export default function BookingSettingsPage() {
     setSaveStatus("idle");
 
     try {
-      const res = await fetch("/api/booking-requirements", {
+      const res = await fetch(apiUrl("/api/booking-requirements"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requirements }),
@@ -357,12 +359,12 @@ export default function BookingSettingsPage() {
             Failed to load settings
           </h2>
           <p className="text-sm text-gray-500 mb-4">{error}</p>
-          <a
+          <Link
             href="/dashboard"
             className="text-sm text-gray-500 hover:text-gray-700 underline"
           >
             Back to Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -385,12 +387,12 @@ export default function BookingSettingsPage() {
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <a
+            <Link
               href="/dashboard"
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
               &larr; Back
-            </a>
+            </Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
                 Booking Requirements

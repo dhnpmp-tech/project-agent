@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import Link from "next/link";
+import { apiUrl } from "@/lib/api-url";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -358,7 +360,7 @@ window.__kapsoConfig = {
     setSaveStatus("idle");
 
     try {
-      const res = await fetch("/api/widget-config", {
+      const res = await fetch(apiUrl("/api/widget-config"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -406,12 +408,12 @@ window.__kapsoConfig = {
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <a
+            <Link
               href="/dashboard"
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
               &larr; Back
-            </a>
+            </Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
                 Widget Customization

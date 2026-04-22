@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 
 /* ------------------------------------------------------------------ */
@@ -308,9 +309,9 @@ export default function ChannelsPage() {
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center gap-3 mb-1">
-            <a href="/dashboard" className="text-sm text-gray-400 hover:text-gray-600">
+            <Link href="/dashboard" className="text-sm text-gray-400 hover:text-gray-600">
               Dashboard
-            </a>
+            </Link>
             <span className="text-gray-300">/</span>
             <span className="text-sm text-gray-600">Channels</span>
           </div>

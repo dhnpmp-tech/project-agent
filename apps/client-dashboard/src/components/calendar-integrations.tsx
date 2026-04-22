@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { CalendarProviderType } from "@project-agent/shared-types";
+import { apiUrl } from "@/lib/api-url";
 
 // --- Provider metadata ---
 
@@ -106,7 +107,7 @@ export function CalendarIntegrations() {
 
   async function loadConfigs() {
     try {
-      const res = await fetch("/api/calendar-configs");
+      const res = await fetch(apiUrl("/api/calendar-configs"));
       if (res.ok) {
         const data = await res.json();
         setSavedConfigs(data.configs || []);
@@ -132,7 +133,7 @@ export function CalendarIntegrations() {
     setError(null);
 
     try {
-      const res = await fetch("/api/calendar-configs/test", {
+      const res = await fetch(apiUrl("/api/calendar-configs/test"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -169,7 +170,7 @@ export function CalendarIntegrations() {
     }
 
     try {
-      const res = await fetch("/api/calendar-configs", {
+      const res = await fetch(apiUrl("/api/calendar-configs"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -201,7 +202,7 @@ export function CalendarIntegrations() {
   async function handleDelete(id: string) {
     if (!confirm("Remove this calendar integration?")) return;
     try {
-      await fetch(`/api/calendar-configs/${id}`, { method: "DELETE" });
+      await fetch(apiUrl(`/api/calendar-configs/${id}`), { method: "DELETE" });
       await loadConfigs();
     } catch {
       // silent
@@ -270,7 +271,7 @@ export function CalendarIntegrations() {
           {/* Google OAuth — prominent Connect button */}
           <div className="mb-4">
             <a
-              href="/api/auth/google"
+              href={apiUrl("/api/auth/google")}
               className="flex items-center gap-3 w-full border-2 border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:bg-blue-50 transition-colors group"
             >
               <div className="flex-shrink-0 w-10 h-10 bg-white rounded-lg shadow-sm border border-gray-100 flex items-center justify-center">
