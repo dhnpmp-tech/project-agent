@@ -1,0 +1,26 @@
+{
+  "pricing": {
+    "en": "AED 3,000 setup, then 1,500–8,000/month depending on which agents you turn on. Setup includes onboarding, knowledge-base build from your website, WhatsApp number provisioning, and 30 days of tuning. Monthly covers infra, LLM tokens, and continuous learning across the fleet.",
+    "ar": "الإعداد ٣ آلاف درهم، والاشتراك الشهري بين ١٫٥ إلى ٨ آلاف حسب عدد الوكلاء اللي تشغّلهم. الإعداد يشمل التهيئة، بناء قاعدة المعرفة من موقعكم، تجهيز رقم واتساب، و٣٠ يوم تحسين. الشهري يغطي البنية التحتية والـtokens والتعلّم المستمر."
+  },
+  "stack": {
+    "en": "Customer-facing agents run on Claude Sonnet 4.6. Classification on Claude Haiku 4.5. The owner brain that talks to you on WhatsApp uses MiniMax M2.7. Workflow orchestration through n8n. WhatsApp via Kapso. Memory in Supabase + Redis short-term context. The whole thing is multi-tenant — one container per client.",
+    "ar": "وكلاء العملاء يشتغلون على Claude Sonnet 4.6، التصنيف على Haiku، ودماغ المالك على WhatsApp يستخدم MiniMax M2.7. التنسيق عبر n8n، الواتساب عبر Kapso، والذاكرة في Supabase. كل عميل في حاوية مستقلة."
+  },
+  "timeline": {
+    "en": "Two weeks from signed contract to live agents on your customer WhatsApp. Week one: we crawl your site, build the knowledge base, and you review it. Week two: we provision numbers, wire workflows, and run a shadow period where I forward every reply for your approval before it goes out.",
+    "ar": "أسبوعين من توقيع العقد إلى وكلاء شغالين على واتساب عملائك. الأسبوع الأول: زحف على موقعكم وبناء قاعدة المعرفة ومراجعتها معكم. الأسبوع الثاني: تجهيز الأرقام، ربط الـworkflows، وفترة ظلّ أرسل لكم فيها كل رد للموافقة قبل ما يطلع."
+  },
+  "industries": {
+    "en": "Live today: restaurants, real estate, healthcare, beauty, and hospitality. Each industry ships with pre-built workflows — restaurant has menu Q&A, table booking, and complaint routing; real estate has lead qualification and viewing scheduling; healthcare has appointment booking and FAQ deflection.",
+    "ar": "اليوم: مطاعم، عقارات، رعاية صحية، تجميل، وضيافة. كل قطاع له workflows جاهزة — المطعم فيه أسئلة المنيو، الحجز، وتوجيه الشكاوى؛ العقار فيه تأهيل العملاء وجدولة المعاينة؛ الصحي فيه الحجز وتقليل الأسئلة المكررة."
+  },
+  "onboarding": {
+    "en": "Six steps in the dashboard: company profile, scan website (auto-crawl), review knowledge base, pick agents, set industry + owner WhatsApp, review and launch. Most clients finish in under an hour. The crawler does the heavy lifting — you mostly correct.",
+    "ar": "ست خطوات في لوحة التحكم: ملف الشركة، زحف الموقع، مراجعة قاعدة المعرفة، اختيار الوكلاء، إعداد القطاع ورقم المالك، ثم المراجعة والإطلاق. معظم العملاء يخلصون في ساعة. الزاحف يسوي الشغل الثقيل — أنتم بس تصحّحون."
+  },
+  "competitors": {
+    "en": "Most competitors sell a chatbot. We sell a deployed AI workforce — five agents (customer service, sales, content, HR, finance) sharing one brain that learns across your fleet. We're priced for SMBs in the Gulf, not US enterprise. And the owner brain on WhatsApp is something nobody else does — you can update knowledge by texting me.",
+    "ar": "أغلب المنافسين يبيعون chatbot. إحنا نبيع فريق AI كامل — خمسة وكلاء (خدمة عملاء، مبيعات، محتوى، موارد بشرية، مالي) يشتركون في دماغ واحد يتعلّم من كل عملاءك. أسعارنا للـSMBs في الخليج، مو شركات أمريكية. ودماغ المالك على واتساب ما يسويه أحد غيرنا — تقدر تحدّث المعرفة بمجرد رسالة لي."
+  }
+}
