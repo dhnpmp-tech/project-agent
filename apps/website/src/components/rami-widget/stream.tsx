@@ -22,7 +22,11 @@ export function Stream({ messages, streamingText, streaming }: StreamProps) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    if (typeof el.scrollTo === "function") {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [messages.length, streamingText]);
 
   return (
