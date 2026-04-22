@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Cookie, Query
+from fastapi import APIRouter, Cookie, HTTPException, Query, Response
+from pydantic import BaseModel
 
 from ceo_persona import _supabase_query
+from ceo_chat_sessions import bind_identity, forget, history
 
 router = APIRouter(prefix="/ceo/chat")
 
@@ -76,3 +78,54 @@ async def greeting(
     if key in _GREETINGS:
         return _GREETINGS[key]
     return _DEFAULT_GREETING_EN if lang == "en" else _DEFAULT_GREETING_AR
+
+
+# ── Identify / forget / history ──────────────────────────────────────
+
+class IdentifyBody(BaseModel):
+    name: Optional[str] = None
+    company: Optional[str] = None
+    email: Optional[str] = None
+    whatsapp: Optional[str] = None
+    confidence: str = "confirmed"
+
+
+@router.post("/identify")
+async def identify(
+    body: IdentifyBody,
+    response: Response,
+    ceo_session_id: Optional[str] = Cookie(default=None),
+):
+    if not ceo_session_id:
+        raise HTTPException(status_code=400, detail="missing session cookie")
+    new_id = await bind_identity(ceo_session_id, body.model_dump())
+    if new_id != ceo_session_id:
+        # Merge happened — re-issue cookie pointing at the older session.
+        response.set_cookie(
+            "ceo_session_id", new_id, httponly=True, samesite="lax",
+            secure=True, max_age=60 * 60 * 24 * 365,
+        )
+    return {"session_id": new_id, "merged": new_id != ceo_session_id}
+
+
+@router.post("/forget/{session_id}")
+async def forget_route(
+    session_id: str,
+    response: Response,
+    ceo_session_id: Optional[str] = Cookie(default=None),
+):
+    if ceo_session_id != session_id:
+        raise HTTPException(status_code=403, detail="cookie/session mismatch")
+    await forget(session_id)
+    response.delete_cookie("ceo_session_id")
+    return {"ok": True}
+
+
+@router.get("/history/{session_id}")
+async def history_route(
+    session_id: str,
+    ceo_session_id: Optional[str] = Cookie(default=None),
+):
+    if ceo_session_id != session_id:
+        raise HTTPException(status_code=403, detail="cookie/session mismatch")
+    return {"messages": await history(session_id)}
