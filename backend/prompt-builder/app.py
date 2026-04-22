@@ -100,8 +100,10 @@ from ceo_persona import (
     cron_morning_brief, cron_post_karpathy, cron_github_digest, cron_market_intel,
 )
 from twitter_client import post_tweet, search_mentions, search_prospects
+from ceo_chat import router as ceo_chat_router
 
 app = FastAPI()
+app.include_router(ceo_chat_router)
 
 # CORS — allow widget to call from any domain
 app.add_middleware(
@@ -460,6 +462,10 @@ async def build_prompt(req: BuildPromptRequest):
     # Fetch active booking from Supabase (persists across restarts)
     active_booking = await _get_booking(req.phone)
 
+    # Pre-compute optional blocks (Python 3.9: no backslash inside f-string expressions)
+    _specials_block = ("TODAY'S SPECIALS:\n" + specials) if specials else ""
+    _menu_block = ("MENU:\n" + menu) if menu else ""
+
     # Current date/time in UAE timezone (GMT+4)
     from datetime import datetime, timezone, timedelta
     uae_tz = timezone(timedelta(hours=4))
@@ -520,9 +526,9 @@ RESTAURANT INFO:
 Hours: {hours}
 {'Location: ' + contact['address'] if contact.get('address') else ''}
 
-{"TODAY'S SPECIALS:\\n" + specials if specials else ""}
+{_specials_block}
 
-{"MENU:\\n" + menu if menu else ""}
+{_menu_block}
 
 {tool_prompt}
 
