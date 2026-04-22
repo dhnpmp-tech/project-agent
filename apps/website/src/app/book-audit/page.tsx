@@ -25,8 +25,9 @@ export default function BookAuditPage() {
             <a href="/pricing/" className="hover:text-white transition-colors duration-300">Pricing</a>
             <a href="/process/" className="hover:text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
-            <a href="https://agents.dcp.sa/login" className="hover:text-white transition-colors duration-300">Login</a>
-            <a href="https://agents.dcp.sa/signup" className="rounded-full bg-white/[0.06] hover:bg-white/[0.1] px-5 py-2 text-[13px] font-semibold text-white/60 transition-all duration-300 active:scale-[0.97]">
+            <a href="/integrations/" className="hover:text-white transition-colors duration-300">Integrations</a>
+            <a href="/app/login/" className="hover:text-white transition-colors duration-300">Login</a>
+            <a href="/app/signup/" className="rounded-full bg-white/[0.06] hover:bg-white/[0.1] px-5 py-2 text-[13px] font-semibold text-white/60 transition-all duration-300 active:scale-[0.97]">
               Sign up
             </a>
           </div>
@@ -182,9 +183,11 @@ export default function BookAuditPage() {
             <a href="/pricing/" className="hover:text-white/60 transition-colors">Pricing</a>
             <a href="/process/" className="hover:text-white/60 transition-colors">Process</a>
             <a href="/case-study/" className="hover:text-white/60 transition-colors">Case study</a>
-            <a href="https://agents.dcp.sa/login" className="hover:text-white/60 transition-colors">Login</a>
-            <a href="https://agents.dcp.sa/signup" className="hover:text-white/60 transition-colors">Sign up</a>
+            <a href="/integrations/" className="hover:text-white/60 transition-colors">Integrations</a>
+            <a href="/app/login/" className="hover:text-white/60 transition-colors">Login</a>
+            <a href="/app/signup/" className="hover:text-white/60 transition-colors">Sign up</a>
             <a href="/book-audit/" className="hover:text-white/60 transition-colors">Book audit</a>
+            <a href="/privacy/" className="hover:text-white/60 transition-colors">Privacy</a>
           </div>
           <p className="text-xs text-white/20">
             &copy; {new Date().getFullYear()} AI Agent Systems. Dubai, UAE.

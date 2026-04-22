@@ -98,8 +98,9 @@ Agent answers next time automatically. Never asks the same question twice.
 
 | App | URL | Source |
 |-----|-----|--------|
-| Client Dashboard | https://project-agent-chi.vercel.app | apps/client-dashboard |
-| Marketing Website | https://clear-fjord-96p9.here.now | apps/website |
+| Marketing Website | https://agents.dcp.sa/ | apps/website (Vercel project `marketing-website`) |
+| Client Dashboard | https://agents.dcp.sa/app/* | apps/client-dashboard (Vercel project `project-agent`, mounted via cross-project rewrite, basePath `/app`) |
+| Dashboard direct (origin) | https://project-agent-dc11.vercel.app | rewrite target — do not link directly |
 | GitHub | github.com/dhnpmp-tech/project-agent | monorepo root |
 
 ## Supabase

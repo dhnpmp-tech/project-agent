@@ -171,8 +171,9 @@ export default function HomePage() {
             <a href="/pricing/" className="hover:text-white transition-colors duration-300">Pricing</a>
             <a href="/process/" className="hover:text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
-            <a href="https://agents.dcp.sa/login" className="hover:text-white transition-colors duration-300">Login</a>
-            <a href="https://agents.dcp.sa/signup" className="rounded-full bg-white/[0.06] hover:bg-white/[0.1] ring-1 ring-white/[0.08] px-5 py-2 text-[13px] font-semibold text-white/70 transition-all duration-300 active:scale-[0.97]">
+            <a href="/integrations/" className="hover:text-white transition-colors duration-300">Integrations</a>
+            <a href="/app/login/" className="hover:text-white transition-colors duration-300">Login</a>
+            <a href="/app/signup/" className="rounded-full bg-white/[0.06] hover:bg-white/[0.1] ring-1 ring-white/[0.08] px-5 py-2 text-[13px] font-semibold text-white/70 transition-all duration-300 active:scale-[0.97]">
               Sign up
             </a>
             <a href="/book-audit/" className="group inline-flex items-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-500 px-5 py-2 text-[13px] font-semibold text-white transition-all duration-300 active:scale-[0.97] shadow-[0_0_20px_rgba(16,185,129,0.25)]">
@@ -1528,7 +1529,7 @@ export default function HomePage() {
                   Sign up in 2 minutes. Your AI team starts today.
                 </p>
                 <div className="mt-10 flex flex-col sm:flex-row gap-4">
-                  <a href="https://agents.dcp.sa/signup" className="inline-flex items-center justify-center rounded-full bg-emerald-600 text-white px-8 py-4 text-sm font-semibold hover:bg-emerald-500 transition-all duration-300 active:scale-[0.97] shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                  <a href="/app/signup/" className="inline-flex items-center justify-center rounded-full bg-emerald-600 text-white px-8 py-4 text-sm font-semibold hover:bg-emerald-500 transition-all duration-300 active:scale-[0.97] shadow-[0_0_30px_rgba(16,185,129,0.3)]">
                     Start free
                   </a>
                   <a href="https://wa.me/12058582516?text=Hi" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-full px-8 py-4 text-sm font-semibold text-white/60 ring-1 ring-white/[0.08] hover:bg-white/[0.03] transition-all duration-300 active:scale-[0.97]">
@@ -1557,9 +1558,11 @@ export default function HomePage() {
             <a href="/pricing/" className="hover:text-white/60 transition-colors">Pricing</a>
             <a href="/process/" className="hover:text-white/60 transition-colors">Process</a>
             <a href="/case-study/" className="hover:text-white/60 transition-colors">Case study</a>
-            <a href="https://agents.dcp.sa/login" className="hover:text-white/60 transition-colors">Login</a>
-            <a href="https://agents.dcp.sa/signup" className="hover:text-white/60 transition-colors">Sign up</a>
+            <a href="/integrations/" className="hover:text-white/60 transition-colors">Integrations</a>
+            <a href="/app/login/" className="hover:text-white/60 transition-colors">Login</a>
+            <a href="/app/signup/" className="hover:text-white/60 transition-colors">Sign up</a>
             <a href="/book-audit/" className="hover:text-white/60 transition-colors">Book audit</a>
+            <a href="/privacy/" className="hover:text-white/60 transition-colors">Privacy</a>
           </div>
           <p className="text-xs text-white/20">
             &copy; {new Date().getFullYear()} AI Agent Systems. Dubai, UAE.

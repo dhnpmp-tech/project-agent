@@ -87,7 +87,7 @@ const categories = [
           "Share both credentials with us during onboarding",
         ],
         credentials_needed: ["API Key", "API Secret", "Business ID"],
-        api_docs: "https://docs.foodics.com",
+        api_docs: "https://developers.foodics.com",
         pricing: "API access included in Foodics Growth plan and above.",
       },
     ],
@@ -368,6 +368,7 @@ export default function IntegrationsPage() {
             <a href="/process/" className="hover:text-white transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
             <a href="/integrations/" className="text-white transition-colors duration-300">Integrations</a>
+            <a href="/integrations/" className="text-white transition-colors duration-300">Integrations</a>
             <a href="/book-audit/" className="group inline-flex items-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-500 px-5 py-2 text-[13px] font-semibold text-white transition-all duration-300 active:scale-[0.97] shadow-[0_0_20px_rgba(16,185,129,0.25)]">
               Book free audit
               <svg className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
@@ -574,8 +575,10 @@ export default function IntegrationsPage() {
             <a href="/pricing/" className="hover:text-white/50 transition-colors duration-300">Pricing</a>
             <a href="/process/" className="hover:text-white/50 transition-colors duration-300">Process</a>
             <a href="/case-study/" className="hover:text-white/50 transition-colors duration-300">Case study</a>
+            <a href="/integrations/" className="hover:text-white/50 transition-colors duration-300">Integrations</a>
             <a href="/integrations/" className="text-white/50">Integrations</a>
             <a href="/book-audit/" className="hover:text-white/50 transition-colors duration-300">Book audit</a>
+            <a href="/privacy/" className="hover:text-white/50 transition-colors duration-300">Privacy</a>
           </div>
           <p className="text-xs text-white/20">&copy; {new Date().getFullYear()} AI Agent Systems. Dubai, UAE.</p>
         </div>
