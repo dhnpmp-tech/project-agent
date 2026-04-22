@@ -10,7 +10,9 @@ const mkResponse = (greeting: string, chips: string[]) =>
   });
 
 describe("Greeting", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // vi.spyOn(globalThis, "fetch") returns a strongly typed MockInstance that
+  // doesn't fit the generic ReturnType<typeof vi.spyOn>; keep loose to avoid
+  // wrestling with the typed signature in test setup.
   let fetchSpy: any;
 
   beforeEach(() => {

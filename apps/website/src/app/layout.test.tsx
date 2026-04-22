@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
+// eslint-disable-next-line import/first
 import { RamiWidgetMount } from "@/components/rami-widget/mount";
 
 describe("Layout integration", () => {

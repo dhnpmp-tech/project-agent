@@ -39,7 +39,8 @@ export function RamiWidget({ pagePath, apiBase = "/api/rami" }: RamiWidgetProps)
       ]);
       stream.reset();
     }
-  }, [stream.done, stream.text, stream.reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.done]);
 
   const handleSubmit = useCallback(
     (text: string) => {

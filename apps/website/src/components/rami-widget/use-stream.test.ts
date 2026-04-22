@@ -28,7 +28,7 @@ function sseResponse(chunks: string[], opts: { failAt?: number } = {}) {
 }
 
 describe("useStream", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // See greeting.test.tsx for rationale.
   let fetchSpy: any;
 
   beforeEach(() => {

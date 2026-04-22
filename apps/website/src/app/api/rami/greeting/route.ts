@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
           : "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
       },
     });
-  } catch (e) {
+  } catch {
     return Response.json(
       { greeting: "Hey, I'm Rami. Ask me anything.", chips: [] },
       { status: 200 },

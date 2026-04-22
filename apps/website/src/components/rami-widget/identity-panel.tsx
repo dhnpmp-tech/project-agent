@@ -15,7 +15,7 @@ export interface IdentityPanelProps {
   onClose: () => void;
 }
 
-const FIELDS: Array<{ key: keyof Identity; label: string }> = [
+const FIELDS: { key: keyof Identity; label: string }[] = [
   { key: "name", label: "Name" },
   { key: "email", label: "Email" },
   { key: "company", label: "Company" },
