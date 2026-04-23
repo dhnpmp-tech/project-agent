@@ -1,7 +1,7 @@
 # Project Agent -- Master Technical Specification
 
-**Date:** April 23, 2026 (last updated)
-**Version:** 1.2
+**Date:** April 24, 2026 (last updated)
+**Version:** 1.3
 **Status:** Phase 0-8 complete. Phase 9 (Cross-Agent Integration) and Ask Rami Chat Widget shipped. Phase 10+ in design.
 
 ---
@@ -49,6 +49,13 @@
 39. [Onboarding Simulation — Bloom Salon Test](#39-onboarding-simulation--bloom-salon-test)
 40. [Vercel Deployment Architecture](#40-vercel-deployment-architecture)
 41. [Ask Rami Chat Widget — In-Character CEO on the Marketing Site](#41-ask-rami-chat-widget--in-character-ceo-on-the-marketing-site)
+42. [Compliance & Data Protection](#42-compliance--data-protection)
+43. [Disaster Recovery & Backup](#43-disaster-recovery--backup)
+44. [Observability & Incident Response](#44-observability--incident-response)
+45. [Loyalty Engine (Phase 8)](#45-loyalty-engine-phase-8)
+46. [Google Business Profile Agent (Phase 8)](#46-google-business-profile-agent-phase-8)
+47. [Market Intelligence — Social Listening (Phase 8)](#47-market-intelligence--social-listening-phase-8)
+48. [GEPA Prompt Evolution (Phase 8)](#48-gepa-prompt-evolution-phase-8)
 
 ---
 
@@ -82,6 +89,28 @@ All four tiers carry a one-time **AED 3,000 setup fee** plus a monthly subscript
 Each Growth+ client gets a coordinated agent stack: WhatsApp Intelligence, Owner Brain, Content Engine, AI SDR, HR Screening, Financial Intelligence — orchestrated through `agent_action_queue`.
 
 **Margin at 10 Growth clients:** AED 30K revenue vs ~AED 1,100 ($300) OPEX = ~27x margin.
+
+**Pricing authority.** This table is the **single canonical source of truth**. The pricing page at `agents.dcp.sa/pricing` and Rami's KB (`ceo_kb.json:pricing`) both render off these four tiers verbatim. Any other tier names that may appear historically in marketing copy (e.g. a "Professional AED 8,000" or "Enterprise AED 30,000+" formerly shown on the homepage hero) are deprecated and being aligned. Rami's prompt enforces Rule 12 (exact recital) — he will not invent or paraphrase tiers under any circumstance.
+
+### Onboarding Speed — Two Honest Numbers
+
+Two different timing claims appear in the wild and both are real; they describe different paths.
+
+| Path | Time to first message | What ships in that time | When this applies |
+|------|----------------------|-------------------------|-------------------|
+| **Self-serve onboarding** | ~10 minutes | 1 WhatsApp Intelligence agent, auto-crawled KB, auto-generated persona, dedicated Kapso number, English+Arabic, basic memory + booking | Starter tier on standard verticals (restaurant / salon / clinic / real estate) — owner answers the 5-question WhatsApp interview, the platform does the rest |
+| **Full deployment (Growth/Pro/Enterprise)** | Up to 2 weeks | Full 3-6 agent workforce, custom integrations, owner training, brand-voice tuning, image-prompt library, Karpathy warm-up, owner approval queues calibrated, multi-location routing if applicable | Anything beyond a single-agent vertical install — bespoke integrations, multi-location, custom workflows, white-label requirements |
+
+The marketing site will lead with the 10-minute claim (true for the self-serve path) and surface the 2-week claim in deeper Pro/Enterprise pages. Internal CLAUDE.md will be updated to reflect both.
+
+### AI Disclosure Stance
+
+The persona system is built so each AI agent feels like a real human employee. Two things are simultaneously true and need to be reconciled in copy and policy:
+
+1. **The agent is an AI** — operating under WhatsApp Business Solution Provider terms (via Kapso) and under emerging UAE/KSA AI-disclosure expectations. We do not deceive a customer who genuinely asks "are you a human or a bot?" — Rule R-DISCLOSURE in every persona prompt requires a graceful, in-character acknowledgement on direct, sincere ask ("I'm an AI working with [business name]'s team — how can I help?").
+2. **The persona has consistent identity** — the agent does not break character mid-conversation, does not preface every reply with "as an AI" disclaimers, and does not refer to itself in the third person as "the chatbot". Voice and continuity are core to product value.
+
+Marketing copy that reads "never says it's an AI" is a positioning shorthand for the second point and will be revised to "never breaks character — and discloses on direct ask." Compliance details live in §42.
 
 ### The Agent Workforce — In Depth
 
@@ -878,6 +907,42 @@ New business owners sign up by chatting with the platform's onboarding bot on Wh
 - Settlement webhooks
 - Consumer-expected in Saudi market
 
+**Eat App** (Mid-tier restaurant reservations -- Dubai-born platform)
+- API key + Restaurant ID auth (no OAuth — long-lived API key)
+- Real-time table availability lookup
+- Reservation create / modify / cancel via WhatsApp
+- Direct sync with TripAdvisor, Google, Zomato so the WhatsApp-sourced booking shows up across discovery surfaces
+- Used by mid-tier and growing-upscale restaurants where SevenRooms is over-spec
+
+**Foodics** (POS — dominant in UAE/KSA, 30,000+ outlets, founded in Riyadh)
+- API Key + API Secret + Business ID
+- Real-time menu and live pricing (so the WhatsApp agent never quotes a dish that's 86'd or a price the kitchen changed at lunch)
+- Order pushes from WhatsApp flow into the kitchen ticket queue
+- Inventory snapshots so the agent can answer "do you have lobster tonight?" without bothering staff
+- Daily POS rollup feeds the Financial Intelligence agent's morning P&L
+
+**Fresha** (Salon/spa booking — world's largest, 5,000+ salons in Dubai alone)
+- API key auth
+- Stylist/practitioner availability lookup
+- Appointment create / reschedule / cancel
+- Client-history sync (last service, preferred stylist, allergies)
+- Free platform on the merchant side — zero acquisition friction for new salon clients
+
+### Composio Security Model
+
+Composio is a powerful surface area — 1,034 SaaS integrations, OAuth tokens for each, frequent token refreshes. The trust model that protects clients from token leakage and over-broad scope:
+
+| Concern | How we handle it |
+|---------|------------------|
+| **Token storage** | OAuth tokens stored exclusively inside Composio's hosted vault, **never** in our Supabase or VPS. We only ever hold a Composio `connectedAccountId` reference per client per app |
+| **Per-client isolation** | Every Composio account is scoped to a single client via `entity_id = client_id`. Cross-tenant tool calls are rejected at the Composio gateway, not at our application layer |
+| **Scope minimization** | Each integration requests only the OAuth scopes it actually uses (e.g. Gmail = `gmail.send` not `gmail.modify`; Google Calendar = `calendar.events` not `calendar`). Documented per-integration in `infrastructure/integration-scopes.json` |
+| **Tool whitelist per agent** | Each agent's system prompt receives **only** the tools it needs. The WhatsApp Intelligence agent on a salon client cannot call `accounting.create_invoice` even if the Zoho Books integration is connected, because that tool is whitelisted only to the Financial Intelligence agent |
+| **Token refresh** | Handled by Composio. On 401 from a tool call, we mark the integration `needs_reauth` in `agent_deployments.config` and Owner Brain pings the owner with a one-tap re-auth WhatsApp link |
+| **Revocation** | Owner can revoke any integration in seconds from `/app/integrations`. Revocation deletes the Composio connectedAccount; subsequent tool calls fail closed (the agent verbally tells the customer "I can't access calendars right now" rather than guessing) |
+| **Audit trail** | Every executed tool call appends to `activity_logs` with `event_type = 'tool_call'`, payload `{agent, tool, args_redacted, result_status, latency_ms}`. PII (phone numbers, emails) is redacted via regex before write |
+| **Rate-limit attribution** | Tool-call counts are bucketed per `client_id` so a single noisy tenant cannot exhaust the platform's Composio free tier (20K calls/mo). On approach to 80% of monthly cap, Owner Brain alerts the noisy client and we throttle their non-customer-facing tools (research, scheduled briefs) before customer-facing ones |
+
 ### Tool Injection
 
 Tool definitions are injected into the LLM system prompt based on the business type and configured integrations. Up to 10 tools per business. Example:
@@ -1439,7 +1504,24 @@ Every page mounts the Ask Rami chat widget (floating launcher, bottom-right). It
 
 ## 19. Database Schema (Supabase)
 
-### All Tables (18 total)
+### Authoritative Migration List
+
+The Supabase project (`sybzqktipimbmujtowoz`, region: Northeast Asia / Tokyo) is migrated by the SQL files under `packages/supabase/migrations/` plus four CEO/Rami-related migrations under `backend/prompt-builder/migrations/`. **This list is the single source of truth — README and CLAUDE.md will be updated to match.**
+
+| Migration | Adds | Lives in |
+|-----------|------|---------|
+| 001-008 | 8 original tables (clients, agent_deployments, business_knowledge, customer_memory, conversation_summaries, activity_logs, api_keys, calendar_configs) | `packages/supabase/migrations/` |
+| 009 | 9 vault/coordination tables (vault_notes, conversation_messages, outcome_tracking, scheduled_actions, research_queue, prompt_versions, eval_suites, customer_locks, agent_action_queue) | `packages/supabase/migrations/` |
+| 010 | `active_bookings` (in-flight booking SSOT — replaces Mem0 for booking state) | `packages/supabase/migrations/` |
+| 011 | `ceo_chat_sessions` (Rami's marketing-site chat) | `backend/prompt-builder/migrations/` |
+| 012 | `ceo_chat_messages` (Rami's per-turn messages, 50-msg history) | `backend/prompt-builder/migrations/` |
+| 013 | `ceo_chat_rate_limit` (composite-PK sliding-window buckets) | `backend/prompt-builder/migrations/` |
+
+**Total tables: 21** (8 original + 9 vault/coordination + 1 booking + 3 Rami chat).
+
+Earlier doc revisions cited "17 tables" (pre-vault), "18 tables" (pre-Rami), and other variants. v1.3 standardizes on 21.
+
+### All Tables (21 total)
 
 #### Original Tables (8) -- Migrations 001-008
 
@@ -1473,6 +1555,42 @@ Every page mounts the Ask Rami chat widget (floating launcher, bottom-right). It
 | # | Table | Purpose | Key Columns |
 |---|-------|---------|-------------|
 | 18 | `active_bookings` | Current booking state per customer | id, client_id, customer_phone, guest_name, booking_time, booking_date, party_size, seating, dietary, occasion, status |
+
+#### Rami Chat Tables (3) -- Migrations 011-013
+
+| # | Table | Purpose | Key Columns |
+|---|-------|---------|-------------|
+| 19 | `ceo_chat_sessions` | Per-visitor session for Ask Rami widget; cross-device merge on shared email | id (uuid), cookie_id, identity (jsonb: name/email/company/phone), summary, last_seen_at |
+| 20 | `ceo_chat_messages` | Last 50 messages per session for Rami's context window | id, session_id, role (user/assistant), content, created_at |
+| 21 | `ceo_chat_rate_limit` | Sliding-window rate limit (composite PK: ip + bucket_start_minute) | ip, bucket_start_minute, count |
+
+### Vault Detail (`vault_notes`)
+
+The vault is the platform's long-term **organizational memory** — the place where the platform learns from one client and applies that learning to every other client (anonymized). Modeled loosely on Obsidian: free-form markdown notes addressed by hierarchical path, semantically searchable via pgvector embeddings.
+
+**Note categories** (8, mapped to `path` prefix):
+
+| Path prefix | Contents | Example |
+|-------------|----------|---------|
+| `business/` | Per-client business facts (hours, menu, services, owner preferences) | `business/saffron-kitchen/menu.md` |
+| `products/` | Catalog items with attributes, used for grounded recommendations | `products/desert-bloom/jareed-roast.md` |
+| `customers/` | Long-form customer notes that exceed Mem0's relation-graph format | `customers/ahmad-rashidi-vip-aug2025.md` |
+| `skills/` | Reusable task patterns (e.g. "how to handle a refund > AED 500") | `skills/refund-large.md` |
+| `learnings/` | Karpathy-loop-derived insights worth preserving across clients | `learnings/gulf-arabic-vs-msa-tone.md` |
+| `research/` | Outputs from Research Engine (competitor scans, weekly briefs) | `research/q2-coffee-roastery-trends.md` |
+| `pending/` | Owner-pending decisions (knowledge gap escalations awaiting answer) | `pending/saffron-vegan-options-2026-04-22.md` |
+| `prompts/` | Versioned system-prompt fragments (cross-references `prompt_versions`) | `prompts/whatsapp-base-en.v17.md` |
+
+**Embedding model.** OpenAI `text-embedding-3-small` (1536-dim) at write time. ~$0.02 / 1M tokens. Avg note ~400 tokens → ~$0.000008 per note.
+
+**Retrieval.** Helper SQL function `search_vault(client_id uuid, query_embedding vector(1536), match_limit int, tag_filter text[])` returns top-K via HNSW index on `vault_notes.embedding`. Default K=5, max K=20.
+
+**Write path.** Three writers append to the vault:
+1. **Karpathy Loop** — at end of nightly cycle, writes one `learnings/*` note per cross-client pattern detected (≥3 clients, statistically significant)
+2. **Owner Brain** — when an owner answers a knowledge-gap escalation, the answer becomes a `business/{slug}/*` note immediately and the prior `pending/*` note is deleted
+3. **Research Engine** — weekly Sunday cron writes `research/*` notes per client with the brief contents
+
+**Read path.** Every agent's system-prompt builder calls `search_vault()` with the current customer's last 3-5 messages as the query, scoped to `client_id`. Top-5 matching notes are inlined into the prompt under `[VAULT]`. Cross-client `learnings/*` notes are only retrievable via a separate, anonymized read path used by the Karpathy Loop itself, not by customer-facing turns.
 
 ### Security
 
@@ -1634,15 +1752,35 @@ All test failures in recent cycles are MiniMax API timeouts (network), not logic
 
 | Phase | Name | Status | Description |
 |-------|------|--------|-------------|
-| 9b | Cross-Agent Integration | NEXT | Multiple agents (WhatsApp, Owner Brain, Content Engine, SDR, HR, Finance) coordinate via `agent_action_queue`. Content Engine generates social posts from conversation insights. Rami can dispatch tasks into the same queue from the marketing site (e.g., "schedule a demo" → SDR pickup). |
+| 9b | Cross-Agent Integration | NEXT | Multiple agents (WhatsApp, Owner Brain, Content Engine, SDR, HR, Finance) coordinate via `agent_action_queue`. Content Engine generates social posts from conversation insights. Rami can dispatch tasks into the same queue from the marketing site (e.g., "schedule a demo" → SDR pickup). Includes hardening Hard Facts discipline + injection detection across all client-facing agents (currently only enforced on Rami widget). |
+
+### Near-Term Backlog (next 30-60 days)
+
+Items from `CLAUDE.md` roadmap, MEMORY, and superpower plans now consolidated here:
+
+| Item | Why | Status |
+|------|-----|--------|
+| **Resend wiring for auth confirmations** | New-account email verification + password-reset are currently stubbed | API key set in Vercel env; wiring pending |
+| **Apollo.io integration for SDR outbound** | Lead enrichment + targeted outbound mode for the AI SDR (§26) | Researched; integration not yet built |
+| **Perplexity integration for Content + Research engines** | Real-time web grounding for the Content Engine and Research Engine | Researched; integration not yet built |
+| **Universal Agent Onboarding — Layer 3** | Per `docs/superpowers/specs/2026-03-31-universal-agent-onboarding-design.md`: Layer 1 (KB schema) + Layer 2 (build prompt) shipped; Layer 3 = automated WhatsApp onboarding bot driving the full provisioning pipeline end-to-end | Spec complete, build queued |
+| **Kapso Platform auto-provisioning** | Trigger `POST /provision` on dashboard onboarding completion to spin Kapso customer + setup link + webhook automatically | SDK shipped; trigger wiring pending |
+| **Rami v2 photoshoot via Recraft** | Higher-fidelity Rami headshot + lifestyle photos to replace MiniMax image-01 placeholders on the marketing site | Pending — task #20 |
+| **CEO admin view in dashboard** | `/app/admin/rami` to inspect Rami sessions, KB versions, draft queue | Pending — task #21 |
+| **Arabic intent parsing fix** in `parse_founder_intent()` | Owner Brain mis-parses Arabic-script commands in some cases; fix required before scaling Arabic-first tenants | Pending — task #22 |
+| **Observability stack (Sentry + Loki + Prometheus + Grafana)** | Currently zero infra-level observability; covered in §44 | Build queued |
+| **Quarterly DR drill #1** | First scheduled restore drill per §43 | Target: end of Q2 2026 |
 
 ### Future Phases
 
 | Phase | Name | Description |
 |-------|------|-------------|
-| 10 | Cross-Client Intelligence | Anonymized pattern sharing across clients. "Customers who book Lebanese restaurants on Thursdays also order flowers on Friday." |
+| 10 | Cross-Client Intelligence | Anonymized pattern sharing across clients via `vault_notes/learnings/`. "Customers who book Lebanese restaurants on Thursdays also order flowers on Friday." |
 | 11 | Agent Marketplace | Pre-built agent templates, community personas, white-label reselling |
 | 12 | Autonomous Operations | Agents manage inventory, staff scheduling, marketing campaigns, financial reporting. Full business autopilot. |
+| 13 | Linq iMessage / RCS Channel | New customer-facing channel beyond WhatsApp — iMessage Business Chat for iOS-heavy customer bases, RCS for Android. Same persona, same memory, additional surface. |
+| 14 | UAE-Region Data Residency | Migrate primary Supabase project + VPS into a UAE-resident region (Bahrain or KSA Riyadh) to remove the residency caveat for all tiers, not just Enterprise. |
+| 15 | Per-Customer Prompt Personalization | GEPA (§48) variants per customer-interaction-style cluster |
 
 ### Live Clients
 
@@ -2629,4 +2767,309 @@ A fifth fix (Apr 22) closed the entire pricing-hallucination class: rewrote the 
 
 ---
 
-*Document generated April 5, 2026. Updated April 23, 2026 (v1.2) with: deep agent-by-agent product overview (§1), six-axis system evaluation framework (§2), Vercel cutover details (§40), and full Rami Mansour persona / role / purpose / function / roadmap (§41 — promoted from "chat widget" to first-class CIO documentation). Previous April 11 update added Voice Notes (WhatsApp In & Out), Smart Language Routing, Arabic Dialect Rules, Production Fixes & Bug Corrections, Bloom Salon Onboarding Simulation, and Vercel Deployment Architecture. Earlier updates: Owner Brain v2, Karpathy Loop v2, Agency-Agents research, Sales Rep, Content Engine, Morning Brief v3, Onboarding v2, Gamified Achievements, Intent Classification (SQOS), Content Learnings, Conversion Tracking, and Image Prompt Generator.*
+## 42. Compliance & Data Protection
+
+Project Agent processes personal data of UAE and KSA residents on behalf of SMB controllers. The compliance posture below is the minimum viable framework; a full DPIA is queued for completion before the first 100 paying clients.
+
+### Applicable Regimes
+
+| Regime | Scope | Status |
+|--------|-------|--------|
+| **UAE PDPL** (Federal Decree-Law 45/2021) | All data of UAE residents, regardless of where processed | Aligned. Data subject rights surfaced at `agents.dcp.sa/privacy`. DPO function held by founder until headcount reaches 25 |
+| **KSA PDPL** (Royal Decree M/19, in force 14 Sep 2023) | All data of KSA residents | Aligned. Cross-border transfer rules require an addendum to the standard processor agreement when serving KSA clients with extra-jurisdictional sub-processors |
+| **WhatsApp Business Solution Provider terms** (via Kapso) | All customer messaging via the platform | Compliant. We do not initiate marketing messages outside opt-in template categories; 24-hour service-window rule enforced (§13) |
+| **Meta Conversions API data-use** | Server-side conversion events from web traffic | Compliant. Hashed identifiers only (SHA-256 of phone, email); no raw PII in event payloads |
+| **EU GDPR** | Only when an EU resident interacts (rare for our market) | Aligned through PDPL practices, which are GDPR-modeled. No representative appointed yet |
+
+### Data Inventory (per client tenant)
+
+| Data class | Where | Retention | Lawful basis |
+|------------|-------|-----------|-------------|
+| Customer messages (in/out) | `conversation_messages` (Supabase) + Kapso (raw) | 24 months from last message, then auto-purge | Legitimate interest (service delivery) + contractual necessity |
+| Customer profile facts (~40 relations) | Mem0 (Postgres + Neo4j) | 24 months from last conversation, then auto-purge unless client opts to extend | Legitimate interest |
+| Conversation summaries | `conversation_summaries` | Same as messages | Legitimate interest |
+| Voice note recordings | VPS local disk, encrypted at rest | 7 days, then deleted (transcript retained per message-retention rule) | Legitimate interest, with disclosure in privacy notice |
+| Owner WhatsApp commands | `activity_logs` | 24 months | Contractual necessity |
+| Marketing-site chat sessions (Rami) | `ceo_chat_sessions`, `ceo_chat_messages` | 30 days from last activity, then auto-purge | Legitimate interest + consent banner |
+| Rate-limit metadata | `ceo_chat_rate_limit` | 25 hours rolling, pruned by `cron_chat_prune` | Legitimate interest (anti-abuse) |
+| Tenant billing data | Tap Payments (PCI-DSS Level 1) | Per Tap retention | Contractual necessity |
+
+### Data Residency
+
+- **Current state.** Supabase project lives in **Northeast Asia / Tokyo (ap-northeast-1)**. VPS is in **Hostinger US-East**. Neither is in-region for UAE/KSA today.
+- **Contractual mitigation.** Standard processor agreement names Tokyo + US-East as approved processing regions; clients are notified pre-signature.
+- **Enterprise commitment.** The Enterprise tier marketing copy promises "UAE data residency" — this is delivered by **dedicated infrastructure** (a Supabase project provisioned in EU-Central or a self-hosted Postgres on a UAE-region VPS, plus a Kapso instance routed through a UAE-resident BSP). Not enabled in self-serve flow; provisioned per Enterprise contract.
+- **Roadmap.** Migrate the shared Supabase project to a UAE-resident region (Bahrain or KSA Riyadh once GA) by end of 2026 to remove the residency caveat for all tiers.
+
+### Data Subject Rights
+
+Surfaced in the privacy notice at `agents.dcp.sa/privacy` and accessible by emailing `privacy@agents.dcp.sa` (30-day SLA for response):
+
+- **Access** — full export of all data tied to a customer's phone number across `conversation_messages`, Mem0, `customer_memory`, `outcome_tracking`
+- **Correction** — owner-initiated via WhatsApp command ("update Ahmad's allergy note"); customer-initiated via privacy address
+- **Deletion** ("forget me") — purges Mem0 namespace `{client_id}_{customer_phone}`, deletes matching rows in `conversation_messages`, `conversation_summaries`, `customer_memory`, `outcome_tracking`, `scheduled_actions`, and revokes from Rami's `ceo_chat_sessions` if the same email/phone is bound
+- **Portability** — JSON export, machine-readable, delivered within 30 days
+- **Objection / withdrawal** — opt-out tracked in `agent_deployments.config.opt_outs[customer_phone]`; agent never re-engages
+
+### Breach Notification
+
+- **Detection.** Every Supabase action is logged. Anomalous read patterns (>10x baseline tenant volume) trigger a Slack alert to founder + ops on-call.
+- **Response.** Per UAE PDPL, the data controller (the SMB client) must be notified within **72 hours** of confirmed breach; we contractually commit to notifying affected clients within **24 hours** of confirmation so they have time to comply with their own 72-hour clock.
+- **Documentation.** Breach register kept in `docs/incident-log/` (private). Every confirmed breach gets a post-mortem regardless of severity.
+
+### Sub-Processor List
+
+Maintained as a public list at `agents.dcp.sa/privacy#sub-processors`:
+
+| Sub-processor | Purpose | Region |
+|---------------|---------|--------|
+| Supabase | Primary database | Tokyo |
+| Hostinger | VPS hosting | US-East |
+| Vercel | Marketing site + dashboard hosting | Global edge |
+| Kapso | WhatsApp BSP | EU-West |
+| MiniMax | Customer-facing LLM | Singapore |
+| Anthropic | Classification + injection-detection LLM | US |
+| OpenAI | Embeddings (1536-dim) | US |
+| OpenRouter | Model routing for non-customer-facing tasks | US |
+| Composio | Tool execution + OAuth vault | US |
+| Tap Payments | Subscription billing | UAE |
+| Resend | Transactional email | US |
+
+Adding a sub-processor requires 30-day notice to active clients.
+
+### AI-Specific Safeguards
+
+- **Injection detection** — `ceo_chat_injection.py` (regex + heuristic) runs on every Rami turn. Same pattern is being generalized to client-facing agents in Phase 9b.
+- **Content filter** — `ceo_chat_content_filter.py` (Haiku-graded) classifies each user message as `clean | hate | self_harm | spam` before LLM dispatch.
+- **Hallucination control** — Hard Facts discipline (full KB inlined, Rule 11 zero-fabrication, Rule 12 exact pricing recital). Documented in §41 for Rami; rolling out to all client agents in Phase 9b.
+- **Refusal correctness** — measured nightly as one of the six evaluation axes (§2).
+- **Red team cadence** — quarterly internal red team using a fixed 200-prompt adversarial suite; results logged to `eval_suites`.
+
+---
+
+## 43. Disaster Recovery & Backup
+
+### Targets
+
+| Asset | RPO (max data loss) | RTO (max downtime) |
+|-------|--------------------|--------------------|
+| Supabase data (all tenants) | 1 hour | 4 hours |
+| Mem0 (Neo4j + Postgres) | 6 hours | 8 hours |
+| VPS prompt-builder service | 0 (stateless) | 30 minutes |
+| Kapso conversation history | 0 (Kapso-managed) | Per Kapso SLA |
+| Vercel deployments | 0 (Git is source of truth) | 15 minutes (rollback) |
+| Vault (`vault_notes`) | 1 hour | 4 hours (covered by Supabase backup) |
+
+### Backup Schedule
+
+| What | Mechanism | Frequency | Destination | Retention |
+|------|-----------|-----------|-------------|-----------|
+| Supabase | Native daily snapshot (Supabase MICRO plan) | Daily 02:00 UTC | Supabase-managed (different AZ) | 7 days |
+| Supabase (extended) | `pg_dump` via cron, encrypted with age | Daily 03:00 UTC | Cloudflare R2 bucket `agents-backups-prod` | 30 days |
+| Mem0 Postgres | `pg_dump` from Docker | Daily 04:00 UTC | R2 bucket `agents-mem0-backups` | 14 days |
+| Mem0 Neo4j | `neo4j-admin database dump` | Daily 04:30 UTC | R2 bucket `agents-mem0-backups` | 14 days |
+| Per-client n8n volumes | `infrastructure/scripts/backup-client.sh` | Daily 05:00 UTC | R2 bucket `agents-clients-backups` | 14 days |
+| Kapso messages | Kapso-managed (mirrored to Supabase by ingestion) | Real-time | Kapso + our `conversation_messages` | Per retention policy |
+
+### Restore Drills
+
+- **Cadence.** Quarterly restore drill — restore most recent Supabase backup into a staging project, run smoke test (`infrastructure/scripts/smoke-test.sh`), confirm 100% pass.
+- **Documentation.** Each drill produces a one-page report in `docs/dr-drills/YYYY-Qn.md` including time-to-restore, gotchas, and remediation tasks filed.
+- **Failed drills are blockers.** A failed drill cannot be closed by retry — root cause must be fixed, then re-drill.
+
+### Failure Scenarios & Playbooks
+
+| Scenario | Detection | Playbook | Expected RTO |
+|----------|-----------|----------|--------------|
+| Supabase region outage | Supabase status page + healthcheck | Failover to secondary region (planned for end of 2026) | TBD; today: wait for Supabase recovery |
+| VPS hardware failure | Systemd healthcheck + uptime monitor | Spin replacement Hostinger VPS from `infrastructure/local-dev/setup.sh`, restore Mem0 from R2, re-point DNS | 2-4 hours |
+| Kapso outage | Kapso webhook failures spike | Owner-Brain alerts owners; we have no failover (Kapso is single-source for WhatsApp) — communicate, wait | Per Kapso |
+| Vercel outage | Vercel status + dashboard uptime monitor | Failover to Cloudflare Pages (deployment kept warm) | 15-30 minutes |
+| Single-tenant data corruption | Customer report or Karpathy quality-axis dip | Restore that tenant's rows from R2 backup using `infrastructure/scripts/restore-client.sh` (planned) | 1-2 hours |
+| Confirmed data breach | Anomaly alerts + manual confirmation | §42 breach-notification playbook; isolate affected tenant; rotate all credentials | 24h customer notice |
+
+### Supply-Chain & Credential Hygiene
+
+- All secrets in 1Password vault `Project Agent / Production`. No plaintext env files in Git.
+- Quarterly secret rotation: MiniMax, Composio, Kapso, Supabase service role.
+- GitHub branch protection on `main`; required PR review for all production changes (single-founder rule: review-by-Rami-via-Claude counts as second pair of eyes for non-security changes).
+
+---
+
+## 44. Observability & Incident Response
+
+The platform splits observability into two layers: **AI quality** (already covered by §2's six-axis Karpathy framework) and **infrastructure**, which is the gap this section closes.
+
+### Infrastructure Observability Stack
+
+| Layer | Tool | Purpose | Status |
+|-------|------|---------|--------|
+| **Error tracking** | Sentry (Next.js + Python SDKs) | Exceptions in dashboard, marketing site, prompt-builder | Planned (target: end of Q2 2026) |
+| **Uptime monitoring** | Better Stack (formerly Better Uptime) | 30-second pings on `agents.dcp.sa`, `agents.dcp.sa/app`, prompt-builder `/health`, Mem0 `/health` | Planned |
+| **Log aggregation** | Loki + Grafana (self-hosted on the same VPS) | Structured logs from prompt-builder, n8n, Traefik | Planned |
+| **Metrics** | Prometheus + Grafana | Tool-call latency, MiniMax queue depth, Composio quota burn-down, Kapso webhook success rate | Planned (CLAUDE.md roadmap item 7) |
+| **Tracing** | OpenTelemetry → Grafana Tempo | Per-conversation distributed trace (Kapso → prompt-builder → MiniMax → Composio → response) | Roadmap item — needed once we hit 50+ live tenants |
+| **Synthetic monitoring** | A scripted "ghost customer" sends a message every 15 minutes on a canary tenant; SLA = first agent response within 5s | Planned |
+
+### Logging Conventions
+
+Already in place across the codebase:
+
+- **Structured JSON** to stdout from prompt-builder; `PYTHONUNBUFFERED=1` in systemd
+- **PII redaction** at log boundary (`activity_logs` regex scrubs phone + email before write — verified by CI)
+- **Correlation ID** = `customer_phone` for customer-facing flows, `session_id` for Rami widget; propagated through every service call
+
+### Incident Response
+
+- **Severity matrix.** Sev1 = customer-facing pipeline down (no replies for >5 min); Sev2 = degraded experience or quality drop on one tenant; Sev3 = internal tooling broken (dashboard, admin); Sev4 = cosmetic.
+- **On-call.** Single founder rotation today. Hand-off plan triggers when headcount reaches 3 engineers.
+- **Pager channel.** Better Stack pages → SMS + WhatsApp to founder, escalates to backup contact after 10 minutes unacknowledged.
+- **Status page.** `status.agents.dcp.sa` (Better Stack public page) — auto-updated from monitor state, manual incidents posted by responder.
+- **Post-mortem.** Required for any Sev1; recommended for Sev2. Template in `docs/incident-postmortems/template.md`. Blameless. Action items get filed in the project's task list within 48 hours.
+- **Runbook.** `docs/runbooks/` — one file per common failure mode (Kapso webhook stall, Mem0 OOM, MiniMax quota exhaustion, Composio re-auth surge). New runbook required after every novel incident.
+
+---
+
+## 45. Loyalty Engine (Phase 8)
+
+### Overview
+
+Customer loyalty program managed entirely through WhatsApp commands. Owner says "set 1 point per AED spent, 100 points = free dessert" once during onboarding; the platform does the rest. Each client tenant gets its own program rules, point ledger, tier rules, and referral tracking.
+
+Source: `backend/prompt-builder/loyalty_engine.py` (~35 functions, ~600 LOC).
+
+### Capabilities
+
+| Capability | Detail |
+|------------|--------|
+| Points accrual | Per-AED, per-visit, per-purchase, per-referral — configurable per client; auto-credited from Foodics POS push or owner-issued WhatsApp command |
+| Tier system | Bronze / Silver / Gold by lifetime points OR by 12-month spend (client picks the metric) |
+| Rewards | Free items, discounts (%, fixed), early access to new menu/services, comp upgrades |
+| Referral program | Each customer gets a unique referral phrase ("tell them Ahmad sent you"); referrer + referee both credited |
+| Customer-facing surface | Customer asks Owner Brain or WhatsApp Intelligence agent: "how many points do I have?" → answered instantly with current balance, tier, next reward |
+| Owner-facing surface | Morning brief includes loyalty health (active members, redemption rate, churn risk in top tier) |
+| Karpathy hook | Loyalty agent learns which reward types drive repeat visits per industry; recommends program changes to owner monthly |
+
+### Pricing-Tier Inclusion
+
+Bundled with **Growth** tier and above (per `agents.dcp.sa/pricing`). Not available on Starter.
+
+### Data Model
+
+Reuses `outcome_tracking` (for revenue events) and a new `loyalty_state` JSONB column in `customer_memory`. No new tables required (Phase 8 design).
+
+### Roadmap
+
+- Coalition loyalty across Project Agent client fleet (anonymized, opt-in) — "your customer Ahmad earned points at 3 nearby coffee shops; offer him a tier upgrade?"
+- Apple Wallet / Google Wallet pass integration so customers carry the loyalty card without a separate app
+
+---
+
+## 46. Google Business Profile Agent (Phase 8)
+
+### Overview
+
+Most Gulf SMBs have a Google Business Profile (GBP) listing that nobody manages. Reviews go unanswered for weeks; Q&A questions sit unread; new posts are non-existent; SEO suffers; customers churn before they walk in. This agent runs the listing.
+
+Source: `backend/prompt-builder/google_business.py` (~33 functions, ~700 LOC).
+
+### What It Does
+
+| Capability | Detail |
+|------------|--------|
+| **Review monitoring** | Polls GBP every 15 minutes via Composio bridge for new reviews. New review = WhatsApp ping to owner with rating + draft response in the brand voice. |
+| **Review auto-response (draft & approve)** | Generates a graceful reply to every review: thanks for 5★, addresses specifics for 4★, apology + offer for 1-3★. Owner taps thumbs-up in WhatsApp; agent posts. (Full Owner Brain v2 pattern from §14.) |
+| **Q&A management** | When a customer asks a question on the listing, agent drafts an answer using `business_knowledge` + vault; owner approves; posts. |
+| **GBP posts (offers, events, updates)** | Owner texts "post about Friday's truffle special"; agent generates a GBP post with image (via Image Prompt Generator §34). |
+| **Listing SEO hygiene** | Weekly check that hours, address, phone, website are populated and consistent with `business_knowledge`. Flags drift. |
+| **Photo cadence** | Reminds owner to upload new photos every 2 weeks (Google's algorithm rewards freshness). |
+
+### Bridge Architecture
+
+Google's GBP API does not have a Composio-native connector for write paths in all cases, so the agent uses a **Composio bridge** pattern: read paths (reviews, Q&A, insights) via Composio's Google integration; write paths (post creation, response posting) via the official `mybusinessbusinessinformation` v1 SDK with OAuth tokens stored in Composio's vault.
+
+### Pricing-Tier Inclusion
+
+Bundled with **Growth** tier and above.
+
+### Roadmap
+
+- Local rank tracking — "your listing ranks #3 for 'shawarma dubai marina'; here's why competitors at #1-2 outrank you"
+- Google Posts auto-cadence based on what's converting
+- Cross-listing parity: same content auto-pushed to TripAdvisor + Zomato + Talabat where the integration exists
+
+---
+
+## 47. Market Intelligence — Social Listening (Phase 8)
+
+### Overview
+
+The platform listens to the public conversation about each client and their competitors across 13+ social platforms, surfaces the signal, and feeds it into the morning brief and the Content Engine.
+
+Source: `backend/prompt-builder/market_intel.py` integrating with **last30days.com** (social listening API across Reddit, X, YouTube, TikTok, Instagram, Threads, LinkedIn, Bluesky, Mastodon, Pinterest, Tumblr, Quora, blogs/forums).
+
+### What It Tracks
+
+| Signal | Why it matters |
+|--------|----------------|
+| Direct brand mentions | Reputation pulse — was there a viral complaint? a shoutout? |
+| Competitor mentions | Comp benchmarking — is the new place down the block trending? |
+| Category trends | "Korean BBQ in Dubai" mentions spiking 3x → time to add a Korean special |
+| Sentiment per mention | Negative spike on a competitor = opportunity; on the client = risk |
+| Influencer touchpoints | Did anyone with >5k followers tag the client or a competitor? |
+
+### Outputs
+
+1. **Daily morning brief insert** — top 3 mentions worth knowing about, attached to the SCQA brief Owner Brain delivers at 09:00 (§14, §28)
+2. **Weekly research note** — written into `vault_notes` under `research/{slug}/social-week-of-YYYY-MM-DD.md`
+3. **Content Engine input** — trending category language is surfaced to the Content Engine when generating the next week's content calendar
+
+### Pricing-Tier Inclusion
+
+Bundled with **Pro** tier and above.
+
+### Roadmap
+
+- Add proprietary feeds (Talabat reviews, Zomato reviews, Careem ratings) via direct scraping where ToS allows
+- Real-time PR fire alarm — sentiment dip beyond 2 SDs in any 6-hour window pages the owner immediately
+
+---
+
+## 48. GEPA Prompt Evolution (Phase 8)
+
+### Overview
+
+GEPA (Generative Evolutionary Prompt Adaptation) is an automated prompt-optimization layer that runs alongside the Karpathy Loop. Where Karpathy generates **behavioral rules** to inject into prompts, GEPA evolves the **prompt itself** — refining wording, structure, ordering, and section headings to maximize the six-axis evaluation score (§2).
+
+Source: `backend/prompt-builder/prompt_evolution.py` — full + lightweight modes.
+
+### Modes
+
+| Mode | When | Cost | Cycle time |
+|------|------|------|-----------|
+| **Full GEPA** | Per agent, monthly | ~$3-5 of LLM compute per agent per cycle | ~20 minutes |
+| **Lightweight** | Per agent, weekly | ~$0.30 per agent per cycle | ~3 minutes |
+
+### How It Works
+
+1. Sample 200 graded turns from `prompt_versions.eval_suites` for the target agent
+2. Generate 8 candidate prompt variants via Nemotron 3 Super 120B (mutate sections, reorder, tighten phrasing, swap example sets)
+3. Score each candidate against the same 200-turn eval suite using the six-axis grader
+4. Winner gets a new entry in `prompt_versions` with `eval_pass_rate` recorded; if it beats the current production prompt by ≥0.02 on weighted score, it's promoted (gated by manual approval for customer-facing agents until 3 consecutive wins)
+
+### Relationship to Karpathy Loop
+
+Karpathy generates **rules** (specific behavioral instructions, e.g. "if customer mentions allergies, ask which kind before recommending"). GEPA refactors the **scaffolding** those rules sit inside. The two cooperate: Karpathy writes rules into a `[LEARNED BEHAVIORS]` section of the prompt; GEPA may, e.g., move that section earlier or rephrase its preamble.
+
+### Conflict Resolution
+
+If GEPA proposes restructuring the section that holds Karpathy rules, Karpathy rules are preserved verbatim — only their surrounding scaffolding is mutable. Verified by a unit test (`test_prompt_evolution.py::test_karpathy_rules_preserved`).
+
+### Roadmap
+
+- Per-customer micro-personalization (cluster customers by interaction style, evolve a slightly different prompt variant per cluster)
+- A/B-test multiple prompt variants in production simultaneously (5/95 split) once we have ≥10 conversations/day per tenant to power statistical significance
+
+---
+
+*Document generated April 5, 2026. Updated April 24, 2026 (v1.3) with: pricing authority + onboarding-speed reconciliation + AI-disclosure stance (§1); Eat App / Foodics / Fresha integrations + Composio security model (§10); authoritative migration list, vault note categories, embedding/retrieval detail, and 21-table reconciliation (§19); new §42 Compliance & Data Protection (PDPL, sub-processor list, residency commitment); new §43 Disaster Recovery & Backup (RTO/RPO, restore drills, scenario playbooks); new §44 Observability & Incident Response (Sentry/Loki/Prometheus stack plan, severity matrix, runbook structure); new §45 Loyalty Engine; new §46 Google Business Profile Agent; new §47 Market Intelligence (social listening across 13+ platforms); new §48 GEPA Prompt Evolution; and refreshed §24 roadmap to surface Apollo.io, Perplexity, Linq iMessage/RCS, Resend auth wiring, Universal Onboarding L3, and Recraft pipeline. Previous April 23, 2026 (v1.2) added: deep agent-by-agent product overview (§1), six-axis system evaluation framework (§2), Vercel cutover details (§40), and full Rami Mansour persona / role / purpose / function / roadmap (§41 — promoted from "chat widget" to first-class CIO documentation). Previous April 11 update added Voice Notes (WhatsApp In & Out), Smart Language Routing, Arabic Dialect Rules, Production Fixes & Bug Corrections, Bloom Salon Onboarding Simulation, and Vercel Deployment Architecture. Earlier updates: Owner Brain v2, Karpathy Loop v2, Agency-Agents research, Sales Rep, Content Engine, Morning Brief v3, Onboarding v2, Gamified Achievements, Intent Classification (SQOS), Content Learnings, Conversion Tracking, and Image Prompt Generator.*
