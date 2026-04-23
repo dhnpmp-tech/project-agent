@@ -2,9 +2,9 @@
 
 Multi-tenant AI agent platform for SMBs in the UAE and Saudi Arabia. Businesses get autonomous AI employees — WhatsApp customer service, sales, content, HR, and finance — with persistent customer memory, an Owner Brain that reports via WhatsApp, and self-service onboarding.
 
+**Marketing site:** [agents.dcp.sa](https://agents.dcp.sa)
+**Client dashboard:** [agents.dcp.sa/app](https://agents.dcp.sa/app)
 **Live demo:** [Customer Chat](https://agents.dcp.sa/demo/saffron) | [Owner Brain](https://agents.dcp.sa/demo/saffron/owner)
-**Dashboard:** [agents.dcp.sa](https://agents.dcp.sa)
-**Website:** [clear-fjord-96p9.here.now](https://clear-fjord-96p9.here.now)
 
 ---
 
@@ -25,7 +25,7 @@ Customer WhatsApp  ──→  AI Persona  ──→  Owner WhatsApp
      └──────────────┘   └──────────────┘
                     ↕
               ┌───────────────────────┐
-              │   Supabase (17 tables)│
+              │   Supabase (21 tables)│
               │   RLS tenant isolation│
               └───────────────────────┘
                     ↕           ↕
@@ -49,13 +49,17 @@ Each client gets **two WhatsApp channels**:
 - **Admin Dashboard** — Client management, persona stories, interactive memory graph visualization, system health monitoring at /admin.
 - **Multi-Tenant at Scale** — One platform, hundreds of clients. Full data isolation via Supabase RLS. Cost per conversation: ~$0.001.
 
-## 5 AI Agents
+## AI Agents
 
 | Agent | What It Does |
 |-------|-------------|
 | **WhatsApp Intelligence** | Customer FAQ, booking, complaints, lead qualification — bilingual, 24/7 |
+| **Owner Brain** | Daily briefs, alerts, owner-driven knowledge updates via WhatsApp |
 | **AI Sales Rep** | Lead scoring, personalized outreach, pipeline management, meeting booking |
 | **Content Engine** | Social media across LinkedIn, Instagram, TikTok — bilingual, scheduled |
+| **Loyalty Engine** | Points, tiers, referrals — bundled with Growth tier+ |
+| **Google Business Profile** | Review monitoring + auto-response, Q&A, posts, local SEO |
+| **Market Intelligence** | Social listening across 13+ platforms (Pro tier+) |
 | **HR Screening** | CV parsing, candidate scoring, interview scheduling, calendar sync |
 | **Financial Intelligence** | Transaction categorization, anomaly detection, weekly reports |
 
@@ -65,7 +69,7 @@ Each client gets **two WhatsApp channels**:
 |-------|-----------|
 | Dashboard | Next.js 15 + React 19 + Tailwind CSS |
 | Website | Next.js 15 + Framer Motion |
-| Database | Supabase (PostgreSQL 17 + Auth + RLS) |
+| Database | Supabase (PostgreSQL 17 + Auth + RLS + pgvector) — 21 tables |
 | WhatsApp | Kapso Platform API (multi-tenant) |
 | AI (customer-facing) | MiniMax M2.7 (230B params MoE) |
 | AI (internal agents) | OpenRouter free models (Qwen, Nemotron) |
@@ -91,7 +95,7 @@ project-agent/
 │   ├── shared-types/         # TypeScript types
 │   ├── provisioning-sdk/     # Kapso, Docker, n8n, DNS automation
 │   ├── calendar-adapter/     # 5-provider calendar connector
-│   └── supabase/             # 9 SQL migrations
+│   └── supabase/             # SQL migrations (009 core + 010-013 in backend/prompt-builder/migrations)
 ├── agent-templates/          # n8n workflow templates (5 agents + shared)
 ├── infrastructure/           # Docker Compose, provisioning scripts
 └── docs/                     # Architecture, operations, cost overview
@@ -143,7 +147,9 @@ GOOGLE_CALENDAR_CLIENT_SECRET=
 
 ## Database
 
-9 migrations in `packages/supabase/migrations/`:
+21 tables across two migration folders. See spec §19 for the full reconciliation.
+
+**Core (`packages/supabase/migrations/` 001-009):**
 
 | Table | Purpose |
 |-------|---------|
@@ -155,6 +161,15 @@ GOOGLE_CALENDAR_CLIENT_SECRET=
 | `activity_logs` | Event stream for dashboard + analytics |
 | `api_keys` | Client API authentication |
 | `calendar_configs` | Encrypted calendar credentials |
+| `booking_state` | Per-conversation booking flow state |
+
+**Vault + coordination (`backend/prompt-builder/migrations/` 010-012):**
+`vault_notes` (8 categories + pgvector embeddings), `vault_categories`,
+`composio_connections`, `composio_tool_whitelist`, `karpathy_rules`,
+`gepa_runs`, `owner_actions`, `owner_briefings`, `agent_health`.
+
+**Rami CEO chat (`backend/prompt-builder/migrations/` 011):**
+`ceo_chat_sessions`, `ceo_chat_messages`, `ceo_chat_rate_limit`.
 
 All tables use JWT-based RLS: `auth.jwt() -> 'user_metadata' ->> 'client_id'`
 
@@ -162,18 +177,24 @@ All tables use JWT-based RLS: `auth.jwt() -> 'user_metadata' ->> 'client_id'`
 
 | Service | Location | URL |
 |---------|----------|-----|
-| Dashboard | Vercel | agents.dcp.sa |
-| Website | HereNow | clear-fjord-96p9.here.now |
-| n8n + Postgres + Redis | Hostinger VPS | n8n.dcp.sa |
+| Marketing site | Vercel (`marketing-website`) | agents.dcp.sa |
+| Client dashboard | Vercel (`project-agent`, basePath `/app`) | agents.dcp.sa/app |
+| Prompt-builder API + n8n + Mem0 + Graphiti | Hostinger VPS (76.13.179.86) | n8n.dcp.sa |
 | Database | Supabase (Tokyo) | sybzqktipimbmujtowoz.supabase.co |
 
 ## Economics
 
-| | Cost | Revenue |
-|--|------|---------|
-| **Per conversation** | ~$0.001 (MiniMax) | — |
-| **10 clients** | ~$30/month | AED 15,000/month ($4,100) |
-| **Margin** | — | **98%** |
+Pricing (canonical, see spec §1):
+
+| Tier | Monthly | Setup |
+|------|---------|-------|
+| Starter | AED 1,500 | AED 3,000 |
+| Growth (most popular) | AED 3,000 | AED 3,000 |
+| Pro | AED 5,000 | AED 3,000 |
+| Enterprise | AED 8,000 | AED 3,000 |
+
+Per-conversation cost ~$0.001 (MiniMax). At 10 Growth-tier clients
+(AED 30,000/month ≈ $8,200) infra runs ~$200/month — gross margin ~97%.
 
 ## Documentation
 

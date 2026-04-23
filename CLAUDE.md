@@ -49,7 +49,12 @@ If no type-checker is configured, state that explicitly instead of claiming succ
 
 Multi-tenant AI agent deployment platform for SMBs in UAE and Saudi Arabia.
 Businesses get AI agents that handle WhatsApp customer service, sales, content,
-HR screening, and financial intelligence — deployed in under two weeks.
+loyalty, Google Business Profile, HR screening, and financial intelligence.
+
+Two onboarding paths (see spec §1):
+- Self-serve Starter: live in ~10 minutes (signup → scan → launch)
+- Growth/Pro/Enterprise: ~2 weeks full deployment (Kapso provisioning, Composio
+  integrations, persona tuning, vault seeding, owner WhatsApp, Karpathy/GEPA cycles)
 
 ## Tech Stack
 
@@ -57,16 +62,20 @@ HR screening, and financial intelligence — deployed in under two weeks.
 |-------|-----------|
 | Frontend (dashboard) | Next.js 15 + React 19 + Tailwind CSS 3.4 |
 | Frontend (website) | Next.js 15 + Framer Motion + dark theme |
-| Database | Supabase (PostgreSQL + Auth + RLS) |
+| Database | Supabase (PostgreSQL 17 + Auth + RLS + pgvector) |
 | WhatsApp API | Kapso (kapso.ai) — multi-tenant platform API |
 | AI (customer agents) | Claude Sonnet 4.6 (responses) + Claude Haiku 4.5 (classification) |
-| AI (owner brain) | MiniMax M2.7 (230B MoE, auto-improve, native on api.minimax.io) |
+| AI (owner brain + Rami) | MiniMax M2.7 (230B MoE, native on api.minimax.io) |
 | AI (memory analysis) | MiniMax M2.7 (post-conversation analysis, ~$0.001/convo) |
-| Workflow orchestration | n8n (self-hosted, one container per client) |
-| Infrastructure | Docker + Traefik v3 (reverse proxy, auto-SSL) |
+| Vector embeddings | OpenAI text-embedding-3-small (1536-dim, vault notes) |
+| Memory layer | Mem0 + Graphiti (Zep) on VPS |
+| Backend (FastAPI) | prompt-builder service on VPS — replaced n8n Code nodes |
+| Workflow orchestration | n8n (self-hosted, owner brain workflows only) |
+| Tool integrations | Composio (per-agent token vault, scope-minimized OAuth) |
+| Infrastructure | Docker + Traefik v3 (reverse proxy, auto-SSL) on Hostinger VPS |
 | Build | Turbo 2.4 + pnpm 9.15 |
 | Package manager | pnpm (use pnpm, not npm) |
-| Testing | Vitest 3 |
+| Testing | Vitest 3 + pytest |
 
 ## Architecture
 
@@ -76,7 +85,7 @@ Customer WhatsApp ←→ AI Agent ←→ Owner WhatsApp
                         ↕
                     Dashboard (Vercel)
                         ↕
-                    Supabase (8 tables)
+                    Supabase (21 tables)
 ```
 
 Each client gets TWO WhatsApp numbers via Kapso Platform API:
@@ -109,7 +118,9 @@ Agent answers next time automatically. Never asks the same question twice.
 - URL: https://sybzqktipimbmujtowoz.supabase.co
 - Region: Northeast Asia (Tokyo)
 
-### Tables (8 migrations)
+### Tables (21 — see spec §19 for full reconciliation across migrations 001-013)
+
+**Core (packages/supabase/migrations/ 001-009):**
 1. clients — tenant accounts
 2. agent_deployments — agent instances per client
 3. activity_logs — event stream
@@ -118,6 +129,23 @@ Agent answers next time automatically. Never asks the same question twice.
 6. calendar_configs — encrypted calendar credentials
 7. business_knowledge — centralized knowledge base (FAQ, services, social, reviews, industry config)
 8. customer_memory + conversation_summaries — long-term customer profiles
+9. booking_state — per-conversation booking flow state (replaced n8n state)
+
+**Vault + coordination (backend/prompt-builder/migrations/ 010-012):**
+10. vault_notes — 8 categories (business/products/customers/skills/learnings/research/pending/prompts) + pgvector embeddings
+11. vault_categories — category metadata
+12. composio_connections — per-agent OAuth tokens
+13. composio_tool_whitelist — per-agent allowed tool scopes
+14. karpathy_rules — nightly behavioral rule generation
+15. gepa_runs — prompt evolution history
+16. owner_actions — owner approval queue
+17. owner_briefings — morning brief delivery log
+18. agent_health — per-agent uptime + cost tracking
+
+**Rami CEO chat (backend/prompt-builder/migrations/ 011):**
+19. ceo_chat_sessions — Rami chat sessions per visitor
+20. ceo_chat_messages — Rami chat history
+21. ceo_chat_rate_limit — sliding-window IP rate limit (composite PK: ip + bucket_start_minute)
 
 ## Project Structure
 
@@ -191,17 +219,22 @@ Using Kapso Platform API for multi-tenant WhatsApp:
 - Daily/weekly summary cron
 - Auto-provisioning trigger on onboarding completion
 
-## Roadmap (Priority Order)
+## Roadmap (see spec §24 for authoritative version)
 
-1. Fix remaining RLS policies for onboarding insert
-2. Set up email sending (SendGrid/Resend) for auth confirmations
-3. Build admin dashboard (see all clients, manage plans, system health)
-4. Wire website booking to real calendar API (NEXT_PUBLIC_API_URL)
-5. Deploy n8n server + implement owner brain workflows
-6. Add Kapso Platform auto-provisioning on client onboarding
-7. Monitoring stack (Prometheus + Grafana)
-8. Apollo.io + Perplexity integrations for SDR and Content agents
-9. Linq iMessage/RCS channel (future agent type)
+**Near-term backlog:**
+1. Wire Resend for auth confirmation emails
+2. Apollo.io integration (SDR agent prospecting)
+3. Perplexity integration (Content + Research agents)
+4. Universal Onboarding L3 (Composio auto-discovery)
+5. Kapso Platform auto-provisioning on onboarding completion
+6. Recraft integration for Rami v2 photo generation
+7. CEO admin view in dashboard (cross-client memory graph)
+8. Fix Arabic intent parsing in parse_founder_intent
+9. Observability stack (Sentry + Loki + Prometheus + Grafana Tempo)
+10. Q2 2026 disaster recovery restore drill
+
+**Future phases:** Linq iMessage/RCS channel, UAE data residency migration,
+per-customer GEPA prompt evolution.
 
 ## Key Files to Read
 

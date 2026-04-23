@@ -17,42 +17,56 @@ const pricing = [
     tier: "Starter",
     tagline: "For solopreneurs",
     price: "1,500",
-    setup: "AED 2,999 one-time",
+    setup: "AED 3,000 one-time",
     features: [
-      "1 AI agent — WhatsApp or Content",
-      "Arabic + English, around the clock",
+      "1 WhatsApp AI agent with custom persona",
+      "Owner Brain — morning briefs + commands",
+      "Sales Rep — lead scoring + pipeline",
+      "Arabic + English auto-detection",
       "Customer memory across conversations",
-      "Owner alerts via WhatsApp",
-      "Self-service onboarding",
     ],
   },
   {
-    tier: "Professional",
-    tagline: "For growing teams",
-    price: "8,000",
-    setup: "AED 15,000 one-time",
+    tier: "Growth",
+    tagline: "Most popular",
+    price: "3,000",
+    setup: "AED 3,000 one-time",
     popular: true,
     features: [
-      "3 to 5 AI agents, shared brain",
-      "AI Chief of Staff with daily briefs",
-      "Deep customer memory across channels",
-      "Auto knowledge base from your website",
-      "Industry-specific configuration",
+      "Everything in Starter",
+      "Content Engine — social on autopilot",
+      "Loyalty program management",
+      "Google Business Profile optimization",
       "Calendar and CRM integration",
+      "Multi-channel content generation",
+    ],
+  },
+  {
+    tier: "Pro",
+    tagline: "For growing teams",
+    price: "5,000",
+    setup: "AED 3,000 one-time",
+    features: [
+      "Everything in Growth",
+      "AI image prompt generator",
+      "Conversion tracking and attribution",
+      "Priority support — under 2h response",
+      "Voice message AI responses",
+      "Custom workflow automations",
     ],
   },
   {
     tier: "Enterprise",
     tagline: "For scaling operations",
-    price: "30,000+",
-    setup: "Custom integration",
+    price: "8,000",
+    setup: "AED 3,000 one-time",
     features: [
-      "Unlimited agents",
-      "Dedicated infrastructure",
-      "UAE data residency",
+      "Everything, unlimited",
       "Custom integrations and API access",
-      "SLA guarantee",
+      "UAE data residency option",
       "Dedicated account manager",
+      "SLA guarantee",
+      "White-label available",
     ],
   },
 ];
@@ -1463,7 +1477,7 @@ export default function HomePage() {
             </div>
           </FadeUp>
 
-          <StaggerList className="grid grid-cols-1 md:grid-cols-[1fr_1.2fr_1fr] gap-4 max-w-5xl">
+          <StaggerList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl">
             {pricing.map((plan) => (
               <StaggerItem key={plan.tier}>
                 <div className={cn(
