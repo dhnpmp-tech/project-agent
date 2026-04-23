@@ -15,7 +15,10 @@ export interface DonePayload {
 }
 
 export interface UseStreamReturn {
+  /** Active streaming bubble text (last part being built up). */
   text: string;
+  /** All bubbles produced this turn — finalized parts + the active one. */
+  parts: string[];
   streaming: boolean;
   done: DonePayload | null;
   error: string | null;
@@ -26,18 +29,24 @@ export interface UseStreamReturn {
 
 /**
  * Consume an SSE stream from `/api/rami/chat`.
- * Implementation note: we use fetch + ReadableStream because EventSource
- * does not support POST.
+ *
+ * Wire format (matches backend `_sse()` in ceo_chat_engine.py):
+ *   data: {"type":"token","text":"..."}\n\n
+ *   data: {"type":"message_break"}\n\n
+ *   data: {"type":"done", ...}\n\n
+ *
+ * Named SSE event lines (`event: token`) are also accepted as a fallback,
+ * because the older mocks and a few proxies inject them.
  */
 export function useStream(): UseStreamReturn {
-  const [text, setText] = useState("");
+  const [parts, setParts] = useState<string[]>([""]);
   const [streaming, setStreaming] = useState(false);
   const [done, setDone] = useState<DonePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const reset = useCallback(() => {
-    setText("");
+    setParts([""]);
     setDone(null);
     setError(null);
   }, []);
@@ -79,7 +88,8 @@ export function useStream(): UseStreamReturn {
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
-      let acc = "";
+      // Local copy avoids stale-state races inside the read loop.
+      let local: string[] = [""];
 
       while (true) {
         const { value, done: chunkDone } = await reader.read();
@@ -93,17 +103,42 @@ export function useStream(): UseStreamReturn {
           buf = buf.slice(idx + 2);
           const ev = parseSseEvent(raw);
           if (!ev) continue;
-          if (ev.event === "token") {
-            acc += ev.data;
-            setText(acc);
-          } else if (ev.event === "done") {
+
+          // Try parsing inner JSON payload; fall back to raw text for legacy mocks.
+          let payload: { type?: string; text?: string; [k: string]: unknown } | null = null;
+          try {
+            payload = JSON.parse(ev.data);
+          } catch {
+            payload = null;
+          }
+
+          // Backend payloads always carry a `type` field.
+          const type = payload?.type ?? (ev.event !== "message" ? ev.event : null);
+
+          if (type === "token") {
+            const t = payload?.text ?? ev.data;
+            local = [...local];
+            local[local.length - 1] = (local[local.length - 1] ?? "") + t;
+            setParts(local);
+          } else if (type === "message_break") {
+            // Finalize current part and start a new empty accumulator.
+            const last = (local[local.length - 1] ?? "").trim();
+            if (last) {
+              local = [...local.slice(0, -1), last, ""];
+            }
+            setParts(local);
+          } else if (type === "done") {
+            // Trim final part; drop empty trailing slot.
+            const last = (local[local.length - 1] ?? "").trim();
+            local = last ? [...local.slice(0, -1), last] : local.slice(0, -1);
+            setParts(local);
             try {
-              setDone(JSON.parse(ev.data) as DonePayload);
+              setDone(payload ?? {});
             } catch {
               setDone({});
             }
-          } else if (ev.event === "error") {
-            setError(ev.data || "stream error");
+          } else if (type === "error") {
+            setError(typeof payload?.text === "string" ? payload.text : ev.data || "stream error");
           }
         }
       }
@@ -119,7 +154,8 @@ export function useStream(): UseStreamReturn {
     }
   }, [reset]);
 
-  return { text, streaming, done, error, send, abort, reset };
+  const text = parts[parts.length - 1] ?? "";
+  return { text, parts, streaming, done, error, send, abort, reset };
 }
 
 function parseSseEvent(raw: string): { event: string; data: string } | null {

@@ -47,9 +47,11 @@ describe("RamiWidget", () => {
         return jsonResp({ greeting: "Hi I'm Rami.", chips: ["Pricing"] });
       }
       if (url.includes("/api/rami/chat")) {
+        // Mirrors backend ceo_chat_engine.py `_sse()` wire format: just
+        // `data: {json}\n\n` with the event kind in the JSON `type` field.
         return sseResp([
-          "event: token\ndata: Hello\n\n",
-          "event: done\ndata: {\"cost_usd\":0.001}\n\n",
+          'data: {"type":"token","text":"Hello"}\n\n',
+          'data: {"type":"done","cost_usd":0.001}\n\n',
         ]);
       }
       return jsonResp({});
@@ -86,6 +88,36 @@ describe("RamiWidget", () => {
       expect(chatCall).toBeTruthy();
     });
     await waitFor(() => expect(screen.getByText("Hello")).toBeInTheDocument());
+  });
+
+  it("renders multiple bubbles when stream emits message_break events", async () => {
+    fetchSpy.mockImplementation(async (input: unknown) => {
+      const url = String(input);
+      if (url.includes("/api/rami/session")) return jsonResp({ session_id: "test-sess" });
+      if (url.includes("/api/rami/greeting")) return jsonResp({ greeting: "Hi I'm Rami.", chips: [] });
+      if (url.includes("/api/rami/chat")) {
+        return sseResp([
+          'data: {"type":"token","text":"First "}\n\n',
+          'data: {"type":"token","text":"bubble."}\n\n',
+          'data: {"type":"message_break"}\n\n',
+          'data: {"type":"token","text":"Second "}\n\n',
+          'data: {"type":"token","text":"bubble."}\n\n',
+          'data: {"type":"done","cost_usd":0.001}\n\n',
+        ]);
+      }
+      return jsonResp({});
+    });
+
+    render(<RamiWidget pagePath="/" />);
+    await userEvent.click(screen.getByRole("button", { name: /ask rami/i }));
+    await waitFor(() => expect(screen.getByText("Hi I'm Rami.")).toBeInTheDocument());
+    const ta = screen.getByRole("textbox");
+    await userEvent.type(ta, "tell me");
+    await act(async () => {
+      await userEvent.keyboard("{Meta>}{Enter}{/Meta}");
+    });
+    await waitFor(() => expect(screen.getByText("First bubble.")).toBeInTheDocument());
+    expect(screen.getByText("Second bubble.")).toBeInTheDocument();
   });
 
   it("identity panel opens via header button", async () => {

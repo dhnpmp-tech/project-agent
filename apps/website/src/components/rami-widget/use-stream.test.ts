@@ -58,6 +58,26 @@ describe("useStream", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("splits response into parts on message_break (backend wire format)", async () => {
+    fetchSpy.mockResolvedValue(
+      sseResponse([
+        'data: {"type":"token","text":"First "}\n\n',
+        'data: {"type":"token","text":"part."}\n\n',
+        'data: {"type":"message_break"}\n\n',
+        'data: {"type":"token","text":"Second "}\n\n',
+        'data: {"type":"token","text":"part."}\n\n',
+        'data: {"type":"done","cost_usd":0.001}\n\n',
+      ]),
+    );
+    const { result } = renderHook(() => useStream());
+    await act(async () => {
+      await result.current.send({ message: "hi", page_url: "/", lang: "en" });
+    });
+    await waitFor(() => expect(result.current.streaming).toBe(false));
+    expect(result.current.parts).toEqual(["First part.", "Second part."]);
+    expect(result.current.done).toEqual({ type: "done", cost_usd: 0.001 });
+  });
+
   it("supports abort during stream", async () => {
     fetchSpy.mockResolvedValue(
       sseResponse([

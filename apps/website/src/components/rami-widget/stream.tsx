@@ -13,10 +13,16 @@ export interface StreamMessage {
 export interface StreamProps {
   messages: StreamMessage[];
   streamingText: string;
+  /**
+   * All in-flight bubbles for the current turn — finalized parts plus the
+   * active one. Allows multi-bubble rendering during streaming so a finalized
+   * part doesn't disappear when `message_break` flips to a new accumulator.
+   */
+  streamingParts?: string[];
   streaming: boolean;
 }
 
-export function Stream({ messages, streamingText, streaming }: StreamProps) {
+export function Stream({ messages, streamingText, streamingParts, streaming }: StreamProps) {
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -28,6 +34,14 @@ export function Stream({ messages, streamingText, streaming }: StreamProps) {
       el.scrollTop = el.scrollHeight;
     }
   }, [messages.length, streamingText]);
+
+  // Finalized parts that already have full text but aren't yet committed to
+  // `messages` (because the stream isn't `done` yet). Render them as static
+  // bubbles above the active streaming bubble.
+  const finalizedParts =
+    streaming && streamingParts && streamingParts.length > 1
+      ? streamingParts.slice(0, -1).map((p) => p.trim()).filter(Boolean)
+      : [];
 
   return (
     <div
@@ -43,6 +57,9 @@ export function Stream({ messages, streamingText, streaming }: StreamProps) {
     >
       {messages.map((m) => (
         <Message key={m.id} role={m.role} content={m.content} />
+      ))}
+      {finalizedParts.map((p, i) => (
+        <Message key={`live-${i}`} role="assistant" content={p} />
       ))}
       {streaming && (
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>

@@ -30,15 +30,23 @@ export function RamiWidget({ pagePath, apiBase = "/api/rami" }: RamiWidgetProps)
     setLang(detectBrowserLang());
   }, []);
 
-  // When a streamed response finishes, append it to messages
+  // When a streamed response finishes, flush every non-empty part as its own
+  // message bubble so Rami reads like a real texter (multiple bubbles per turn).
   useEffect(() => {
-    if (stream.done && stream.text) {
+    if (!stream.done) return;
+    const parts = (stream.parts ?? []).map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      const base = Date.now();
       setMessages((prev) => [
         ...prev,
-        { id: `a-${Date.now()}`, role: "assistant", content: stream.text },
+        ...parts.map((content, i) => ({
+          id: `a-${base}-${i}`,
+          role: "assistant" as const,
+          content,
+        })),
       ]);
-      stream.reset();
     }
+    stream.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.done]);
 
@@ -86,6 +94,7 @@ export function RamiWidget({ pagePath, apiBase = "/api/rami" }: RamiWidgetProps)
         <Stream
           messages={messages}
           streamingText={stream.text}
+          streamingParts={stream.parts}
           streaming={stream.streaming}
         />
       )}
