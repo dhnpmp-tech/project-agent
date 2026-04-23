@@ -363,21 +363,68 @@ async def send_to_founder(message: str, context: str = "conversation") -> dict:
 
 # ── Founder Intent Parsing ────────────────────────────
 
+# Arabic normalization — collapse alef variants, strip tatweel, drop diacritics.
+# Without this, "ايوه" / "أيوه" / "إيوه" hash to different strings and miss the
+# approve list. Standard Gulf WhatsApp typing is inconsistent on hamza placement.
+_AR_TATWEEL = "\u0640"
+_AR_DIACRITICS = "".join(chr(c) for c in range(0x064B, 0x0653))  # fatha, kasra, etc.
+_AR_ALEF_VARIANTS = str.maketrans({"\u0623": "\u0627", "\u0625": "\u0627", "\u0622": "\u0627", "\u0671": "\u0627"})
+_AR_YA_VARIANTS = str.maketrans({"\u0649": "\u064A"})  # alef maksura → ya
+_AR_TA_MARBUTA = str.maketrans({"\u0629": "\u0647"})    # ta marbuta → ha
+
+def _normalize_arabic(s: str) -> str:
+    s = s.translate(_AR_ALEF_VARIANTS).translate(_AR_YA_VARIANTS).translate(_AR_TA_MARBUTA)
+    s = s.replace(_AR_TATWEEL, "")
+    for d in _AR_DIACRITICS:
+        s = s.replace(d, "")
+    return s
+
+
 def parse_founder_intent(message: str) -> dict:
-    """Parse the founder's WhatsApp response to determine intent."""
-    msg = message.strip().lower()
+    """Parse the founder's WhatsApp response to determine intent.
 
-    approve_words = ["yes", "go", "go ahead", "post it", "approved", "approve", "ship it", "send it", "do it", "yep", "yup", "ok", "okay", "sure", "\U0001f44d", "\u2705"]
-    reject_words = ["no", "don't post", "don't", "skip", "reject", "nah", "nope", "not now", "hold", "wait", "\u274c", "\U0001f44e"]
-    edit_patterns = [r"change .+ to .+", r"make it .+", r"shorter", r"longer", r"remove .+", r"add .+", r"replace .+"]
+    Handles English + Gulf Arabic. Arabic input is normalized (alef/ya/ta-marbuta
+    variants collapsed, tatweel + diacritics stripped) before matching so casual
+    WhatsApp typing variants ("ايوه" vs "أيوه") all hit the same bucket.
+    """
+    raw = message.strip()
+    msg_en = raw.lower()
+    msg_ar = _normalize_arabic(raw)
 
-    if any(msg == w or msg.startswith(w + " ") or msg.startswith(w + ",") for w in approve_words):
+    approve_en = ["yes", "go", "go ahead", "post it", "approved", "approve", "ship it", "send it", "do it", "yep", "yup", "ok", "okay", "sure", "\U0001f44d", "\u2705"]
+    # Gulf approve: ايوه (yes), نعم (yes formal), تمام (OK/fine), يلا (let's go),
+    # طيب (fine), حلو (cool), ماشي (alright), زين (good — Saudi), انشره (post it),
+    # ارسله (send it), موافق (approved), اوكي (OK transliterated)
+    approve_ar = ["ايوه", "ايوا", "ايو", "نعم", "تمام", "يلا", "يالله", "طيب", "حلو", "ماشي", "زين", "انشره", "ارسله", "موافق", "اوكي", "اوك"]
+
+    reject_en = ["no", "don't post", "don't", "skip", "reject", "nah", "nope", "not now", "hold", "wait", "\u274c", "\U0001f44e"]
+    # Gulf reject: لا (no), لأ (no, common WhatsApp), ما ابي (don't want — Saudi),
+    # مو الحين (not now), مب الحين (not now — Emirati), خلي بعدين (later),
+    # الغي (cancel), ارفض (reject), استنى (wait), توقف (stop)
+    reject_ar = ["لا", "لأ", "كلا", "ما ابي", "مو الحين", "مب الحين", "خلي بعدين", "الغي", "ارفض", "استنى", "استني", "توقف", "مرفوض"]
+
+    # Edit patterns — English + a few Arabic verbs commonly used to request edits:
+    # غير (change), خلي (make it), اقصر (shorter), اطول (longer), احذف (remove),
+    # ضيف/اضف (add), بدل (replace)
+    edit_patterns_en = [r"change .+ to .+", r"make it .+", r"shorter", r"longer", r"remove .+", r"add .+", r"replace .+"]
+    edit_patterns_ar = [r"غير .+", r"خلي(?:ها|ه)? .+", r"اقصر", r"اطول", r"احذف .+", r"(?:ضيف|اضف) .+", r"بدل .+"]
+
+    def _matches_word(text: str, word: str) -> bool:
+        return text == word or text.startswith(word + " ") or text.startswith(word + ",")
+
+    if any(_matches_word(msg_en, w) for w in approve_en):
+        return {"intent": "approve"}
+    if any(_matches_word(msg_ar, w) for w in approve_ar):
         return {"intent": "approve"}
 
-    if any(msg == w or msg.startswith(w + " ") or msg.startswith(w + ",") for w in reject_words):
+    if any(_matches_word(msg_en, w) for w in reject_en):
+        return {"intent": "reject", "feedback": message}
+    if any(_matches_word(msg_ar, w) for w in reject_ar):
         return {"intent": "reject", "feedback": message}
 
-    if any(re.search(p, msg) for p in edit_patterns):
+    if any(re.search(p, msg_en) for p in edit_patterns_en):
+        return {"intent": "edit", "instructions": message}
+    if any(re.search(p, msg_ar) for p in edit_patterns_ar):
         return {"intent": "edit", "instructions": message}
 
     return {"intent": "conversation", "message": message}
