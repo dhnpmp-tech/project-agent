@@ -181,3 +181,39 @@ async def test_normal_message_streams_tokens(client):
     assert "Hello" in text
     assert "there" in text
     assert "data:" in text  # SSE format
+
+
+async def test_pipe_separator_emits_message_break_between_bubbles(client):
+    """Rami's `|||` separator must produce SSE `message_break` events so the
+    widget can render multi-bubble replies like Nadia."""
+    async def fake_stream(*a, **kw):
+        for tok in ["Hey, ", "good question. ||| ", "Short answer: ", "yes. ||| ", "Want details?"]:
+            yield {"type": "token", "text": tok}
+        yield {"type": "done", "tokens_in": 50, "tokens_out": 5, "model": "minimax-m2.7"}
+
+    with patch.object(ceo_chat_engine, "check_and_record", new=_ok_rate()), \
+         patch.object(ceo_chat, "resolve_or_create", new=_resolve_session()), \
+         patch.object(ceo_chat_engine, "classify_content", new=_ok_filter()), \
+         patch.object(ceo_chat_engine, "session_total_messages", new=AsyncMock(return_value=0)), \
+         patch.object(ceo_chat_engine, "session_context", new=AsyncMock(return_value={})), \
+         patch.object(ceo_chat_engine, "recent_messages", new=AsyncMock(return_value=[])), \
+         patch.object(ceo_chat_engine, "cost_mode", new=AsyncMock(return_value="normal")), \
+         patch.object(ceo_chat_engine, "run_llm_stream", new=fake_stream), \
+         patch.object(ceo_chat_engine, "extract_identity", new=_no_identity()), \
+         patch.object(ceo_chat_engine, "persist_messages", new=AsyncMock()), \
+         patch("ceo_chat_engine.asyncio.sleep", new=AsyncMock()):
+        r = await client.post(
+            "/ceo/chat",
+            json={"message": "hi", "page_url": "/"},
+            cookies={"ceo_session_id": "fake-id"},
+        )
+    assert r.status_code == 200
+    text = r.text
+    # `|||` markers themselves must be stripped — they're a wire-only
+    # separator, not visible content.
+    assert "|||" not in text
+    # Two `|||` in the LLM output → exactly two `message_break` events.
+    assert text.count('"type": "message_break"') == 2
+    # Bubble content still arrives.
+    assert "good question" in text
+    assert "Want details?" in text

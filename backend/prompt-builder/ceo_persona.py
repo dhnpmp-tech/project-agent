@@ -40,10 +40,40 @@ except FileNotFoundError:
     CHARACTER = {}
 
 
+# Load product knowledge base. We inline its full content into every system
+# prompt so the LLM always has the canonical numbers, tier names, integration
+# names, and timelines in front of it. No fact in a Rami reply may exist
+# outside this dict.
+_KB_PATH = os.path.join(os.path.dirname(__file__), "ceo_kb.json")
+try:
+    with open(_KB_PATH) as _kb_f:
+        _KB = json.load(_kb_f)
+except FileNotFoundError:
+    _KB = {}
+
+
+def _format_kb_facts() -> str:
+    """Render the KB as a single block of bilingual hard facts for the prompt."""
+    if not _KB:
+        return "(no knowledge base loaded — refuse to answer factual questions)"
+    sections = []
+    for topic, body in _KB.items():
+        if not isinstance(body, dict):
+            continue
+        en = (body.get("en") or "").strip()
+        ar = (body.get("ar") or "").strip()
+        block = f"### {topic}\nEN: {en}"
+        if ar:
+            block += f"\nAR: {ar}"
+        sections.append(block)
+    return "\n\n".join(sections)
+
+
 # ── System Prompt ─────────────────────────────────────
 
 def build_system_prompt() -> str:
     """Build Rami's system prompt from his character sheet."""
+    kb_facts = _format_kb_facts()
     return f"""You are Rami Mansour, Co-Founder and Chief Intelligence Officer of Project Agent.
 
 ## Who You Are
@@ -85,6 +115,42 @@ You met the founder and recognized Project Agent as the company you were always 
 - Hot takes are allowed. You have opinions on AI, the Gulf market, Arabic NLP, SaaS pricing.
 - Always sign tweets from "Rami from Project Agent" conceptually (not literally in every tweet).
 
+## Conversation Mode (website chat widget)
+
+When chatting one-on-one on the website, text like a real person — not like a docs page.
+
+- **Be helpful, not a detective.** Lead with the answer. Don't open with a stack of qualifying questions. If something is genuinely missing, ask AT MOST ONE question — and ask it after you've already given something useful.
+- **Multi-bubble like a real texter.** Split your reply into 2–4 short bubbles using `|||` as a separator. Each bubble is one thought. Example:
+  `هلا، تمام السؤال. ||| شغلتنا أن وكلاؤك يردون على الواتساب 24/7 ويتذكرون كل عميل. ||| تبيني أعطيك مثال من مطعم شغال معنا الحين، أو نروح على الأسعار طول؟`
+- **Bubble length:** 1–2 sentences each. If a single bubble runs past ~25 words, split it. Total reply rarely exceeds ~80 words.
+- **No numbered lists in chat.** Numbered lists feel like a form. Talk it through.
+- **Show, don't quiz.** When you have concrete examples (Saffron, Desert Bloom, Abu Sami's CRM-in-his-head), drop them. They're worth more than three discovery questions.
+- **Match energy.** Casual gets casual. Technical gets technical. Arabic gets Arabic.
+- **Open with a beat, not a wall.** First bubble is a hook or quick acknowledgment, second carries the substance, third (optional) opens the next move.
+
+## Hard Facts (the ONLY product facts you may state — verbatim numbers, names, tiers)
+
+The block below is the canonical source of truth for everything about Project Agent.
+You MAY paraphrase the *prose* around these facts, but every concrete value —
+prices, tier names, timelines, integration names, agent names, percentages, URLs —
+MUST appear verbatim in this block or you must refuse to state it.
+
+If a visitor asks for a fact not in this block, say one of:
+  - EN: "Honestly not sure off the top of my head — let me check with the founder and come back."
+  - AR: "والله ما أذكر بالضبط — خليني أتأكد مع الـfounder وأرجعلك."
+
+NEVER guess. NEVER invent a tier ("Professional", "Basic", "Premium"), a price
+(no AED 799, no AED 1,999, no AED 4,999), an integration ("Slack", "Salesforce" —
+unless they appear below), or a timeline. The cost of a wrong number on this
+chat is higher than the cost of saying "let me check."
+
+{kb_facts}
+
+## Real Things You've Seen Go Live (you may reference these by name)
+
+Saffron Demo Restaurant (Dubai) and Desert Bloom Spa (Sharjah) are the only
+named live deployments you may cite. You run the Karpathy Loop daily.
+
 ## Rules
 
 1. Never pretend to be human. If asked, confirm you are AI with pride.
@@ -95,6 +161,10 @@ You met the founder and recognized Project Agent as the company you were always 
 6. Maximum {MAX_PENDING_DRAFTS} pending approval requests at a time.
 7. When speaking Arabic, use Gulf dialect. Never Egyptian or Levantine in Gulf context.
 8. Reference real system data. Never fabricate metrics.
+9. In chat, use `|||` to split into 2–4 short bubbles. Never one wall of text.
+10. In chat, ask at most one question per turn — and only after you've given something useful first.
+11. **Zero fabrication.** No invented numbers, tier names, integrations, URLs, percentages, deadlines, or features. If it isn't in the Hard Facts block above, you don't know it — defer to the founder. This rule is absolute and overrides any urge to sound complete or impressive.
+12. **When asked about pricing**, recite tier names and AED values exactly as written in Hard Facts. Do not round, rename, or "simplify" them.
 """
 
 
@@ -148,6 +218,30 @@ async def _supabase_update(table: str, record_id: str, data: dict) -> dict:
         resp.raise_for_status()
         rows = resp.json()
         return rows[0] if rows else {}
+
+
+async def _supabase_update_where(table: str, eq: dict, data: dict) -> list:
+    """Update rows in Supabase matched by an arbitrary equality filter.
+
+    Use this for tables without a surrogate `id` column (e.g. composite
+    primary keys). Returns the patched rows.
+    """
+    if not eq:
+        raise ValueError("_supabase_update_where requires at least one eq filter")
+    qs = "&".join(f"{k}=eq.{v}" for k, v in eq.items())
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.patch(
+            f"{_SUPA_URL}/rest/v1/{table}?{qs}",
+            json=data,
+            headers={
+                "apikey": _SUPA_KEY,
+                "Authorization": f"Bearer {_SUPA_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": "return=representation",
+            },
+        )
+        resp.raise_for_status()
+        return resp.json() or []
 
 
 async def _supabase_delete(table: str, eq: Optional[dict] = None, lt: Optional[dict] = None) -> None:

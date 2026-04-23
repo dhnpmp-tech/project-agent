@@ -11,9 +11,22 @@ async def test_resolve_or_create_creates_when_no_cookie():
 
 
 async def test_resolve_or_create_returns_cookie_id_when_session_exists():
-    with patch.object(sess, "_supabase_query", new=AsyncMock(return_value=[{"id": "abc-123"}])):
-        sid = await sess.resolve_or_create(cookie_id="abc-123", browser_lang="en", page="/")
-    assert sid == "abc-123"
+    # Cookie must be a syntactically valid uuid; otherwise resolve_or_create
+    # treats it as missing and provisions a new session (covered separately).
+    valid = "11111111-2222-3333-4444-555555555555"
+    with patch.object(sess, "_supabase_query", new=AsyncMock(return_value=[{"id": valid}])):
+        sid = await sess.resolve_or_create(cookie_id=valid, browser_lang="en", page="/")
+    assert sid == valid
+
+
+async def test_resolve_or_create_non_uuid_cookie_does_not_query_db():
+    qry = AsyncMock(return_value=[])
+    ins = AsyncMock(return_value={"id": "11111111-2222-3333-4444-555555555555"})
+    with patch.object(sess, "_supabase_query", new=qry), \
+         patch.object(sess, "_supabase_insert", new=ins):
+        sid = await sess.resolve_or_create(cookie_id="smoke-3", browser_lang="en", page="/")
+    qry.assert_not_awaited()  # guard short-circuits before any PostgREST call
+    assert sid == "11111111-2222-3333-4444-555555555555"
 
 
 async def test_resolve_or_create_invalid_cookie_creates_new():

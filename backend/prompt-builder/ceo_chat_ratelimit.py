@@ -16,7 +16,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from ceo_persona import _supabase_insert, _supabase_query as _raw_supabase_query, _supabase_update as _raw_supabase_update
+from ceo_persona import (
+    _supabase_insert,
+    _supabase_query as _raw_supabase_query,
+    _supabase_update_where as _raw_supabase_update_where,
+)
 
 _BURST_LIMIT = 5
 _HOUR_LIMIT = 30
@@ -45,42 +49,56 @@ def _now_minute() -> datetime:
     return n.replace(second=0, microsecond=0)
 
 
+def _ts(dt: datetime) -> str:
+    """UTC ISO timestamp safe for query strings.
+
+    `datetime.isoformat()` emits a `+00:00` suffix; the unencoded `+` is
+    interpreted as a space when PostgREST parses the URL, producing
+    `invalid input syntax for type timestamp with time zone`. Using `Z`
+    sidesteps it without needing per-call URL encoding.
+    """
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
 async def _count_window(ip: str, since: datetime) -> int:
+    # NOTE: `count` is a PostgREST aggregate keyword, so a bare `select=count`
+    # collides with the count() function and returns HTTP 400. Aliasing the
+    # column read as `cnt:count` keeps the row-level fetch intact.
     params = (
-        f"select=count&ip=eq.{ip}"
-        f"&bucket_start_minute=gte.{since.isoformat()}"
+        f"select=cnt:count&ip=eq.{ip}"
+        f"&bucket_start_minute=gte.{_ts(since)}"
         "&limit=10000"
     )
     rows = await _raw_supabase_query("ceo_chat_rate_limit", params)
-    return sum(r.get("count", 0) for r in rows)
+    return sum(r.get("cnt", 0) for r in rows)
 
 
 async def _increment_bucket(ip: str, penalty: int) -> None:
     minute = _now_minute()
-    # Try insert first; on conflict, read+update.
+    minute_iso = _ts(minute)
+    # Try insert first; on composite-PK conflict, fall back to read+patch.
+    # NOTE: ceo_chat_rate_limit has no `id` column — primary key is
+    # (ip, bucket_start_minute) — so updates must filter by composite key.
     try:
         await _supabase_insert("ceo_chat_rate_limit", {
             "ip": ip,
-            "bucket_start_minute": minute.isoformat(),
+            "bucket_start_minute": minute_iso,
             "count": penalty,
         })
     except Exception:
-        # On primary-key conflict, fetch existing and increment in two steps.
         params = (
-            f"select=count,id&ip=eq.{ip}"
-            f"&bucket_start_minute=eq.{minute.isoformat()}"
+            f"select=cnt:count&ip=eq.{ip}"
+            f"&bucket_start_minute=eq.{minute_iso}"
             "&limit=1"
         )
         rows = await _raw_supabase_query("ceo_chat_rate_limit", params)
         if rows:
-            current = rows[0].get("count", 0)
-            row_id = rows[0].get("id")
-            if row_id is not None:
-                await _raw_supabase_update(
-                    "ceo_chat_rate_limit",
-                    str(row_id),
-                    {"count": current + penalty},
-                )
+            current = rows[0].get("cnt", 0)
+            await _raw_supabase_update_where(
+                "ceo_chat_rate_limit",
+                {"ip": ip, "bucket_start_minute": minute_iso},
+                {"count": current + penalty},
+            )
 
 
 async def check_and_record(ip: str, penalty: int = 1) -> RateLimitResult:

@@ -8,6 +8,7 @@ history           — return last N messages for a session.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
 from ceo_persona import (
@@ -51,8 +52,17 @@ async def _supabase_update(table: str, data: dict, eq: dict) -> dict:
 
 # ── Session API ─────────────────────────────────────────────────────
 
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
 async def resolve_or_create(cookie_id: Optional[str], browser_lang: str, page: str) -> str:
-    if cookie_id:
+    # Only attempt to look up the cookie if it is a syntactically valid uuid.
+    # Anything else (forged, truncated, legacy) silently provisions a new
+    # session instead of crashing the endpoint with PostgREST's 22P02 error.
+    if cookie_id and _UUID_RE.match(cookie_id):
         rows = await _supabase_query(
             "ceo_chat_sessions", select="id", eq={"id": cookie_id}, limit=1,
         )

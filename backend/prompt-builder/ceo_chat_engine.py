@@ -253,10 +253,26 @@ async def run_pipeline(
         rewritten = _sanitize(await rewrite_in_character(full_text, lang=lang))
         full_text = rewritten
 
-    # Emit final text as SSE token events (chunked so client UX is smooth)
+    # Split on `|||` so Rami's reply lands as multiple short bubbles instead
+    # of one wall of text. Persona instructs the LLM to use this separator.
+    bubbles = [b.strip() for b in full_text.split("|||") if b.strip()]
+    if not bubbles:
+        bubbles = [full_text]
+
+    # Emit each bubble as token chunks, with a `message_break` event +
+    # short server-side delay between bubbles for organic typing rhythm.
     chunk = 24
-    for i in range(0, len(full_text), chunk):
-        yield _sse({"type": "token", "text": full_text[i:i + chunk]})
+    for bi, bubble in enumerate(bubbles):
+        if bi > 0:
+            yield _sse({"type": "message_break"})
+            # Tiny inter-bubble delay (typing rhythm). Keep small so total
+            # response feels snappy. Skipped in tests where asyncio is faked.
+            try:
+                await asyncio.sleep(0.45)
+            except Exception:
+                pass
+        for i in range(0, len(bubble), chunk):
+            yield _sse({"type": "token", "text": bubble[i:i + chunk]})
 
     # 9. Persist
     try:
