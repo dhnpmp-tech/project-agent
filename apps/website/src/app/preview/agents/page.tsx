@@ -54,12 +54,76 @@ export default function PreviewAgentsIndex() {
               fontSize: 15.5,
               lineHeight: 1.55,
               maxWidth: "60ch",
-              marginBottom: 40,
+              marginBottom: 28,
             }}
           >
             Three takes on the &quot;8 AI employees&quot; section. Same data, three different
             stories. Open each, then tell me which to ship to the homepage.
           </p>
+
+          <a
+            href="/preview/agents-narratives"
+            style={{
+              display: "block",
+              background:
+                "color-mix(in oklab, var(--teal) 8%, var(--paper))",
+              border: "1px solid var(--teal)",
+              borderRadius: 14,
+              padding: "26px 28px",
+              textDecoration: "none",
+              color: "inherit",
+              marginBottom: 36,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 11,
+                letterSpacing: ".18em",
+                color: "var(--teal)",
+                textTransform: "uppercase",
+                marginBottom: 10,
+              }}
+            >
+              ★ Latest · Narrative compare (A/B/C on one page)
+            </div>
+            <h3
+              style={{
+                fontFamily: "var(--serif)",
+                fontSize: 28,
+                lineHeight: 1.15,
+                margin: "0 0 8px",
+              }}
+            >
+              Three story spines, side by side.
+            </h3>
+            <p
+              style={{
+                color: "var(--ink-2)",
+                fontSize: 14.5,
+                lineHeight: 1.55,
+                margin: 0,
+                maxWidth: "70ch",
+              }}
+            >
+              Front door · Day in the life · Before / after. New takes that
+              start with a real WhatsApp chat as the hero, then frame the
+              other 7 agents inside each narrative.
+            </p>
+            <div
+              style={{
+                marginTop: 14,
+                fontFamily: "var(--mono)",
+                fontSize: 11,
+                letterSpacing: ".14em",
+                color: "var(--teal)",
+                textTransform: "uppercase",
+              }}
+            >
+              Open compare page →
+            </div>
+          </a>
+
           <div
             style={{
               display: "grid",
