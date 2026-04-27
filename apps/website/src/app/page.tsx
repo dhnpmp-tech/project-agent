@@ -405,7 +405,7 @@ function LiveThread() {
       {
         side: "ai",
         t: "1:15 PM",
-        msg: "Got it Mohammed Al-Saud — table 12 by the window, just like your visit on Apr 12. Booked. Want me to set up your usual (kabsa + tamr hindi)?",
+        msg: "Got it! Welcome back, Mohammed — table 12 by the window, just like last time. Booked. Want me to set up your usual (kabsa + tamr hindi)?",
         typing: 1100,
       },
       { side: "cust", t: "1:15 PM", msg: "Yes, shukran" },
