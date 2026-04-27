@@ -16,11 +16,15 @@ export function DcpProvider({ initialLang = "en", children }: DcpProviderProps) 
   const [lang, setLang] = useState<Lang>(initialLang);
 
   // Mirror lang to <html> so RTL + Arabic font swap kick in.
+  // Also set data-palette so dcp-kit.css palette tokens activate (default midnight).
   useEffect(() => {
     const html = document.documentElement;
     html.setAttribute("data-lang", lang);
     html.setAttribute("dir", lang === "ar" ? "rtl" : "ltr");
     html.setAttribute("lang", lang);
+    if (!html.getAttribute("data-palette")) {
+      html.setAttribute("data-palette", "midnight");
+    }
   }, [lang]);
 
   return (
