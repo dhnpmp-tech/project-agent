@@ -405,7 +405,7 @@ function LiveThread() {
       {
         side: "ai",
         t: "1:15 PM",
-        msg: "Of course Mohammed — table 12 by the window. Booked. Want me to set up your usual (kabsa + tamr hindi)?",
+        msg: "Got it Mohammed Al-Saud — table 12 by the window, just like your visit on Apr 12. Booked. Want me to set up your usual (kabsa + tamr hindi)?",
         typing: 1100,
       },
       { side: "cust", t: "1:15 PM", msg: "Yes, shukran" },
@@ -423,13 +423,8 @@ function LiveThread() {
   const [typing, setTyping] = useState(false);
 
   useEffect(() => {
-    if (shown >= thread.length) {
-      const reset = setTimeout(() => {
-        setShown(1);
-        setTyping(false);
-      }, 5000);
-      return () => clearTimeout(reset);
-    }
+    // Play once and stop — no infinite restart loop.
+    if (shown >= thread.length) return;
     const next = thread[shown];
     if (next?.typing) {
       setTyping(true);
