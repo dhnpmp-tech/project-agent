@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { FadeUp, StaggerList, StaggerItem, ScaleIn } from "@/components/motion";
 import { AgentPipeline } from "@/components/agent-pipeline";
 import { motion } from "framer-motion";
+import { SubShell } from "@/components/dcp/sub-shell";
 
 const steps = [
   {
@@ -75,36 +76,7 @@ const steps = [
 
 export default function ProcessPage() {
   return (
-    <div className="min-h-[100dvh] bg-surface-950 text-white">
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-40 px-4 pt-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between bg-surface-950/70 backdrop-blur-2xl rounded-full px-6 py-3 ring-1 ring-white/[0.06] shadow-[0_2px_24px_rgba(0,0,0,0.3)]">
-          <a href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]">
-              <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 2L2 5.5l6 3.5 6-3.5L8 2zM2 10.5l6 3.5 6-3.5M2 8l6 3.5 6-3.5" />
-              </svg>
-            </div>
-            <span className="text-[15px] font-bold text-white tracking-tight">AI Agent Systems</span>
-          </a>
-          <div className="hidden md:flex items-center gap-7 text-[13px] font-medium text-white/40">
-            <a href="/services/" className="hover:text-white transition-colors duration-300">Services</a>
-            <a href="/pricing/" className="hover:text-white transition-colors duration-300">Pricing</a>
-            <a href="/process/" className="text-white transition-colors duration-300">Process</a>
-            <a href="/case-study/" className="hover:text-white transition-colors duration-300">Case study</a>
-            <a href="/integrations/" className="hover:text-white transition-colors duration-300">Integrations</a>
-            <a href="/app/login/" className="hover:text-white transition-colors duration-300">Login</a>
-            <a href="/app/signup/" className="rounded-full bg-white/[0.06] hover:bg-white/[0.1] px-5 py-2 text-[13px] font-semibold text-white/70 transition-all duration-300 active:scale-[0.97]">
-              Sign up
-            </a>
-            <a href="/book-audit/" className="group inline-flex items-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-500 px-5 py-2 text-[13px] font-semibold text-white transition-all duration-300 active:scale-[0.97] shadow-[0_0_20px_rgba(16,185,129,0.25)]">
-              Book free audit
-              <svg className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-            </a>
-          </div>
-        </div>
-      </nav>
-
+    <SubShell active="process">
       {/* Header */}
       <section className="pt-32 pb-16 px-6 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 via-surface-950 to-surface-950" />
@@ -218,34 +190,6 @@ export default function ProcessPage() {
           </ScaleIn>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-white/[0.06] px-6 py-12">
-        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-              <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 2L2 5.5l6 3.5 6-3.5L8 2zM2 10.5l6 3.5 6-3.5M2 8l6 3.5 6-3.5" />
-              </svg>
-            </div>
-            <span className="text-xs font-semibold text-white/40">AI Agent Systems</span>
-          </div>
-          <div className="flex items-center gap-8 text-xs text-white/30 font-medium">
-            <a href="/services/" className="hover:text-white/50 transition-colors">Services</a>
-            <a href="/pricing/" className="hover:text-white/50 transition-colors">Pricing</a>
-            <a href="/process/" className="hover:text-white/50 transition-colors">Process</a>
-            <a href="/case-study/" className="hover:text-white/50 transition-colors">Case study</a>
-            <a href="/integrations/" className="hover:text-white/50 transition-colors">Integrations</a>
-            <a href="/app/login/" className="hover:text-white/50 transition-colors">Login</a>
-            <a href="/app/signup/" className="hover:text-white/50 transition-colors">Sign up</a>
-            <a href="/book-audit/" className="hover:text-white/50 transition-colors">Book audit</a>
-            <a href="/privacy/" className="hover:text-white/50 transition-colors">Privacy</a>
-          </div>
-          <p className="text-xs text-white/20">
-            &copy; {new Date().getFullYear()} AI Agent Systems. Dubai, UAE.
-          </p>
-        </div>
-      </footer>
-    </div>
+    </SubShell>
   );
 }

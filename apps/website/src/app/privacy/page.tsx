@@ -1,3 +1,5 @@
+import { SubShell } from "@/components/dcp/sub-shell";
+
 export const metadata = {
   title: "Privacy — Project Agent",
   description: "How Project Agent handles your data, with UAE PDPL and KSA PDPL alignment.",
@@ -5,16 +7,17 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main
-      style={{
-        maxWidth: 760,
-        margin: "0 auto",
-        padding: "80px 24px",
-        color: "#fafafa",
-        fontSize: 15,
-        lineHeight: 1.7,
-      }}
-    >
+    <SubShell active="privacy">
+      <article
+        style={{
+          maxWidth: 760,
+          margin: "0 auto",
+          padding: "80px 24px",
+          color: "var(--dcp-ink)",
+          fontSize: 15,
+          lineHeight: 1.7,
+        }}
+      >
       <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 24 }}>Privacy</h1>
 
       <p>
@@ -81,6 +84,7 @@ export default function PrivacyPage() {
           بأي وقت من زر &quot;Forget me&quot; داخل الويدجت.
         </p>
       </section>
-    </main>
+      </article>
+    </SubShell>
   );
 }
