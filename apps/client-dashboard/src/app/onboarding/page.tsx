@@ -314,17 +314,28 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className="min-h-screen font-dcp"
+      style={{ background: "var(--dcp-bg)", color: "var(--dcp-ink)" }}
+    >
       {showTutorial && (
         <OnboardingTutorial onComplete={() => setShowTutorial(false)} />
       )}
       <div className="max-w-2xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Set up your workspace</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep]}
+          <p
+            className="text-[11px] uppercase tracking-[0.16em] mb-3"
+            style={{ color: "var(--dcp-mut)", fontFamily: "var(--mono)" }}
+          >
+            Step {currentStep + 1} / {STEPS.length} · {STEPS[currentStep]}
           </p>
+          <h1
+            className="text-3xl tracking-tight"
+            style={{ fontFamily: "Instrument Serif, serif" }}
+          >
+            Set up your <em className="dcp-em">workspace</em>.
+          </h1>
         </div>
 
         {/* Progress bar */}
@@ -332,9 +343,11 @@ export default function OnboardingPage() {
           {STEPS.map((_, i) => (
             <div
               key={i}
-              className={`h-1 flex-1 rounded-full transition-colors ${
-                i <= currentStep ? "bg-brand-600" : "bg-gray-200"
-              }`}
+              className="h-1 flex-1 rounded-full transition-colors"
+              style={{
+                background:
+                  i <= currentStep ? "var(--dcp-teal)" : "var(--dcp-line)",
+              }}
             />
           ))}
         </div>

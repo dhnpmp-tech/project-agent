@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Noto+Naskh+Arabic:wght@400;500;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,6 +7,65 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* ─── DCP Design Kit v1 — design tokens ─── */
+  --dcp-bg: #0a0b1a;
+  --dcp-bg-2: #10122a;
+  --dcp-paper: #161834;
+  --dcp-ink: #f5f3ee;
+  --dcp-ink-2: #c9c5bd;
+  --dcp-mut: #7b7a92;
+  --dcp-dim: #4e4d67;
+  --dcp-line: #272848;
+  --dcp-hair: #1f2040;
+  --dcp-teal: #2dd4b6;
+  --dcp-orange: #ee7a3c;
+  --dcp-accent: var(--dcp-teal);
+  --dcp-accent-2: var(--dcp-orange);
+  --dcp-accent-ink: #0a0b1a;
+  --dcp-hot: #ee7a3c;
+  --dcp-ok: #2dd4b6;
+  --dcp-warn: #ee7a3c;
+  --dcp-err: #ef4062;
+  --dcp-info: #6fa8dc;
+  --dcp-maxw: 1280px;
+  --dcp-grad: linear-gradient(90deg, #2dd4b6 0%, #2dd4b6 28%, #6bb39a 55%, #ee7a3c 100%);
+}
+html[data-palette="paper"] {
+  --dcp-bg: #f4efe6; --dcp-bg-2: #ece5d6; --dcp-paper: #faf6ed;
+  --dcp-ink: #0a0b1a; --dcp-ink-2: #2a2940; --dcp-mut: #645d7a; --dcp-dim: #8a8299;
+  --dcp-line: #0a0b1a; --dcp-hair: #d8cfbe;
+  --dcp-teal: #0d9d87; --dcp-orange: #d85f22;
+  --dcp-accent: var(--dcp-teal); --dcp-accent-2: var(--dcp-orange); --dcp-accent-ink: #faf6ed;
+}
+html[data-palette="mono"] {
+  --dcp-bg: #ffffff; --dcp-bg-2: #f5f5f5; --dcp-paper: #ffffff;
+  --dcp-ink: #0a0a0a; --dcp-ink-2: #1a1a1a; --dcp-mut: #555; --dcp-dim: #888;
+  --dcp-line: #0a0a0a; --dcp-hair: #dcdcdc;
+  --dcp-teal: #0a0a0a; --dcp-orange: #0a0a0a;
+  --dcp-accent: #0a0a0a; --dcp-accent-2: #0a0a0a; --dcp-accent-ink: #ffffff;
+  --dcp-grad: linear-gradient(90deg, #0a0a0a, #0a0a0a);
+}
+
+/* DCP <em> gradient emphasis — opt-in via .dcp-em or <em> inside .dcp-prose */
+.dcp-em,
+.dcp-prose em {
+  font-style: italic;
+  font-family: "Instrument Serif", serif;
+  background-image: var(--dcp-grad);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-size: 200% 100%;
+}
+
+/* Arabic-mode font swap when html[data-lang="ar"] is set */
+html[data-lang="ar"] body { font-family: "Noto Naskh Arabic", serif; }
+html[data-lang="ar"] .dcp-mono,
+html[data-lang="ar"] .dcp-tabular {
+  font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 [dir="rtl"] {
