@@ -109,7 +109,7 @@ export function Nav({ links, active, status, right, ctaLabel, ctaHref }: NavProp
                 </span>
               )}
               <LangToggle />
-              <a className="btn ghost small" href="#">
+              <a className="btn ghost small" href="/app/login">
                 {nav.signin}
               </a>
               <MagneticButton>

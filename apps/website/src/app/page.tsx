@@ -1380,9 +1380,11 @@ function AgentsFooter() {
 function HomeApp() {
   const { lang } = useLang();
   const navLinks: NavLink[] = [
-    { href: "/", label: lang === "ar" ? "الخدمات" : "Services", key: "home" },
-    { href: "#pricing", label: lang === "ar" ? "الأسعار" : "Pricing", key: "pricing" },
-    { href: "#how", label: lang === "ar" ? "العملية" : "Process", key: "process" },
+    { href: "/services", label: lang === "ar" ? "الخدمات" : "Services", key: "services" },
+    { href: "/pricing", label: lang === "ar" ? "الأسعار" : "Pricing", key: "pricing" },
+    { href: "/process", label: lang === "ar" ? "العملية" : "Process", key: "process" },
+    { href: "/case-study", label: lang === "ar" ? "حالة" : "Case study", key: "case-study" },
+    { href: "/integrations", label: lang === "ar" ? "تكاملات" : "Integrations", key: "integrations" },
     { href: "/app", label: lang === "ar" ? "اللوحة" : "Dashboard", key: "dash" },
   ];
   return (
@@ -1390,7 +1392,7 @@ function HomeApp() {
       <Marquee />
       <Nav
         links={navLinks}
-        active="home"
+        active="services"
         status={{ label: lang === "ar" ? "مباشر · الإمارات والسعودية" : "LIVE · UAE & SAUDI" }}
         ctaLabel={lang === "ar" ? "احجز تدقيقاً مجانياً" : "Book free audit"}
         ctaHref="/app/onboarding"
