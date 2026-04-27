@@ -1,186 +1,238 @@
 "use client";
 
-// Preview A — Roles columns + constellation header.
-// Story: 8 specialists, 3 jobs, one shared brain.
+// Preview A v2 — Roles, vertical sections, big readable cards.
+// Story: 8 specialists organized by job-to-be-done. Each card explains
+// the agent in full (pitch + 4 sentences + 4 capabilities + integrations).
 
 import { SubShell } from "@/components/dcp/sub-shell";
 import { AGENTS, ROLE_META, type Agent, type AgentRole } from "@/lib/agents-data";
 
 const ROLES: AgentRole[] = ["customer", "growth", "ops"];
 
-function Constellation() {
-  // 8 nodes around a central "brain" node. SVG laid out on a 800×220 canvas.
-  const cx = 400;
-  const cy = 110;
-  const r = 90;
-  const nodes = AGENTS.map((a, i) => {
-    const angle = (Math.PI * 2 * i) / AGENTS.length - Math.PI / 2;
-    return {
-      a,
-      x: cx + Math.cos(angle) * r * 2.6,
-      y: cy + Math.sin(angle) * r * 0.95,
-    };
-  });
+function Monogram({ text, accent }: { text: string; accent: string }) {
   return (
-    <svg
-      viewBox="0 0 800 220"
-      style={{ width: "100%", maxWidth: 720, height: "auto", display: "block", margin: "0 auto 32px" }}
-      role="img"
-      aria-label="Eight AI agents connected to one shared brain"
+    <div
+      style={{
+        width: 56,
+        height: 56,
+        flexShrink: 0,
+        border: `1px solid ${accent}`,
+        borderRadius: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "var(--mono)",
+        fontSize: 16,
+        letterSpacing: ".08em",
+        color: accent,
+        background: `color-mix(in oklab, ${accent} 8%, transparent)`,
+      }}
     >
-      {nodes.map((n) => (
-        <line
-          key={"l-" + n.a.id}
-          x1={cx}
-          y1={cy}
-          x2={n.x}
-          y2={n.y}
-          stroke="var(--hair)"
-          strokeWidth="1"
-          strokeDasharray="3 4"
-        />
-      ))}
-      <circle cx={cx} cy={cy} r={28} fill="var(--paper)" stroke="var(--teal)" strokeWidth="1.5" />
-      <text
-        x={cx}
-        y={cy + 4}
-        textAnchor="middle"
-        fontSize="11"
-        fontFamily="var(--mono)"
-        fill="var(--teal)"
-        letterSpacing="0.12em"
-      >
-        BRAIN
-      </text>
-      {nodes.map((n) => (
-        <g key={n.a.id}>
-          <circle cx={n.x} cy={n.y} r={18} fill="var(--bg)" stroke="var(--hair)" strokeWidth="1" />
-          <text
-            x={n.x}
-            y={n.y + 5}
-            textAnchor="middle"
-            fontSize="14"
-          >
-            {n.a.glyph}
-          </text>
-          <text
-            x={n.x}
-            y={n.y + 36}
-            textAnchor="middle"
-            fontSize="9.5"
-            fontFamily="var(--mono)"
-            fill="var(--mut)"
-            letterSpacing="0.08em"
-          >
-            {n.a.name.toUpperCase()}
-          </text>
-        </g>
-      ))}
-    </svg>
+      {text}
+    </div>
   );
 }
 
-function HeroCard({ a }: { a: Agent }) {
+function AgentCard({ a, accent }: { a: Agent; accent: string }) {
   return (
-    <div
+    <article
       style={{
         background: "var(--paper)",
         border: "1px solid var(--hair)",
-        padding: "24px 22px",
-        borderRadius: 12,
+        borderRadius: 14,
+        padding: "32px 30px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
       }}
     >
-      <div
+      <header style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+        <Monogram text={a.monogram} accent={accent} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+              letterSpacing: ".16em",
+              color: "var(--mut)",
+              textTransform: "uppercase",
+              marginBottom: 8,
+            }}
+          >
+            Agent {a.code} · {a.tier}
+          </div>
+          <h3
+            style={{
+              fontFamily: "var(--serif)",
+              fontSize: 30,
+              lineHeight: 1.1,
+              letterSpacing: "-.01em",
+              margin: "0 0 8px",
+            }}
+          >
+            {a.name}
+          </h3>
+          <p
+            style={{
+              fontSize: 17,
+              fontWeight: 600,
+              color: "var(--ink)",
+              margin: 0,
+              lineHeight: 1.4,
+            }}
+          >
+            {a.pitch}
+          </p>
+        </div>
+      </header>
+
+      <p
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          fontFamily: "var(--mono)",
-          fontSize: 11,
-          letterSpacing: ".12em",
-          color: "var(--mut)",
-          textTransform: "uppercase",
-          marginBottom: 14,
+          color: "var(--ink-2)",
+          fontSize: 15.5,
+          lineHeight: 1.65,
+          margin: 0,
         }}
       >
-        <span style={{ fontSize: 22, lineHeight: 1 }}>{a.glyph}</span>
-        <span>{a.code} · {a.tier}</span>
-      </div>
-      <h3 style={{ fontFamily: "var(--serif)", fontSize: 26, lineHeight: 1.15, margin: "0 0 8px" }}>
-        {a.name}
-      </h3>
-      <p style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600, margin: "0 0 10px" }}>
-        {a.pitch}
-      </p>
-      <p style={{ color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>
         {a.summary}
       </p>
-    </div>
-  );
-}
 
-function CompactCard({ a }: { a: Agent }) {
-  return (
-    <div
-      style={{
-        background: "transparent",
-        borderTop: "1px solid var(--hair)",
-        padding: "16px 0",
-        display: "flex",
-        gap: 14,
-        alignItems: "flex-start",
-      }}
-    >
-      <div style={{ fontSize: 22, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>{a.glyph}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
+        {a.bullets.map((b) => (
+          <li
+            key={b}
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "flex-start",
+              fontSize: 14.5,
+              color: "var(--ink)",
+              lineHeight: 1.5,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: accent,
+                marginTop: 8,
+                flexShrink: 0,
+              }}
+            />
+            {b}
+          </li>
+        ))}
+      </ul>
+
+      <footer
+        style={{
+          borderTop: "1px solid var(--hair)",
+          paddingTop: 16,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+        }}
+      >
+        <span
           style={{
             fontFamily: "var(--mono)",
             fontSize: 10.5,
-            letterSpacing: ".12em",
+            letterSpacing: ".14em",
             color: "var(--mut)",
             textTransform: "uppercase",
-            marginBottom: 4,
+            marginInlineEnd: 6,
           }}
         >
-          {a.code} · {a.tier}
-        </div>
-        <div style={{ fontFamily: "var(--serif)", fontSize: 19, lineHeight: 1.2, marginBottom: 4 }}>
-          {a.name}
-        </div>
-        <div style={{ color: "var(--ink-2)", fontSize: 13, lineHeight: 1.5 }}>{a.pitch}</div>
-      </div>
-    </div>
+          Integrates with
+        </span>
+        {a.integrates.map((tool) => (
+          <span
+            key={tool}
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+              color: "var(--ink-2)",
+              border: "1px solid var(--hair)",
+              padding: "3px 9px",
+              borderRadius: 999,
+            }}
+          >
+            {tool}
+          </span>
+        ))}
+      </footer>
+    </article>
   );
 }
 
-function Column({ role }: { role: AgentRole }) {
+function RoleSection({ role, idx }: { role: AgentRole; idx: number }) {
   const meta = ROLE_META[role];
   const agents = AGENTS.filter((a) => a.role === role);
-  const [hero, ...rest] = agents;
   return (
-    <div>
-      <div style={{ marginBottom: 18 }}>
+    <section style={{ marginTop: idx === 0 ? 0 : 96 }}>
+      <header
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 360px) 1fr",
+          gap: 48,
+          alignItems: "end",
+          marginBottom: 32,
+          paddingBottom: 24,
+          borderBottom: "1px solid var(--hair)",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+              letterSpacing: ".18em",
+              color: meta.accent,
+              marginBottom: 12,
+            }}
+          >
+            {String(idx + 1).padStart(2, "0")} · {meta.label}
+          </div>
+          <h3
+            style={{
+              fontFamily: "var(--serif)",
+              fontSize: 44,
+              lineHeight: 1.05,
+              letterSpacing: "-.015em",
+              margin: 0,
+            }}
+          >
+            {meta.sub}
+          </h3>
+        </div>
         <div
           style={{
             fontFamily: "var(--mono)",
-            fontSize: 10.5,
-            letterSpacing: ".16em",
-            color: meta.accent,
-            marginBottom: 6,
+            fontSize: 11,
+            letterSpacing: ".14em",
+            color: "var(--mut)",
+            textTransform: "uppercase",
+            textAlign: "right",
+            paddingBottom: 8,
           }}
         >
-          {meta.label}
+          {agents.length} agent{agents.length === 1 ? "" : "s"}
         </div>
-        <p style={{ color: "var(--mut)", fontSize: 13, margin: 0, lineHeight: 1.5 }}>{meta.sub}</p>
-      </div>
-      <HeroCard a={hero} />
-      <div style={{ marginTop: 8 }}>
-        {rest.map((a) => (
-          <CompactCard key={a.id} a={a} />
+      </header>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: agents.length === 2 ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
+          gap: 20,
+        }}
+      >
+        {agents.map((a) => (
+          <AgentCard key={a.id} a={a} accent={meta.accent} />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -193,44 +245,38 @@ export default function PreviewAgentsAPage() {
             style={{
               fontFamily: "var(--mono)",
               fontSize: 11,
-              letterSpacing: ".16em",
+              letterSpacing: ".18em",
               color: "var(--mut)",
-              marginBottom: 8,
+              marginBottom: 12,
               textTransform: "uppercase",
             }}
           >
-            Preview A · Roles + Constellation
+            Preview A · Roles, vertical
           </div>
-          <h2 className="display-2" style={{ marginBottom: 18 }}>
+          <h2
+            className="display-2"
+            style={{ marginBottom: 24, fontSize: 64, lineHeight: 1.02 }}
+          >
             <em>Eight specialists.</em>
             <br /> Three jobs. One brain.
           </h2>
           <p
             style={{
               color: "var(--ink-2)",
-              fontSize: 15.5,
-              lineHeight: 1.55,
-              maxWidth: 60 + "ch",
-              marginBottom: 36,
+              fontSize: 18,
+              lineHeight: 1.6,
+              maxWidth: "62ch",
+              marginBottom: 80,
             }}
           >
-            Not bots with scripts. Personalities with backstories, expertise, and memory that spans
-            months. They share the same brain — what your sales rep learns, your content engine
-            posts about. What your customers ask, your owner brain hears.
+            Not bots with scripts. Personalities with backstories, expertise, and memory that
+            spans months. They share the same brain — what your sales rep learns, your content
+            engine posts about. What your customers ask, your owner brain hears.
           </p>
-          <Constellation />
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 32,
-              marginTop: 24,
-            }}
-          >
-            {ROLES.map((r) => (
-              <Column key={r} role={r} />
-            ))}
-          </div>
+
+          {ROLES.map((r, i) => (
+            <RoleSection key={r} role={r} idx={i} />
+          ))}
         </div>
       </section>
     </SubShell>

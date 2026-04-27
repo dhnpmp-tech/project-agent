@@ -1,7 +1,8 @@
 "use client";
 
-// Preview C — Bento grid.
-// Story: WhatsApp is the hero (the gateway). 7 specialists support around it.
+// Preview C v2 — Bento. WhatsApp is the 2x2 hero with sample reply +
+// full description. The other seven are 1x1 tiles with monogram + name +
+// pitch + 3-sentence summary + tier strip — no emojis anywhere.
 
 import { SubShell } from "@/components/dcp/sub-shell";
 import { AGENTS, type Agent } from "@/lib/agents-data";
@@ -16,6 +17,7 @@ const ACCENT_BY_TIER: Record<string, string> = {
 };
 
 function HeroTile({ a }: { a: Agent }) {
+  const accent = ACCENT_BY_TIER[a.tier] ?? "var(--teal)";
   return (
     <div
       style={{
@@ -24,79 +26,135 @@ function HeroTile({ a }: { a: Agent }) {
         background: "var(--paper)",
         border: "1px solid var(--hair)",
         borderRadius: 14,
-        padding: "28px 26px",
+        padding: "36px 32px",
         position: "relative",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
+        gap: 20,
       }}
     >
       <div
         style={{
           position: "absolute",
           inset: 0,
-          background:
-            "radial-gradient(circle at 90% 10%, color-mix(in oklab, var(--teal) 18%, transparent), transparent 55%)",
+          background: `radial-gradient(circle at 95% 5%, color-mix(in oklab, ${accent} 14%, transparent), transparent 55%)`,
           pointerEvents: "none",
         }}
       />
-      <div style={{ position: "relative", zIndex: 1 }}>
+      <header style={{ position: "relative", zIndex: 1, display: "flex", gap: 18, alignItems: "flex-start" }}>
         <div
           style={{
+            width: 64,
+            height: 64,
+            border: `1px solid ${accent}`,
+            borderRadius: 12,
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 18,
+            justifyContent: "center",
+            fontFamily: "var(--mono)",
+            fontSize: 18,
+            color: accent,
+            background: `color-mix(in oklab, ${accent} 8%, transparent)`,
+            letterSpacing: ".08em",
+            flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: 36, lineHeight: 1 }}>{a.glyph}</span>
-          <span
+          {a.monogram}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
             style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
               fontFamily: "var(--mono)",
-              fontSize: 10.5,
-              letterSpacing: ".14em",
+              fontSize: 11,
+              letterSpacing: ".16em",
               color: "var(--mut)",
               textTransform: "uppercase",
-              border: "1px solid var(--hair)",
-              padding: "4px 10px",
-              borderRadius: 999,
+              marginBottom: 8,
             }}
           >
-            ●  Most used · {a.tier}
-          </span>
+            <span>Agent {a.code} · {a.tier}</span>
+            <span style={{ color: accent }}>● Most used</span>
+          </div>
+          <h3
+            style={{
+              fontFamily: "var(--serif)",
+              fontSize: 42,
+              lineHeight: 1.05,
+              letterSpacing: "-.015em",
+              margin: "0 0 8px",
+            }}
+          >
+            {a.name}
+          </h3>
+          <p style={{ color: "var(--ink)", fontSize: 19, fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
+            {a.pitch}
+          </p>
         </div>
-        <h3
-          style={{
-            fontFamily: "var(--serif)",
-            fontSize: 36,
-            lineHeight: 1.1,
-            margin: "0 0 10px",
-          }}
-        >
-          {a.name}
-        </h3>
-        <p style={{ color: "var(--ink)", fontSize: 17, fontWeight: 600, margin: "0 0 12px" }}>
-          {a.pitch}
-        </p>
-        <p
-          style={{
-            color: "var(--ink-2)",
-            fontSize: 14,
-            lineHeight: 1.6,
-            margin: "0 0 18px",
-            maxWidth: "44ch",
-          }}
-        >
-          {a.summary}
-        </p>
-      </div>
+      </header>
+
+      <p
+        style={{
+          color: "var(--ink-2)",
+          fontSize: 15.5,
+          lineHeight: 1.65,
+          margin: 0,
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        {a.summary}
+      </p>
+
+      <ul
+        style={{
+          listStyle: "none",
+          padding: 0,
+          margin: 0,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "10px 28px",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        {a.bullets.map((b) => (
+          <li
+            key={b}
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              fontSize: 14,
+              color: "var(--ink)",
+              lineHeight: 1.45,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: accent,
+                marginTop: 7,
+                flexShrink: 0,
+              }}
+            />
+            {b}
+          </li>
+        ))}
+      </ul>
+
       <div
         style={{
           marginTop: "auto",
           background: "var(--bg-2)",
           border: "1px solid var(--hair)",
           borderRadius: 10,
-          padding: "14px 16px",
+          padding: "18px 20px",
           position: "relative",
           zIndex: 1,
         }}
@@ -104,18 +162,18 @@ function HeroTile({ a }: { a: Agent }) {
         <div
           style={{
             fontFamily: "var(--mono)",
-            fontSize: 10,
-            letterSpacing: ".14em",
+            fontSize: 10.5,
+            letterSpacing: ".16em",
             color: "var(--mut)",
             textTransform: "uppercase",
-            marginBottom: 8,
+            marginBottom: 10,
           }}
         >
-          Sample reply
+          Sample reply, 19:41
         </div>
-        <div style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.55 }}>
-          “Welcome back, Mohammed Al-Qahtani 👋 — table 12 by the window, same as last time.
-          Booked. Want me to set up your usual (kabsa + tamr hindi)?”
+        <div style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.55 }}>
+          &ldquo;Welcome back, Mohammed Al-Qahtani — table 12 by the window, same as last time.
+          Booked. Want me to set up your usual (kabsa + tamr hindi)?&rdquo;
         </div>
       </div>
     </div>
@@ -130,12 +188,13 @@ function SmallTile({ a }: { a: Agent }) {
         background: "var(--paper)",
         border: "1px solid var(--hair)",
         borderRadius: 12,
-        padding: "20px 18px",
+        padding: "22px 22px 18px",
         display: "flex",
         flexDirection: "column",
-        gap: 10,
+        gap: 12,
         position: "relative",
         overflow: "hidden",
+        minHeight: 320,
       }}
     >
       <div
@@ -148,44 +207,67 @@ function SmallTile({ a }: { a: Agent }) {
           background: accent,
         }}
       />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 22, lineHeight: 1 }}>{a.glyph}</span>
-        <span
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: 9.5,
-            letterSpacing: ".12em",
-            color: "var(--mut)",
-            textTransform: "uppercase",
-          }}
-        >
-          {a.code}
-        </span>
-      </div>
-      <div>
+      <header style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
         <div
           style={{
-            fontFamily: "var(--serif)",
-            fontSize: 18,
-            lineHeight: 1.15,
-            marginBottom: 4,
+            width: 40,
+            height: 40,
+            border: `1px solid ${accent}`,
+            borderRadius: 8,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "var(--mono)",
+            fontSize: 12,
+            color: accent,
+            background: `color-mix(in oklab, ${accent} 8%, transparent)`,
+            letterSpacing: ".06em",
+            flexShrink: 0,
           }}
         >
-          {a.name}
+          {a.monogram}
         </div>
-        <div style={{ color: "var(--ink-2)", fontSize: 13, lineHeight: 1.5 }}>{a.pitch}</div>
-      </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10.5,
+              letterSpacing: ".14em",
+              color: "var(--mut)",
+              textTransform: "uppercase",
+              marginBottom: 4,
+            }}
+          >
+            {a.code} · {a.tier}
+          </div>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 20, lineHeight: 1.15 }}>{a.name}</div>
+        </div>
+      </header>
+      <p style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
+        {a.pitch}
+      </p>
+      <p style={{ color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>
+        {a.summary}
+      </p>
       <div
         style={{
           marginTop: "auto",
+          paddingTop: 12,
+          borderTop: "1px solid var(--hair)",
           fontFamily: "var(--mono)",
-          fontSize: 9.5,
-          letterSpacing: ".12em",
+          fontSize: 10,
+          letterSpacing: ".14em",
           color: "var(--mut)",
           textTransform: "uppercase",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "4px 8px",
         }}
       >
-        {a.tier}
+        <span style={{ marginInlineEnd: 4 }}>Integrates</span>
+        {a.integrates.slice(0, 3).map((tool) => (
+          <span key={tool}>{tool}</span>
+        ))}
       </div>
     </div>
   );
@@ -202,37 +284,37 @@ export default function PreviewAgentsCPage() {
             style={{
               fontFamily: "var(--mono)",
               fontSize: 11,
-              letterSpacing: ".16em",
+              letterSpacing: ".18em",
               color: "var(--mut)",
-              marginBottom: 8,
+              marginBottom: 12,
               textTransform: "uppercase",
             }}
           >
             Preview C · Bento
           </div>
-          <h2 className="display-2" style={{ marginBottom: 18 }}>
+          <h2 className="display-2" style={{ marginBottom: 24, fontSize: 64, lineHeight: 1.02 }}>
             <em>One front door.</em>
             <br /> Seven specialists behind it.
           </h2>
           <p
             style={{
               color: "var(--ink-2)",
-              fontSize: 15.5,
-              lineHeight: 1.55,
-              maxWidth: 60 + "ch",
-              marginBottom: 36,
+              fontSize: 18,
+              lineHeight: 1.6,
+              maxWidth: "62ch",
+              marginBottom: 56,
             }}
           >
-            Most customers reach you on WhatsApp. Behind that single front door, seven specialist
-            agents handle the rest — sharing the same memory, never asking the customer to repeat
-            themselves.
+            Most customers reach you on WhatsApp — that&apos;s the front door. Behind it, seven
+            specialist agents handle the rest, sharing the same memory and never asking the
+            customer to repeat themselves.
           </p>
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",
-              gridAutoRows: "200px",
-              gap: 14,
+              gridAutoRows: "320px",
+              gap: 16,
             }}
           >
             <HeroTile a={hero} />
