@@ -9,11 +9,10 @@ import { Marquee, Nav, type NavLink } from "./chrome";
 import { useLang } from "./lib";
 
 const SUB_NAV_KEYS = [
-  "services",
+  "home",
   "pricing",
   "process",
-  "case-study",
-  "integrations",
+  "dash",
   "privacy",
   "book-audit",
 ] as const;
@@ -29,11 +28,9 @@ function SubChrome({
 }) {
   const { lang } = useLang();
   const links: NavLink[] = [
-    { href: "/services", label: lang === "ar" ? "الخدمات" : "Services", key: "services" },
+    { href: "/", label: lang === "ar" ? "الخدمات" : "Services", key: "home" },
     { href: "/pricing", label: lang === "ar" ? "الأسعار" : "Pricing", key: "pricing" },
-    { href: "/process", label: lang === "ar" ? "العملية" : "Process", key: "process" },
-    { href: "/case-study", label: lang === "ar" ? "حالة" : "Case study", key: "case-study" },
-    { href: "/integrations", label: lang === "ar" ? "تكاملات" : "Integrations", key: "integrations" },
+    { href: "/demo", label: lang === "ar" ? "العملية" : "Process", key: "process" },
     { href: "/app", label: lang === "ar" ? "اللوحة" : "Dashboard", key: "dash" },
   ];
   return (
@@ -58,16 +55,15 @@ function SubFooter() {
     [
       lang === "ar" ? "المنتج" : "Product",
       [
-        [lang === "ar" ? "الخدمات" : "Services", "/services"],
+        [lang === "ar" ? "الخدمات" : "Services", "/"],
         [lang === "ar" ? "الأسعار" : "Pricing", "/pricing"],
-        [lang === "ar" ? "العملية" : "Process", "/process"],
-        [lang === "ar" ? "تكاملات" : "Integrations", "/integrations"],
+        [lang === "ar" ? "العملية" : "Process", "/demo"],
+        [lang === "ar" ? "اللوحة" : "Dashboard", "/app"],
       ],
     ],
     [
       lang === "ar" ? "الشركة" : "Company",
       [
-        [lang === "ar" ? "حالة" : "Case study", "/case-study"],
         [lang === "ar" ? "احجز تدقيقاً" : "Book free audit", "/book-audit"],
         [lang === "ar" ? "الخصوصية" : "Privacy", "/privacy"],
       ],

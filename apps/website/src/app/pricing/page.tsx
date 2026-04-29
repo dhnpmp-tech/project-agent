@@ -1,355 +1,667 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { FadeUp, StaggerList, StaggerItem, GlowCard } from "@/components/motion";
-import { motion } from "framer-motion";
+// Pricing page — ported from /tmp/dcp-design/assets/pricing.jsx (633 LOC reference).
+// Sections: Hero + cost-comparison panel · Tiers + currency switcher · Breakdown
+// (pay vs get) · ROI calculator · 8×4 Compare matrix · FAQ · CTA. Styles live in
+// apps/website/src/styles/pricing.css (identical to the designed pricing.css).
+
 import { useState } from "react";
 import { SubShell } from "@/components/dcp/sub-shell";
+import { Reveal } from "@/components/dcp/motion";
+import { SectionMeta } from "@/components/dcp/chrome";
+import { Arrow, Check } from "@/components/dcp/icons";
+import { useTweaks } from "@/components/dcp/lib";
+import {
+  TIERS,
+  type Tier,
+  type TierId,
+  type Currency,
+  CURRENCY_SYMBOL,
+  rateFor,
+} from "@/lib/pricing-data";
+import { AGENTS } from "@/lib/agents-data";
 
-/* ── Pricing tiers ────────────────────────────────────────── */
+/* ─── HERO ─────────────────────────────────────────────────────── */
 
-const plans = [
-  {
-    tier: "Starter",
-    tagline: "For solopreneurs getting started",
-    priceAED: "1,500",
-    priceSAR: "1,530",
-    features: [
-      "WhatsApp AI agent with custom persona",
-      "Owner Brain (morning briefs + commands)",
-      "Sales Rep (lead scoring + pipeline)",
-      "Basic weekly reports",
-      "Arabic + English auto-detection",
-      "Customer memory across conversations",
-    ],
-    popular: false,
-  },
-  {
-    tier: "Growth",
-    tagline: "For teams ready to scale",
-    priceAED: "3,000",
-    priceSAR: "3,060",
-    features: [
-      "Everything in Starter",
-      "Content Engine (social media autopilot)",
-      "Loyalty program management",
-      "Google Business optimization",
-      "Advanced analytics and reports",
-      "Calendar and CRM integration",
-      "Multi-channel content generation",
-    ],
-    popular: true,
-  },
-  {
-    tier: "Pro",
-    tagline: "For high-volume operations",
-    priceAED: "5,000",
-    priceSAR: "5,100",
-    features: [
-      "Everything in Growth",
-      "AI image prompt generator",
-      "Conversion tracking and attribution",
-      "Priority support (under 2h response)",
-      "Unlimited WhatsApp messages",
-      "Custom workflow automations",
-      "Voice message AI responses",
-    ],
-    popular: false,
-  },
-  {
-    tier: "Enterprise",
-    tagline: "For scaling operations",
-    priceAED: "8,000",
-    priceSAR: "8,160",
-    features: [
-      "Everything, unlimited",
-      "Custom integrations and API access",
-      "Dedicated account manager",
-      "UAE data residency option",
-      "SLA guarantee",
-      "Dedicated infrastructure",
-      "White-label available",
-      "Multi-location support",
-    ],
-    popular: false,
-  },
-];
-
-/* ── FAQ ──────────────────────────────────────────────────── */
-
-const faqs = [
-  {
-    q: "How does onboarding work?",
-    a: "You answer 6 quick questions over WhatsApp about your business. We build your AI persona, configure your knowledge base, and provision your dedicated WhatsApp number. The whole process takes about 10 minutes. Once payment is confirmed, your AI goes live.",
-  },
-  {
-    q: "What is the setup fee?",
-    a: "There is a one-time AED 3,000 setup fee that covers AI persona creation, knowledge base configuration, industry-specific workflow setup, and WhatsApp Business API provisioning. This is a one-time cost regardless of which plan you choose.",
-  },
-  {
-    q: "Can I cancel anytime?",
-    a: "Yes. All plans are month-to-month with no long-term contracts. Cancel anytime from your dashboard or by texting your Owner Brain. Your AI agent will continue working until the end of your current billing period.",
-  },
-  {
-    q: "What languages does the AI support?",
-    a: "The AI supports Arabic and English with automatic language detection. Your customers can switch between languages mid-conversation and the AI will respond in the same language. Both Modern Standard Arabic and Gulf dialect are supported.",
-  },
-  {
-    q: "Do I need my own WhatsApp Business number?",
-    a: "No. We provision a dedicated WhatsApp Business API number for your customer-facing agent and a separate private channel for your Owner Brain. Both numbers are included in every plan at no extra cost.",
-  },
-  {
-    q: "How quickly can I go live?",
-    a: "Most businesses are live within 10 minutes of completing payment. Your AI starts handling customer conversations immediately. It gets smarter every day through our self-improving AI engine, which analyzes conversations nightly and adjusts its behavior automatically.",
-  },
-];
-
-/* ── FAQ Item component ───────────────────────────────────── */
-
-function FAQItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-
+function PricingHero() {
   return (
-    <div className="border-b border-white/[0.06]">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between py-5 text-left"
-      >
-        <span className="text-sm font-semibold text-white/80 pr-8">{q}</span>
-        <motion.svg
-          animate={{ rotate: open ? 45 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="w-4 h-4 text-white/40 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
+    <section className="section hero-v2">
+      <div className="container">
+        <div className="hero-head">
+          <span className="eyebrow">
+            <span className="d" />
+            pricing · in AED &amp; SAR
+          </span>
+        </div>
+        <div className="pricing-hero-grid">
+          <div>
+            <Reveal as="h1" className="display tight">
+              The cost of <em>one employee</em>.
+              <br />
+              The output of eight.
+            </Reveal>
+            <Reveal as="p" className="lede-strong" delay={120}>
+              One monthly subscription. Every agent in your tier running 24/7.{" "}
+              <b>One-time setup</b> covers all training on your business. No API
+              fees, no per-message charges, no surprises.
+            </Reveal>
+          </div>
+          <PricingHeroPanel />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PricingHeroPanel() {
+  const rows = [
+    { k: "Human employee", v: "AED 12,000", d: "monthly · 8h/day", n: "human" },
+    { k: "Generic AI tool", v: "AED 1,200", d: "1 tool · no memory", n: "tool" },
+    { k: "DCP Agents", v: "AED 3,000", d: "8 agents · 24/7 · memory", n: "us" },
+  ];
+  return (
+    <div className="ph-panel">
+      <div className="ph-hd">
+        <div className="ph-t mono">COST COMPARISON</div>
+        <div className="ph-r mono">PER MONTH</div>
+      </div>
+      {rows.map((r, i) => (
+        <div
+          key={r.k}
+          className={`ph-row ph-row-${r.n}`}
+          style={{ animationDelay: `${i * 0.18}s` }}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </motion.svg>
-      </button>
-      <motion.div
-        initial={false}
-        animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }}
-        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-        className="overflow-hidden"
-      >
-        <p className="pb-5 text-sm text-white/40 leading-relaxed max-w-[65ch]">{a}</p>
-      </motion.div>
+          <div className="ph-row-l">
+            <div className="ph-k">{r.k}</div>
+            <div className="ph-d mono">{r.d}</div>
+          </div>
+          <div className="ph-v">{r.v}</div>
+          {r.n === "us" && <div className="ph-pick mono">↓ YOUR CHOICE</div>}
+        </div>
+      ))}
+      <div className="ph-foot mono">
+        ≈ 4× cheaper than one human, ≈ 8× the output
+      </div>
     </div>
   );
 }
 
-/* ── Page ─────────────────────────────────────────────────── */
+/* ─── TIERS ────────────────────────────────────────────────────── */
+
+function Tiers() {
+  const { state } = useTweaks();
+  const cur = ((state.currency as Currency | undefined) || "AED");
+  const rate = rateFor(cur);
+  const sym = CURRENCY_SYMBOL[cur];
+
+  return (
+    <section className="section section-tight">
+      <div className="container">
+        <SectionMeta
+          idx="01"
+          label="the tiers"
+          right={
+            <div className="ph-cur-toggle">
+              <CurrencyTog />
+            </div>
+          }
+        />
+        <div className="tiers-grid">
+          {TIERS.map((tier, i) => (
+            <Reveal key={tier.id} delay={i * 80}>
+              <TierCard tier={tier} sym={sym} rate={rate} />
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TierCard({ tier, sym, rate }: { tier: Tier; sym: string; rate: number }) {
+  const monthly = Math.round(tier.monthly_aed * rate);
+  const setup = Math.round(tier.setup_aed * rate);
+  return (
+    <div className={`tier-card ${tier.popular ? "tier-pop" : ""}`}>
+      {tier.popular && <div className="tier-badge mono">MOST CHOSEN</div>}
+      <div className="tier-hd">
+        <div className="tier-name">{tier.name}</div>
+        <div className="tier-sub mono">{tier.sub}</div>
+      </div>
+      <div className="tier-price">
+        <span className="tier-cur mono">{sym}</span>
+        <span className="tier-num">{monthly.toLocaleString()}</span>
+        <span className="tier-per mono">/ month</span>
+      </div>
+      <div className="tier-setup mono">
+        + {sym} {setup.toLocaleString()} one-time setup
+      </div>
+      <a
+        className={`btn ${tier.popular ? "primary" : "ghost"} lg tier-cta`}
+        href="/app/onboarding"
+      >
+        Get started <Arrow size={13} />
+      </a>
+      <div className="tier-divider" />
+      <div className="tier-incl-t mono">Includes</div>
+      <ul className="tier-incl">
+        {tier.includes.map((it, i) => (
+          <li key={i}>
+            <span className="tier-check">
+              <Check size={11} />
+            </span>
+            <span>{it}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function CurrencyTog() {
+  const { state, setKey } = useTweaks();
+  const cur = ((state.currency as Currency | undefined) || "AED");
+  const opts: Currency[] = ["AED", "SAR", "USD"];
+  return (
+    <div className="cur-tog">
+      {opts.map((c) => (
+        <button
+          key={c}
+          className={"cur-opt " + (cur === c ? "on" : "")}
+          onClick={() => setKey("currency", c)}
+        >
+          {c}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ─── BREAKDOWN ANATOMY (pay vs get) ──────────────────────────── */
+
+function BreakdownAnatomy() {
+  const pay = [
+    { k: "01", n: "Monthly subscription", v: "AED 3,000", d: "All tier agents, running 24/7" },
+    { k: "02", n: "One-time setup", v: "AED 3,000", d: "Persona + ingest + channels + training" },
+  ];
+  const get = [
+    { k: "01", n: "8 AI agents", d: "instead of 8 hires" },
+    { k: "02", n: "24/7, no sleep", d: "no holidays, no quit" },
+    { k: "03", n: "Persistent customer memory", d: "every guest, every detail" },
+    { k: "04", n: "Bilingual AR + EN", d: "auto dialect detection" },
+    { k: "05", n: "Nightly self-tuning", d: "smarter every morning" },
+    { k: "06", n: "Regional infrastructure", d: "RUH < 50ms · DXB < 50ms" },
+  ];
+  return (
+    <section className="section section-dark">
+      <div className="container">
+        <SectionMeta
+          idx="02"
+          label="the breakdown"
+          right={<span className="mono">what you pay · what you get</span>}
+        />
+        <div className="sec-title-row">
+          <h2 className="display tight">
+            Two lines on the invoice.
+            <br />
+            An <em>army&apos;s worth</em> of output.
+          </h2>
+          <p className="ss strong">
+            Everything you pay ↗︎. Everything you get ↘︎. <b>No hidden fees</b> —
+            no API, no message, no storage.
+          </p>
+        </div>
+
+        <div className="brk-grid">
+          <div className="brk-side brk-pay">
+            <div className="brk-side-hd">
+              <div className="brk-num mono">↗︎ A</div>
+              <div className="brk-side-t">What you pay</div>
+            </div>
+            {pay.map((p) => (
+              <div key={p.k} className="brk-row">
+                <div className="brk-k mono">{p.k}</div>
+                <div className="brk-row-body">
+                  <div className="brk-n">{p.n}</div>
+                  <div className="brk-d mono">{p.d}</div>
+                </div>
+                <div className="brk-v">{p.v}</div>
+              </div>
+            ))}
+            <div className="brk-side-foot mono">Year 1 total · AED 39,000</div>
+          </div>
+
+          <div className="brk-conn" aria-hidden>
+            <div className="brk-conn-l mono">PRODUCES</div>
+            <div className="brk-conn-arr">
+              <svg viewBox="0 0 60 12" preserveAspectRatio="none">
+                <path
+                  d="M0 6 L52 6 M46 1 L52 6 L46 11"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                />
+              </svg>
+            </div>
+          </div>
+
+          <div className="brk-side brk-get">
+            <div className="brk-side-hd">
+              <div className="brk-num mono">↘︎ B</div>
+              <div className="brk-side-t">What you get</div>
+            </div>
+            <div className="brk-get-grid">
+              {get.map((g) => (
+                <div key={g.k} className="brk-get-cell">
+                  <div className="brk-k mono">{g.k}</div>
+                  <div className="brk-n">{g.n}</div>
+                  <div className="brk-d mono">{g.d}</div>
+                </div>
+              ))}
+            </div>
+            <div className="brk-side-foot mono">
+              Equivalent payroll · AED 144,000+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── ROI CALCULATOR ──────────────────────────────────────────── */
+
+function ROICalculator() {
+  const [msgs, setMsgs] = useState(120);
+  const [mins, setMins] = useState(3);
+  const [rate, setRate] = useState(60);
+
+  const hoursPerDay = (msgs * mins) / 60;
+  const hoursPerMonth = Math.round(hoursPerDay * 30);
+  const aedSavedMonth = Math.round(hoursPerMonth * rate);
+  const cost = 3000;
+  const netSave = aedSavedMonth - cost;
+  const roiPct = Math.round((netSave / cost) * 100);
+
+  return (
+    <section className="section">
+      <div className="container">
+        <SectionMeta
+          idx="03"
+          label="the math"
+          right={<span className="mono">calculate yourself</span>}
+        />
+        <div className="sec-title-row">
+          <h2 className="display tight">
+            The math <em>settles</em> it.
+            <br />
+            Plug in your numbers.
+          </h2>
+          <p className="ss strong">
+            Not marketing claims — straight arithmetic. Drag the sliders to see
+            your savings.
+          </p>
+        </div>
+
+        <div className="roi-grid">
+          <div className="roi-inputs">
+            <RoiSlider
+              label="Messages per day"
+              val={msgs}
+              setVal={setMsgs}
+              min={20}
+              max={500}
+              step={10}
+              suffix="msgs"
+            />
+            <RoiSlider
+              label="Minutes per reply"
+              val={mins}
+              setVal={setMins}
+              min={1}
+              max={10}
+              step={1}
+              suffix="min"
+            />
+            <RoiSlider
+              label="Cost per hour (AED)"
+              val={rate}
+              setVal={setRate}
+              min={20}
+              max={150}
+              step={5}
+              suffix="AED"
+            />
+            <div className="roi-formula mono">
+              ({msgs} × {mins} / 60) × 30 days × {rate} AED − 3,000 cost
+            </div>
+          </div>
+
+          <div className="roi-output">
+            <div className="ro-hd">
+              <div className="ro-t mono">YOUR RESULT</div>
+              <div className="ro-r mono">PER MONTH</div>
+            </div>
+            <div className="ro-big">
+              <div className="ro-big-v">AED {netSave.toLocaleString()}</div>
+              <div className="ro-big-l mono">net savings</div>
+            </div>
+            <div className="ro-stats">
+              <div className="ro-stat">
+                <div className="ro-stat-v">{hoursPerMonth.toLocaleString()}h</div>
+                <div className="ro-stat-l mono">hours reclaimed</div>
+              </div>
+              <div className="ro-stat">
+                <div className="ro-stat-v">AED {aedSavedMonth.toLocaleString()}</div>
+                <div className="ro-stat-l mono">value of time</div>
+              </div>
+              <div className="ro-stat">
+                <div className="ro-stat-v">{roiPct}%</div>
+                <div className="ro-stat-l mono">ROI</div>
+              </div>
+            </div>
+            <div className="ro-bar">
+              <div className="ro-bar-cost" style={{ flex: cost }}>
+                <span className="mono">−AED {cost.toLocaleString()}</span>
+              </div>
+              <div className="ro-bar-save" style={{ flex: Math.max(netSave, 0) }}>
+                <span className="mono">+AED {netSave.toLocaleString()}</span>
+              </div>
+            </div>
+            <div className="ro-foot mono">
+              based on Growth tier — AED 3,000/month
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RoiSlider({
+  label,
+  val,
+  setVal,
+  min,
+  max,
+  step,
+  suffix,
+}: {
+  label: string;
+  val: number;
+  setVal: (n: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  suffix: string;
+}) {
+  const pct = ((val - min) / (max - min)) * 100;
+  return (
+    <div className="roi-slider">
+      <div className="rs-row">
+        <span className="rs-label">{label}</span>
+        <span className="rs-val mono">
+          {val.toLocaleString()} <span className="rs-suf">{suffix}</span>
+        </span>
+      </div>
+      <div className="rs-rail">
+        <div className="rs-fill" style={{ width: pct + "%" }} />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={val}
+          onChange={(e) => setVal(parseInt(e.target.value, 10))}
+        />
+      </div>
+      <div className="rs-bounds mono">
+        <span>{min}</span>
+        <span>{max}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── COMPARE MATRIX (8 agents × 4 tiers) ────────────────────── */
+
+const TIER_ORDER: TierId[] = ["starter", "growth", "pro", "enterprise"];
+
+function CompareMatrix() {
+  return (
+    <section className="section">
+      <div className="container">
+        <SectionMeta
+          idx="04"
+          label="full matrix"
+          right={<span className="mono">8 agents × 4 tiers</span>}
+        />
+        <div className="sec-title-row">
+          <h2 className="display tight">
+            Every agent,
+            <br />
+            every <em>tier</em>.
+          </h2>
+        </div>
+
+        <div className="cmp-v2">
+          <div className="cmp-head">
+            <div className="cmp-h-empty" />
+            <div className="cmp-h-cell">
+              <span className="mono">STARTER</span>
+              <span className="cmp-h-p mono">1,500</span>
+            </div>
+            <div className="cmp-h-cell cmp-h-pop">
+              <span className="mono">GROWTH</span>
+              <span className="cmp-h-p mono">3,000</span>
+            </div>
+            <div className="cmp-h-cell">
+              <span className="mono">PRO</span>
+              <span className="cmp-h-p mono">5,000</span>
+            </div>
+            <div className="cmp-h-cell">
+              <span className="mono">ENT.</span>
+              <span className="cmp-h-p mono">8,000</span>
+            </div>
+          </div>
+          {AGENTS.map((a) => {
+            const order = TIER_ORDER.indexOf(a.tier);
+            return (
+              <div key={a.id} className="cmp-row">
+                <div className="cmp-agent">
+                  <span className="cmp-agent-num mono">§ {a.code}</span>
+                  <span className="cmp-agent-n">{a.name}</span>
+                  <span className="cmp-agent-r mono">{a.pitch}</span>
+                </div>
+                {TIER_ORDER.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={"cmp-cell " + (idx === 1 ? "cmp-cell-pop" : "")}
+                  >
+                    {idx >= order ? (
+                      <span className="cmp-yes">
+                        <Check size={12} />
+                      </span>
+                    ) : (
+                      <span className="cmp-no">·</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+          <div className="cmp-row cmp-row-foot">
+            <div className="cmp-agent">
+              <span className="cmp-agent-n mono">PERSISTENT MEMORY</span>
+            </div>
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className={"cmp-cell " + (i === 1 ? "cmp-cell-pop" : "")}
+              >
+                <span className="cmp-yes">
+                  <Check size={12} />
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="cmp-row cmp-row-foot">
+            <div className="cmp-agent">
+              <span className="cmp-agent-n mono">REGIONAL DATA RESIDENCY</span>
+            </div>
+            <div className="cmp-cell">
+              <span className="cmp-no">·</span>
+            </div>
+            <div className="cmp-cell cmp-cell-pop">
+              <span className="cmp-no">·</span>
+            </div>
+            <div className="cmp-cell">
+              <span className="cmp-yes">
+                <Check size={12} />
+              </span>
+            </div>
+            <div className="cmp-cell">
+              <span className="cmp-yes">
+                <Check size={12} />
+              </span>
+            </div>
+          </div>
+          <div className="cmp-row cmp-row-foot">
+            <div className="cmp-agent">
+              <span className="cmp-agent-n mono">DEDICATED ACCOUNT MANAGER</span>
+            </div>
+            <div className="cmp-cell">
+              <span className="cmp-no">·</span>
+            </div>
+            <div className="cmp-cell cmp-cell-pop">
+              <span className="cmp-no">·</span>
+            </div>
+            <div className="cmp-cell">
+              <span className="cmp-no">·</span>
+            </div>
+            <div className="cmp-cell">
+              <span className="cmp-yes">
+                <Check size={12} />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── FAQ ─────────────────────────────────────────────────────── */
+
+function FAQv2() {
+  const items: [string, string][] = [
+    [
+      "How fast is launch?",
+      "10 days on average — from contract to live. All communication on WhatsApp. No Zoom calls, no questionnaires.",
+    ],
+    [
+      "Are messages billed separately?",
+      "No. Every tier is all-inclusive — unlimited messages, unlimited storage, unlimited API usage.",
+    ],
+    [
+      "What if my volume spikes?",
+      "Infrastructure auto-scales. No overage charges, no rate caps, no 'surprise bill' at month-end.",
+    ],
+    [
+      "Do I need a technical team?",
+      "No. We handle everything — WhatsApp Business, integrations, training. You talk, we build.",
+    ],
+    [
+      "Can I cancel?",
+      "Yes — anytime, with 30 days' notice. Setup fee is non-refundable once we go live.",
+    ],
+    [
+      "Where is my data stored?",
+      "Default: regional (RUH/DXB) infrastructure. KSA-resident data option available on Enterprise.",
+    ],
+    [
+      "Can I try first?",
+      "Yes — free 30-min audit on WhatsApp. We map your business and show where agents save you time.",
+    ],
+  ];
+
+  return (
+    <section className="section section-dark">
+      <div className="container">
+        <SectionMeta
+          idx="05"
+          label="questions"
+          right={<span className="mono">or text us · WhatsApp</span>}
+        />
+        <div className="sec-title-row">
+          <h2 className="display tight">
+            Frequently <em>asked</em>.
+          </h2>
+        </div>
+        <div className="faq-v2">
+          {items.map(([q, a], i) => (
+            <details key={i} className="faq-v2-item" open={i === 0}>
+              <summary>
+                <span className="faq-v2-num mono">§ 0{i + 1}</span>
+                <span className="faq-v2-q">{q}</span>
+                <span className="faq-v2-icon">+</span>
+              </summary>
+              <p className="faq-v2-a">{a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── CTA ─────────────────────────────────────────────────────── */
+
+function PricingCTA() {
+  return (
+    <section className="section">
+      <div className="container">
+        <div className="cta-box-v2">
+          <h3>
+            The audit is <em>free</em>.
+            <br />
+            Launch in ten days.
+          </h3>
+          <p className="ss">
+            We map your business and show where you&apos;re bleeding time. No
+            pitch deck, no pressure.
+          </p>
+          <div className="ctas">
+            <a className="btn primary lg" href="/app/onboarding">
+              Book the audit <Arrow size={14} />
+            </a>
+            <a
+              className="btn ghost lg"
+              href="https://wa.me/12058582516?text=Hi"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Or text us now
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── PAGE ────────────────────────────────────────────────────── */
 
 export default function PricingPage() {
   return (
     <SubShell active="pricing">
-      {/* Header */}
-      <section className="pt-32 pb-16 px-6 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 via-surface-950 to-surface-950" />
-        <div className="max-w-[1400px] mx-auto relative z-10">
-          <FadeUp>
-            <div className="max-w-2xl">
-              <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] uppercase tracking-[0.15em] font-semibold bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20 mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Simple pricing
-              </span>
-              <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter leading-none mt-4 text-white">
-                Plans that scale
-                <br />
-                <span className="text-emerald-400">
-                  with your business
-                </span>
-              </h1>
-              <p className="mt-4 text-base text-white/40 leading-relaxed max-w-[52ch]">
-                One-time AED 3,000 setup fee covers persona creation, knowledge base, and WhatsApp provisioning. Live in 10 minutes. Month-to-month, cancel anytime.
-              </p>
-            </div>
-          </FadeUp>
-        </div>
-      </section>
-
-      {/* Setup banner */}
-      <div className="max-w-[1400px] mx-auto px-6 mb-10">
-        <FadeUp delay={0.1}>
-          <div className="rounded-2xl bg-emerald-500/[0.07] ring-1 ring-emerald-500/20 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-emerald-400">Live in 10 minutes. No developers needed.</p>
-                <p className="text-xs text-white/40 mt-0.5">Month-to-month. Cancel anytime. Includes dedicated WhatsApp number.</p>
-              </div>
-            </div>
-            <p className="text-xs text-white/30 font-medium">One-time setup fee: AED 3,000</p>
-          </div>
-        </FadeUp>
-      </div>
-
-      {/* Pricing cards */}
-      <main className="max-w-[1400px] mx-auto px-6 pb-28 relative">
-        <StaggerList className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-          {plans.map((plan) => (
-            <StaggerItem key={plan.tier}>
-              <GlowCard
-                glowColor={plan.popular ? "rgba(34, 197, 94, 0.15)" : "rgba(34, 197, 94, 0.06)"}
-                className={cn(
-                  "relative flex flex-col rounded-2xl overflow-hidden h-full",
-                  "bg-white/[0.03] ring-1 transition-all duration-700",
-                  plan.popular
-                    ? "ring-emerald-500/30 shadow-[0_0_40px_rgba(34,197,94,0.08)]"
-                    : "ring-white/[0.06]"
-                )}
-              >
-                {/* Popular badge */}
-                {plan.popular && (
-                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent" />
-                )}
-
-                <div className="p-6 flex flex-col flex-1">
-                  {/* Header */}
-                  <div className="mb-6">
-                    {plan.popular && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.15em] font-semibold bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20 mb-4">
-                        Most popular
-                      </span>
-                    )}
-                    <h3 className="text-lg font-extrabold tracking-tight text-white">{plan.tier}</h3>
-                    <p className="text-xs text-white/40 mt-1">{plan.tagline}</p>
-                  </div>
-
-                  {/* Price */}
-                  <div className="mb-6">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-xs text-white/40 font-medium">AED</span>
-                      <span className="text-4xl font-extrabold tracking-tighter text-white">{plan.priceAED}</span>
-                      <span className="text-sm text-white/30 font-medium">/mo</span>
-                    </div>
-                    <p className="text-[11px] text-white/25 mt-1.5">SAR {plan.priceSAR}/mo equivalent</p>
-                  </div>
-
-                  {/* Features */}
-                  <div className="flex-1 space-y-3 mb-8">
-                    {plan.features.map((feature) => (
-                      <div key={feature} className="flex gap-2.5 text-sm text-white/50">
-                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                        {feature}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* CTA */}
-                  <a
-                    href="/book-audit/"
-                    className={cn(
-                      "group flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition-all duration-300 active:scale-[0.97]",
-                      plan.popular
-                        ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.25)] hover:shadow-[0_0_30px_rgba(34,197,94,0.35)]"
-                        : "bg-white/[0.06] hover:bg-white/[0.1] text-white/70 ring-1 ring-white/[0.08] hover:ring-white/[0.15]"
-                    )}
-                  >
-                    Get started
-                    <svg className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-                  </a>
-                </div>
-              </GlowCard>
-            </StaggerItem>
-          ))}
-        </StaggerList>
-
-        {/* Comparison note */}
-        <FadeUp className="mt-16">
-          <div className="rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06] p-8 md:p-10">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4">
-                  <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                  </svg>
-                </div>
-                <h3 className="text-sm font-bold text-white">Go live in minutes</h3>
-                <p className="mt-2 text-xs text-white/40 leading-relaxed">Self-service onboarding. AI crawls your website, builds your knowledge base, and configures your industry-specific workflows automatically.</p>
-              </div>
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4">
-                  <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                  </svg>
-                </div>
-                <h3 className="text-sm font-bold text-white">No lock-in contracts</h3>
-                <p className="mt-2 text-xs text-white/40 leading-relaxed">Month-to-month billing. Scale up, scale down, or cancel anytime. Your data and training are preserved for 30 days if you pause.</p>
-              </div>
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4">
-                  <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
-                  </svg>
-                </div>
-                <h3 className="text-sm font-bold text-white">Arabic + English, 24/7</h3>
-                <p className="mt-2 text-xs text-white/40 leading-relaxed">Your AI agent speaks both languages fluently with automatic detection. Gulf dialect supported. Voice messages transcribed and answered.</p>
-              </div>
-            </div>
-          </div>
-        </FadeUp>
-
-        {/* FAQ Section */}
-        <FadeUp className="mt-20">
-          <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-10">
-              <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] uppercase tracking-[0.15em] font-semibold bg-white/[0.05] text-white/50 ring-1 ring-white/[0.08] mb-6">
-                FAQ
-              </span>
-              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter text-white">
-                Common questions
-              </h2>
-            </div>
-
-            <div className="divide-y divide-white/[0.06] border-t border-white/[0.06]">
-              {faqs.map((faq) => (
-                <FAQItem key={faq.q} q={faq.q} a={faq.a} />
-              ))}
-            </div>
-          </div>
-        </FadeUp>
-
-        {/* CTA */}
-        <FadeUp className="mt-20">
-          <div className="relative rounded-3xl overflow-hidden">
-            <div className="absolute inset-0 bg-zinc-900" />
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 via-transparent to-violet-600/10" />
-            <div className="absolute inset-0 ring-1 ring-inset ring-white/[0.06] rounded-3xl" />
-
-            <div className="relative p-12 md:p-16">
-              <motion.div
-                className="absolute top-0 right-0 w-64 h-64 rounded-full"
-                style={{ background: "radial-gradient(circle, rgba(34, 197, 94, 0.15) 0%, transparent 70%)" }}
-                animate={{ x: [0, 20, 0], y: [0, -10, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-              />
-              <div className="relative max-w-xl">
-                <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter text-white">Not sure which plan fits?</h2>
-                <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-                  Book a free 30-minute audit. We will map your operations, recommend the right plan, and show you exactly what your AI agent will do from day one. No commitment, no pressure.
-                </p>
-                <a href="/book-audit/" className="group inline-flex items-center gap-3 mt-6 rounded-full bg-emerald-600 hover:bg-emerald-500 px-8 py-4 text-sm font-semibold text-white transition-all duration-500 active:scale-[0.97] shadow-[0_0_30px_rgba(34,197,94,0.3)] hover:shadow-[0_0_50px_rgba(34,197,94,0.4)]">
-                  Book free AI audit
-                  <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center transition-transform duration-500 group-hover:translate-x-0.5">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-                  </span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </FadeUp>
-      </main>
+      <PricingHero />
+      <Tiers />
+      <BreakdownAnatomy />
+      <ROICalculator />
+      <CompareMatrix />
+      <FAQv2 />
+      <PricingCTA />
     </SubShell>
   );
 }

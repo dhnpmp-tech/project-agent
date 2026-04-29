@@ -1298,10 +1298,9 @@ function AgentsFooter() {
       lang === "ar" ? "المنتج" : "Product",
       [
         ["Services", "/"],
-        ["Pricing", "#pricing"],
-        ["Process", "#how"],
-        ["Case study", "#"],
-        ["Integrations", "#"],
+        ["Pricing", "/pricing"],
+        ["Process", "/demo"],
+        ["Dashboard", "/app"],
       ],
     ],
     [
@@ -1375,11 +1374,9 @@ function AgentsFooter() {
 function HomeApp() {
   const { lang } = useLang();
   const navLinks: NavLink[] = [
-    { href: "/services", label: lang === "ar" ? "الخدمات" : "Services", key: "services" },
+    { href: "/", label: lang === "ar" ? "الخدمات" : "Services", key: "home" },
     { href: "/pricing", label: lang === "ar" ? "الأسعار" : "Pricing", key: "pricing" },
-    { href: "/process", label: lang === "ar" ? "العملية" : "Process", key: "process" },
-    { href: "/case-study", label: lang === "ar" ? "حالة" : "Case study", key: "case-study" },
-    { href: "/integrations", label: lang === "ar" ? "تكاملات" : "Integrations", key: "integrations" },
+    { href: "/demo", label: lang === "ar" ? "العملية" : "Process", key: "process" },
     { href: "/app", label: lang === "ar" ? "اللوحة" : "Dashboard", key: "dash" },
   ];
   return (
@@ -1387,7 +1384,7 @@ function HomeApp() {
       <Marquee />
       <Nav
         links={navLinks}
-        active="services"
+        active="home"
         status={{ label: lang === "ar" ? "مباشر · الإمارات والسعودية" : "LIVE · UAE & SAUDI" }}
         ctaLabel={lang === "ar" ? "احجز تدقيقاً مجانياً" : "Book free audit"}
         ctaHref="/app/onboarding"
