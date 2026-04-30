@@ -343,6 +343,7 @@ export function LiveDemo() {
       </div>
 
       {/* Scoped styles */}
+      {/* eslint-disable-next-line react/no-unknown-property */}
       <style jsx>{`
         .phone-frame {
           width: 375px;

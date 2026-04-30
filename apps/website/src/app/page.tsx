@@ -22,6 +22,8 @@ import {
 import { Reveal } from "@/components/dcp/motion";
 import { Arrow } from "@/components/dcp/icons";
 import type { Lang } from "@/components/dcp/i18n";
+import { AgentCard } from "@/components/dcp/screens";
+import { AGENTS } from "@/lib/agents-data";
 
 /* ─── Content (lifted from /tmp/dcp-design/assets/data.js) ─── */
 
@@ -35,15 +37,6 @@ interface PainItem {
   msg: string;
 }
 type AgentTier = "starter" | "growth" | "pro" | "enterprise";
-interface AgentItem {
-  id: string;
-  code: string;
-  name: string;
-  tier: AgentTier;
-  pitch: string;
-  summary: string;
-  bullets: string[];
-}
 interface IntelItem {
   t: string;
   msg: string;
@@ -89,97 +82,6 @@ const PAIN: PainItem[] = [
   { code: "04", t: "4h/week", msg: "Tracking invoices on spreadsheets at 2am" },
   { code: "05", t: "6h/week", msg: "Screening CVs when you should be closing deals" },
   { code: "06", t: "5h/week", msg: "Rescheduling no-shows and chasing confirmations" },
-];
-
-const AGENTS: AgentItem[] = [
-  {
-    id: "whatsapp",
-    code: "01",
-    name: "WhatsApp Agent",
-    tier: "starter",
-    pitch: "Not a chatbot — a person.",
-    summary:
-      "We generate a unique AI employee with a real backstory, personality, and voice. She remembers every customer — their name, their usual order, their wife's birthday. She texts like a real person: short messages, natural timing, never a wall of text. She never says she's an AI.",
-    bullets: ["Custom persona + voice", "Cross-conversation memory", "Birthday & sentiment aware"],
-  },
-  {
-    id: "owner",
-    code: "02",
-    name: "Owner Brain",
-    tier: "starter",
-    pitch: "Your AI Chief of Staff.",
-    summary:
-      "Structured 9am brief with variance detection, VIP arrivals, and risk alerts. Drafts Google review replies for your approval, flags at-risk customers before they churn, and tells you what you're missing. Take a photo of today's special — it updates everything. All from WhatsApp.",
-    bullets: ["9am morning brief", "Photo-to-knowledge", "Owner-only WhatsApp commands"],
-  },
-  {
-    id: "sales",
-    code: "03",
-    name: "Sales Rep",
-    tier: "starter",
-    pitch: "Never lose a lead to slow follow-up.",
-    summary:
-      "Scores every lead 1–100 against your ideal customer profile. Hot leads get personalized outreach in minutes. Warm leads get nurtured. Cold leads get archived. You only see the ones worth your time.",
-    bullets: ["Lead scoring 1–100", "Day-1 / Day-3 / Day-7 nurture", "Win/loss analysis"],
-  },
-  {
-    id: "content",
-    code: "04",
-    name: "Content Engine",
-    tier: "growth",
-    pitch: "Content that posts itself.",
-    summary:
-      "Weekly content plan for Instagram, LinkedIn, and TikTok — bilingual, AI-generated from your brand voice. Owner takes a photo — it becomes a reel, a post, and a story. On schedule, on brand, zero effort.",
-    bullets: [
-      "3 caption variants per topic",
-      "Ramadan/Eid/National Day aware",
-      "Marketplace auto-posting (Haraj)",
-    ],
-  },
-  {
-    id: "hr",
-    code: "05",
-    name: "HR Screening",
-    tier: "pro",
-    pitch: "23 CVs in. 4 interviews out.",
-    summary:
-      "23 CVs arrive. Four minutes later, you see 4 candidates worth interviewing, with scores, strengths, and suggested questions. Decline emails already sent. Interviews already scheduled in your calendar.",
-    bullets: ["CV → score in <4 min", "Auto decline emails", "Interview slot booking"],
-  },
-  {
-    id: "finance",
-    code: "06",
-    name: "Financial Intelligence",
-    tier: "enterprise",
-    pitch: "Numbers that tell you what to do.",
-    summary:
-      "Sunday morning: a plain-language report lands on your WhatsApp. Revenue up 12%. Seafood costs spiked 18% — here's a cheaper supplier. Dessert orders dropped — time for a new menu item? Numbers that tell you what to do, not just what happened.",
-    bullets: ["Weekly Sunday report", "Cost spike detection", "Menu/SKU suggestions"],
-  },
-  {
-    id: "voice",
-    code: "07",
-    name: "Voice Notes",
-    tier: "pro",
-    pitch: "Talk like you talk to a friend.",
-    summary:
-      "Customers send voice notes — your AI transcribes, understands, and replies with its own voice in Arabic or English. No typing needed. Just talk to your business.",
-    bullets: ["AR + EN voice in/out", "Native Gulf Arabic routing", "On every channel"],
-  },
-  {
-    id: "multi",
-    code: "08",
-    name: "Multi-Channel",
-    tier: "growth",
-    pitch: "One brain. Every channel.",
-    summary:
-      "WhatsApp, your website, Telegram, Instagram DM. Same personality, same memory, every channel. A customer who messages on Instagram at noon and WhatsApp at night gets one continuous conversation — not two strangers.",
-    bullets: [
-      "WhatsApp · Web · Telegram · IG",
-      "Shared customer memory",
-      "Voice on every channel",
-    ],
-  },
 ];
 
 const INTELLIGENCE: IntelItem[] = [
@@ -608,36 +510,22 @@ function Pain() {
   );
 }
 
-function AgentCardV2({ a, idx }: { a: AgentItem; idx: number }) {
-  return (
-    <Reveal as="div" className="agent-cell-v2" delay={idx * 40}>
-      <div className="ac-num mono">{a.code}</div>
-      <h3 className="ac-name">{a.name}</h3>
-      <p className="ac-pitch">{a.pitch}</p>
-      <p className="ac-sum">{a.summary}</p>
-      <ul className="ac-bullets">
-        {a.bullets.map((b) => (
-          <li key={b}>
-            <span className="ac-tick">✓</span> {b}
-          </li>
-        ))}
-      </ul>
-      <div className="ac-tier">
-        <span className={"tier-dot tier-" + a.tier} /> {a.tier}
-      </div>
-    </Reveal>
-  );
-}
-
 function AgentsSection() {
   const { lang } = useLang();
+  // Re-ported from /tmp/dcp-design/assets/home.jsx (Agents) using the
+  // designed AgentCard primitive from screens.jsx (lines 38-53), which now
+  // lives in components/dcp/screens.tsx. Wrapped in section-dark per brief.
   return (
-    <section className="section">
+    <section className="section section-dark">
       <div className="container">
         <SectionMeta
           idx="02"
           label={lang === "ar" ? "الفريق" : "your AI team"}
-          right={<span className="mono">{AGENTS.length}/{AGENTS.length}</span>}
+          right={
+            <span className="mono">
+              {AGENTS.length}/{AGENTS.length}
+            </span>
+          }
         />
         <div className="sec-title-row">
           <h2 className="display-2">
@@ -659,9 +547,11 @@ function AgentsSection() {
               : "Not bots with scripts. Personalities with backstories, expertise, and memory that spans months. They work together, share intelligence, and get better without you touching anything."}
           </p>
         </div>
-        <div className="agent-grid v2">
+        <div className="agent-grid">
           {AGENTS.map((a, i) => (
-            <AgentCardV2 key={a.id} a={a} idx={i} />
+            <Reveal key={a.id} delay={i * 40}>
+              <AgentCard a={a} />
+            </Reveal>
           ))}
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
+import React, { useRef } from "react";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
-import { useRef } from "react";
 import { cn } from "@/lib/utils";
 
 /* ── Agent pipeline data ─────────────────────────────────────── */
@@ -385,5 +385,3 @@ function AgentPipelineInner({
   );
 }
 
-/* Need React import for useState/useEffect */
-import React from "react";

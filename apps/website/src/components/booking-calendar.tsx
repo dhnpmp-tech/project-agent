@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -90,13 +90,13 @@ export function BookingCalendar() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const days: Array<{
+    const days: {
       date: number;
       current: boolean;
       past: boolean;
       isToday: boolean;
       weekend: boolean;
-    }> = [];
+    }[] = [];
 
     // Leading empty cells
     for (let i = 0; i < firstDay; i++) {

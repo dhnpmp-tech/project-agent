@@ -1,10 +1,12 @@
 "use client";
 
 // Screen primitives for marketing pages.
-// Ported from /tmp/dcp-design/assets/screens.jsx (WhatsAppThread + OwnerBriefCard).
+// Ported from /tmp/dcp-design/assets/screens.jsx
+// (WhatsAppThread + OwnerBriefCard + AgentCard).
 
 import { fmtInt, type LangContextValue } from "./lib";
 import type { DemoMessage, OwnerBriefItem } from "@/lib/demo-data";
+import type { Agent } from "@/lib/agents-data";
 
 type Lang = LangContextValue["lang"];
 
@@ -43,6 +45,31 @@ export function WhatsAppThread({ thread, side, label, sublabel, lang }: WhatsApp
           <span />
           <span />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* AgentCard — homepage employee tile.
+   Ported from /tmp/dcp-design/assets/screens.jsx (lines 38-53).
+   The original read a.ar.{name,role,summary} for Arabic; our typed Agent has
+   no `ar` sub-object, so we render the canonical English fields in both
+   languages (matches what the rest of the homepage already does). */
+interface AgentCardProps {
+  a: Agent;
+}
+
+export function AgentCard({ a }: AgentCardProps) {
+  return (
+    <div className="agent-card">
+      <div className="agent-num mono">§ {a.code}</div>
+      <div className="agent-av">{a.monogram || a.name[0]}</div>
+      <div className="agent-name">{a.name}</div>
+      <div className="agent-role mono">{a.pitch}</div>
+      <p className="agent-sum">{a.summary}</p>
+      <div className="agent-tier mono">
+        <span className={"tier-dot tier-" + a.tier} />
+        {a.tier}
       </div>
     </div>
   );
