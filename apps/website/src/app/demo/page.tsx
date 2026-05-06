@@ -10,7 +10,7 @@ import { Dot, Play, Stop } from "@/components/dcp/icons";
 import { useLang } from "@/components/dcp/lib";
 import { SubShell } from "@/components/dcp/sub-shell";
 import { WhatsAppThread, OwnerBriefCard } from "@/components/dcp/screens";
-import { DEMO_THREAD, DEMO_OWNER } from "@/lib/demo-data";
+import { getDemoThread, getDemoOwner } from "@/lib/demo-data";
 
 export default function DemoPage() {
   return (
@@ -46,13 +46,15 @@ function Hero() {
 
 function DemoLab() {
   const { lang, t } = useLang();
-  const [step, setStep] = useState(DEMO_THREAD.length);
+  const thread = getDemoThread(lang);
+  const owner = getDemoOwner(lang);
+  const [step, setStep] = useState(thread.length);
   const [playing, setPlaying] = useState(false);
   const tick = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!playing) return;
-    if (step >= DEMO_THREAD.length) {
+    if (step >= thread.length) {
       setPlaying(false);
       return;
     }
@@ -60,7 +62,7 @@ function DemoLab() {
     return () => {
       if (tick.current) clearTimeout(tick.current);
     };
-  }, [playing, step]);
+  }, [playing, step, thread.length]);
 
   function replay() {
     setStep(0);
@@ -69,13 +71,13 @@ function DemoLab() {
 
   function showAll() {
     setPlaying(false);
-    setStep(DEMO_THREAD.length);
+    setStep(thread.length);
   }
 
-  const visible = DEMO_THREAD.slice(0, step);
-  const ownerCount = Math.min(Math.max(step - 2, 0), DEMO_OWNER.length);
-  const ownerVisible = DEMO_OWNER.slice(0, ownerCount);
-  const ownerItems = ownerVisible.length ? ownerVisible : DEMO_OWNER.slice(0, 1);
+  const visible = thread.slice(0, step);
+  const ownerCount = Math.min(Math.max(step - 2, 0), owner.length);
+  const ownerVisible = owner.slice(0, ownerCount);
+  const ownerItems = ownerVisible.length ? ownerVisible : owner.slice(0, 1);
 
   return (
     <section className="section section-dark">
@@ -88,7 +90,7 @@ function DemoLab() {
             <Stop size={10} /> {lang === "ar" ? "اظهر الكل" : "Show all"}
           </button>
           <span className="mono lab-step">
-            {lang === "ar" ? "خطوة" : "STEP"} {step}/{DEMO_THREAD.length}
+            {lang === "ar" ? "خطوة" : "STEP"} {step}/{thread.length}
           </span>
           <span className="mono lab-state">
             <Dot color={playing ? "var(--teal)" : "var(--mut)"} />{" "}

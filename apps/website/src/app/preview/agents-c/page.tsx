@@ -5,7 +5,7 @@
 // pitch + 3-sentence summary + tier strip — no emojis anywhere.
 
 import { SubShell } from "@/components/dcp/sub-shell";
-import { AGENTS, type Agent } from "@/lib/agents-data";
+import { AGENTS_EN as AGENTS, type AgentEn as Agent } from "@/lib/agents-data";
 
 const HERO_ID = "whatsapp";
 

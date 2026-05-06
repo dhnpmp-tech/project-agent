@@ -6,7 +6,7 @@
 
 import { Fragment, type ReactNode } from "react";
 import { SubShell } from "@/components/dcp/sub-shell";
-import { AGENTS } from "@/lib/agents-data";
+import { AGENTS_EN as AGENTS } from "@/lib/agents-data";
 
 const ACCENT_BY_TIER: Record<string, string> = {
   starter: "var(--info)",

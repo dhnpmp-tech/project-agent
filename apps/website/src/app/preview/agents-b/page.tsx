@@ -7,7 +7,7 @@
 // actually do" stories.
 
 import { SubShell } from "@/components/dcp/sub-shell";
-import { AGENTS, type Agent } from "@/lib/agents-data";
+import { AGENTS_EN as AGENTS, type AgentEn as Agent } from "@/lib/agents-data";
 
 function pos(time: string): number {
   const m = time.match(/(\d{2}):(\d{2})/);

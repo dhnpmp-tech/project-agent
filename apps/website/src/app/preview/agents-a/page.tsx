@@ -5,7 +5,12 @@
 // the agent in full (pitch + 4 sentences + 4 capabilities + integrations).
 
 import { SubShell } from "@/components/dcp/sub-shell";
-import { AGENTS, ROLE_META, type Agent, type AgentRole } from "@/lib/agents-data";
+import {
+  AGENTS_EN as AGENTS,
+  ROLE_META_EN as ROLE_META,
+  type AgentEn as Agent,
+  type AgentRole,
+} from "@/lib/agents-data";
 
 const ROLES: AgentRole[] = ["customer", "growth", "ops"];
 

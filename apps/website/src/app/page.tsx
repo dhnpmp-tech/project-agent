@@ -27,215 +27,376 @@ import { AGENTS } from "@/lib/agents-data";
 
 /* ─── Content (lifted from /tmp/dcp-design/assets/data.js) ─── */
 
+interface BiString {
+  en: string;
+  ar: string;
+}
+
 interface HeroStat {
   v: string;
-  k: string;
+  k: BiString;
 }
 interface PainItem {
   code: string;
-  t: string;
-  msg: string;
+  t: BiString;
+  msg: BiString;
 }
 type AgentTier = "starter" | "growth" | "pro" | "enterprise";
 interface IntelItem {
-  t: string;
-  msg: string;
+  t: BiString;
+  msg: BiString;
 }
 interface IndustryItem {
-  t: string;
-  msg: string;
-  bullets: string[];
+  t: BiString;
+  msg: BiString;
+  bullets: BiString[];
 }
 interface HowStep {
   n: string;
-  t: string;
-  msg: string;
+  t: BiString;
+  msg: BiString;
 }
 interface MemoryField {
-  k: string;
-  v: string;
+  k: BiString;
+  v: BiString;
 }
 interface MemoryCard {
-  name: string;
+  name: BiString;
   fields: MemoryField[];
 }
 interface PricingTier {
   id: AgentTier;
-  name: string;
-  sub: string;
+  name: BiString;
+  sub: BiString;
   monthly_aed: number;
   setup_aed: number;
   popular: boolean;
-  includes: string[];
+  includes: BiString[];
 }
 
 const HERO_STATS: HeroStat[] = [
-  { v: "380+", k: "inquiries monthly" },
-  { v: "2 min", k: "to go live" },
-  { v: "24/7", k: "self-improving" },
+  { v: "380+", k: { en: "inquiries monthly", ar: "استفسار شهرياً" } },
+  { v: "2 min", k: { en: "to go live", ar: "للإطلاق" } },
+  { v: "24/7", k: { en: "self-improving", ar: "يتطوّر ذاتياً" } },
 ];
 
 const PAIN: PainItem[] = [
-  { code: "01", t: "3h/day", msg: "Answering WhatsApp messages until midnight" },
-  { code: "02", t: "1.5h/day", msg: "Posting on social media between customer calls" },
-  { code: "03", t: "2h/day", msg: "Chasing leads that go cold because you were busy" },
-  { code: "04", t: "4h/week", msg: "Tracking invoices on spreadsheets at 2am" },
-  { code: "05", t: "6h/week", msg: "Screening CVs when you should be closing deals" },
-  { code: "06", t: "5h/week", msg: "Rescheduling no-shows and chasing confirmations" },
+  {
+    code: "01",
+    t: { en: "3h/day", ar: "٣ س/يوم" },
+    msg: {
+      en: "Answering WhatsApp messages until midnight",
+      ar: "الرد على رسائل واتساب لين منتصف الليل",
+    },
+  },
+  {
+    code: "02",
+    t: { en: "1.5h/day", ar: "١٫٥ س/يوم" },
+    msg: {
+      en: "Posting on social media between customer calls",
+      ar: "النشر على السوشيال بين مكالمات العملاء",
+    },
+  },
+  {
+    code: "03",
+    t: { en: "2h/day", ar: "٢ س/يوم" },
+    msg: {
+      en: "Chasing leads that go cold because you were busy",
+      ar: "ملاحقة عملاء محتملين يبردون لأنك مشغول",
+    },
+  },
+  {
+    code: "04",
+    t: { en: "4h/week", ar: "٤ س/أسبوع" },
+    msg: {
+      en: "Tracking invoices on spreadsheets at 2am",
+      ar: "تتبّع الفواتير على إكسل الساعة ٢ فجراً",
+    },
+  },
+  {
+    code: "05",
+    t: { en: "6h/week", ar: "٦ س/أسبوع" },
+    msg: {
+      en: "Screening CVs when you should be closing deals",
+      ar: "فرز السير الذاتية بدل ما تقفل صفقات",
+    },
+  },
+  {
+    code: "06",
+    t: { en: "5h/week", ar: "٥ س/أسبوع" },
+    msg: {
+      en: "Rescheduling no-shows and chasing confirmations",
+      ar: "إعادة جدولة الغيابات وملاحقة التأكيدات",
+    },
+  },
 ];
 
 const INTELLIGENCE: IntelItem[] = [
   {
-    t: "Self-Improving AI",
-    msg: "Analyzes every conversation overnight. Writes new rules, verifies them against past conversations, and A/B tests before applying. Conflicting rules get resolved automatically.",
+    t: { en: "Self-Improving AI", ar: "ذكاء يتطوّر ذاتياً" },
+    msg: {
+      en: "Analyzes every conversation overnight. Writes new rules, verifies them against past conversations, and A/B tests before applying. Conflicting rules get resolved automatically.",
+      ar: "يحلّل كل محادثة في الليل. يكتب قواعد جديدة، يتحقّق منها على المحادثات السابقة، ويختبرها A/B قبل التطبيق. القواعد المتعارضة تُحسم تلقائياً.",
+    },
   },
   {
-    t: "Proactive Follow-ups",
-    msg: "Reservation reminders before the visit. Feedback requests after. Re-engagement offers when a customer hasn't been back in 14 days. All via Meta-approved WhatsApp templates.",
+    t: { en: "Proactive Follow-ups", ar: "متابعات استباقية" },
+    msg: {
+      en: "Reservation reminders before the visit. Feedback requests after. Re-engagement offers when a customer hasn't been back in 14 days. All via Meta-approved WhatsApp templates.",
+      ar: "تذكير بالحجز قبل الزيارة. طلب رأي بعدها. عروض استرجاع للعميل اللي ما زار من ١٤ يوم. كل هذا عبر قوالب واتساب معتمدة من ميتا.",
+    },
   },
   {
-    t: "Morning Briefs",
-    msg: "Every morning at 9am. Situation, complication, question, action — the McKinsey framework. Variance detection flags what changed. Recommended actions, not just data.",
+    t: { en: "Morning Briefs", ar: "موجز الصباح" },
+    msg: {
+      en: "Every morning at 9am. Situation, complication, question, action — the McKinsey framework. Variance detection flags what changed. Recommended actions, not just data.",
+      ar: "كل صباح الساعة ٩. وضع، إشكال، سؤال، إجراء — إطار ماكنزي. كشف الانحرافات يبيّن إيش تغيّر. توصيات بإجراءات، مو مجرّد أرقام.",
+    },
   },
   {
-    t: "WhatsApp Onboarding",
-    msg: "No website needed. Text our setup number, answer 5 questions in 2 minutes, your AI agent is live. Works in Arabic and English.",
+    t: { en: "WhatsApp Onboarding", ar: "تسجيل عبر واتساب" },
+    msg: {
+      en: "No website needed. Text our setup number, answer 5 questions in 2 minutes, your AI agent is live. Works in Arabic and English.",
+      ar: "بدون موقع. كلّم رقم الإعداد، جاوب على ٥ أسئلة في دقيقتين، وذكاؤك جاهز. يشتغل بالعربي والإنجليزي.",
+    },
   },
   {
-    t: "Google Review Responder",
-    msg: "New review comes in — the AI drafts a thoughtful reply within minutes. You approve or edit from WhatsApp. One tap to publish.",
+    t: { en: "Google Review Responder", ar: "ردود مراجعات قوقل" },
+    msg: {
+      en: "New review comes in — the AI drafts a thoughtful reply within minutes. You approve or edit from WhatsApp. One tap to publish.",
+      ar: "يوصل تقييم جديد — الذكاء يصيغ رد محترم في دقائق. توافق أو تعدّل من واتساب. ضغطة وحدة وينشر.",
+    },
   },
   {
-    t: "Guest Intelligence",
-    msg: "Every customer auto-segmented: VIP, Loyal, At Risk, or Lapsed. The AI knows who deserves a personal touch and who's about to slip away.",
+    t: { en: "Guest Intelligence", ar: "ذكاء العملاء" },
+    msg: {
+      en: "Every customer auto-segmented: VIP, Loyal, At Risk, or Lapsed. The AI knows who deserves a personal touch and who's about to slip away.",
+      ar: "كل عميل مُصنّف تلقائياً: VIP، وفي، معرّض للفقد، أو متسرّب. الذكاء يعرف مين يستحق لمسة شخصية ومين على وشك يبتعد.",
+    },
   },
   {
-    t: "Risk Surfacing",
-    msg: "Surfaces what you're missing: declining repeat visits, unanswered complaints, booking patterns that signal trouble. Proactive alerts so nothing slips through.",
+    t: { en: "Risk Surfacing", ar: "كشف المخاطر" },
+    msg: {
+      en: "Surfaces what you're missing: declining repeat visits, unanswered complaints, booking patterns that signal trouble. Proactive alerts so nothing slips through.",
+      ar: "يكشف اللي فاتك: تراجع الزيارات المتكرّرة، شكاوى بدون رد، أنماط حجز تنذر بمشكلة. تنبيهات استباقية ما يفوت شي.",
+    },
   },
   {
-    t: "Native Gulf Arabic",
-    msg: "Arabic messages auto-route to a model that speaks native Gulf Arabic. English stays on the primary engine. Natural conversations, not broken translation.",
+    t: { en: "Native Gulf Arabic", ar: "عربية خليجية أصيلة" },
+    msg: {
+      en: "Arabic messages auto-route to a model that speaks native Gulf Arabic. English stays on the primary engine. Natural conversations, not broken translation.",
+      ar: "الرسائل العربية تُحوَّل تلقائياً لنموذج يتكلّم خليجي أصلي. الإنجليزي يبقى على المحرّك الأساسي. محادثات طبيعية، مو ترجمة ركيكة.",
+    },
   },
 ];
 
 const INDUSTRIES: IndustryItem[] = [
   {
-    t: "Restaurants & Cafés",
-    msg: "Table bookings with time and occasion. Menu knowledge with prices. Dietary tracking per guest. Owner takes a photo at the market — it becomes today's special across WhatsApp, Instagram, and the knowledge base.",
-    bullets: ["Calendar booking", "Allergy memory per guest", "Photo-to-special pipeline"],
+    t: { en: "Restaurants & Cafés", ar: "مطاعم ومقاهي" },
+    msg: {
+      en: "Table bookings with time and occasion. Menu knowledge with prices. Dietary tracking per guest. Owner takes a photo at the market — it becomes today's special across WhatsApp, Instagram, and the knowledge base.",
+      ar: "حجوزات طاولات مع الوقت والمناسبة. معرفة كاملة بالقائمة والأسعار. تتبّع الحساسيات لكل ضيف. المالك يصوّر شي من السوق — يصير سبيشل اليوم على واتساب وإنستغرام وقاعدة المعرفة.",
+    },
+    bullets: [
+      { en: "Calendar booking", ar: "حجوزات على التقويم" },
+      { en: "Allergy memory per guest", ar: "حفظ الحساسيات لكل ضيف" },
+      { en: "Photo-to-special pipeline", ar: "من صورة إلى عرض اليوم" },
+    ],
   },
   {
-    t: "Coffee & Retail",
-    msg: "Bean subscriptions, order management, cupping session bookings. The AI knows each customer's roast preference and texts them when their favorite origin comes back in stock.",
-    bullets: ["Subscription management", "Taste preference memory", "New arrival notifications"],
+    t: { en: "Coffee & Retail", ar: "قهوة وتجزئة" },
+    msg: {
+      en: "Bean subscriptions, order management, cupping session bookings. The AI knows each customer's roast preference and texts them when their favorite origin comes back in stock.",
+      ar: "اشتراكات الحبوب، إدارة الطلبات، حجز جلسات التذوّق. الذكاء يعرف تفضيل التحميص لكل عميل ويرسل له لمّا يرجع منشأه المفضّل للمخزون.",
+    },
+    bullets: [
+      { en: "Subscription management", ar: "إدارة الاشتراكات" },
+      { en: "Taste preference memory", ar: "حفظ تفضيلات الذوق" },
+      { en: "New arrival notifications", ar: "تنبيهات الوصول الجديد" },
+    ],
   },
   {
-    t: "Spas, Salons & Clinics",
-    msg: "Appointment booking with preferred therapist. Treatment history and pressure preferences remembered. Follow-up the morning after: 'How are you feeling?' Seasonal packages suggested automatically.",
-    bullets: ["Therapist preference memory", "Post-treatment follow-up", "Package upselling"],
+    t: { en: "Spas, Salons & Clinics", ar: "سبا وصالونات وعيادات" },
+    msg: {
+      en: "Appointment booking with preferred therapist. Treatment history and pressure preferences remembered. Follow-up the morning after: 'How are you feeling?' Seasonal packages suggested automatically.",
+      ar: "حجز موعد مع المعالج المفضّل. تاريخ الجلسات وتفضيلات الضغط محفوظة. متابعة صباح اليوم التالي: «كيف تشعر اليوم؟» وعروض موسمية تُقترح تلقائياً.",
+    },
+    bullets: [
+      { en: "Therapist preference memory", ar: "حفظ تفضيل المعالج" },
+      { en: "Post-treatment follow-up", ar: "متابعة بعد الجلسة" },
+      { en: "Package upselling", ar: "عروض الباقات" },
+    ],
   },
 ];
 
 const HOW: HowStep[] = [
   {
     n: "1",
-    t: "We learn your business",
-    msg: "We scan your website, interview you about your vibe, and study your industry. In 30 minutes we know your business better than a new hire would in a month.",
+    t: { en: "We learn your business", ar: "نتعلّم عملك" },
+    msg: {
+      en: "We scan your website, interview you about your vibe, and study your industry. In 30 minutes we know your business better than a new hire would in a month.",
+      ar: "نمسح موقعك، نقابلك ونفهم طابع علامتك، وندرس قطاعك. في ٣٠ دقيقة نعرف عملك أحسن من موظف جديد بشهر كامل.",
+    },
   },
   {
     n: "2",
-    t: "We create your AI team",
-    msg: "Each agent gets a unique persona — a name, a backstory, a personality, even a profile photo. Your WhatsApp agent isn't a bot. It's someone your customers will remember.",
+    t: { en: "We create your AI team", ar: "نصنع فريق الذكاء" },
+    msg: {
+      en: "Each agent gets a unique persona — a name, a backstory, a personality, even a profile photo. Your WhatsApp agent isn't a bot. It's someone your customers will remember.",
+      ar: "كل موظف ذكاء له شخصية مستقلة — اسم، قصة، طبع، وحتى صورة شخصية. موظف واتساب عندك مو روبوت، شخص يتذكّره عملاؤك.",
+    },
   },
   {
     n: "3",
-    t: "Pay, we build, you go live",
-    msg: "We build your website, activate your AI across WhatsApp, your website widget, Telegram, and Instagram DM — with voice note support on every channel. Your AI team starts handling customers on day one.",
+    t: { en: "Pay, we build, you go live", ar: "ادفع، نبني، تشتغل" },
+    msg: {
+      en: "We build your website, activate your AI across WhatsApp, your website widget, Telegram, and Instagram DM — with voice note support on every channel. Your AI team starts handling customers on day one.",
+      ar: "نبني موقعك، ونفعّل ذكاءك على واتساب، ودردشة موقعك، وتيليغرام، ورسائل إنستغرام — مع دعم الرسائل الصوتية على كل قناة. فريقك يبدأ يخدم العملاء من اليوم الأول.",
+    },
   },
 ];
 
-const MEMORY_BULLETS: string[] = [
-  "Names, phone numbers, and communication language",
-  "Dietary restrictions — tracked per guest, not just per booking",
-  "Favorite dishes, usual party size, preferred seating",
-  "Every past booking, complaint, and compliment",
-  "Sentiment tracking — knows if last visit was a bad experience",
+const MEMORY_BULLETS: BiString[] = [
+  {
+    en: "Names, phone numbers, and communication language",
+    ar: "الأسماء وأرقام الهاتف ولغة التواصل",
+  },
+  {
+    en: "Dietary restrictions — tracked per guest, not just per booking",
+    ar: "الحساسيات الغذائية — لكل ضيف، مو لكل حجز فقط",
+  },
+  {
+    en: "Favorite dishes, usual party size, preferred seating",
+    ar: "الأطباق المفضّلة، عدد الأشخاص المعتاد، الجلسة المفضّلة",
+  },
+  {
+    en: "Every past booking, complaint, and compliment",
+    ar: "كل حجز سابق، شكوى، وثناء",
+  },
+  {
+    en: "Sentiment tracking — knows if last visit was a bad experience",
+    ar: "تتبّع المشاعر — يعرف إذا الزيارة الأخيرة كانت تجربة سيئة",
+  },
 ];
 
 const MEMORY_CARD: MemoryCard = {
-  name: "Layla Khoury",
+  name: { en: "Layla Khoury", ar: "ليلى خوري" },
   fields: [
-    { k: "Preference", v: "Outdoor terrace, party of 4" },
-    { k: "Allergy", v: "Nut allergy" },
-    { k: "Status", v: "VIP — 8 visits" },
-    { k: "Last order", v: "Truffle pasta, sparkling water" },
-    { k: "Sentiment", v: "Positive — last 3 visits" },
+    {
+      k: { en: "Preference", ar: "التفضيل" },
+      v: { en: "Outdoor terrace, party of 4", ar: "تراس خارجي، طاولة لأربعة" },
+    },
+    {
+      k: { en: "Allergy", ar: "الحساسية" },
+      v: { en: "Nut allergy", ar: "حساسية مكسّرات" },
+    },
+    {
+      k: { en: "Status", ar: "الحالة" },
+      v: { en: "VIP — 8 visits", ar: "VIP · ٨ زيارات" },
+    },
+    {
+      k: { en: "Last order", ar: "آخر طلب" },
+      v: { en: "Truffle pasta, sparkling water", ar: "باستا بالكمأة، مياه فوّارة" },
+    },
+    {
+      k: { en: "Sentiment", ar: "الانطباع" },
+      v: { en: "Positive — last 3 visits", ar: "إيجابي · آخر ٣ زيارات" },
+    },
   ],
 };
 
 const TIERS: PricingTier[] = [
   {
     id: "starter",
-    name: "Starter",
-    sub: "For solopreneurs",
+    name: { en: "Starter", ar: "البداية" },
+    sub: { en: "For solopreneurs", ar: "للأعمال الفردية" },
     monthly_aed: 1500,
     setup_aed: 3000,
     popular: false,
     includes: [
-      "1 WhatsApp AI agent with custom persona",
-      "Owner Brain — morning briefs + commands",
-      "Sales Rep — lead scoring + pipeline",
-      "Arabic + English auto-detection",
-      "Customer memory across conversations",
+      {
+        en: "1 WhatsApp AI agent with custom persona",
+        ar: "موظف ذكاء واتساب واحد بشخصية مخصّصة",
+      },
+      {
+        en: "Owner Brain — morning briefs + commands",
+        ar: "عقل المالك — موجز الصباح وأوامر",
+      },
+      {
+        en: "Sales Rep — lead scoring + pipeline",
+        ar: "مندوب المبيعات — تقييم العملاء وخط المبيعات",
+      },
+      {
+        en: "Arabic + English auto-detection",
+        ar: "كشف تلقائي عربي/إنجليزي",
+      },
+      {
+        en: "Customer memory across conversations",
+        ar: "ذاكرة عملاء عبر كل المحادثات",
+      },
     ],
   },
   {
     id: "growth",
-    name: "Growth",
-    sub: "Most popular",
+    name: { en: "Growth", ar: "النمو" },
+    sub: { en: "Most popular", ar: "الأكثر طلباً" },
     monthly_aed: 3000,
     setup_aed: 3000,
     popular: true,
     includes: [
-      "Everything in Starter",
-      "Content Engine — social on autopilot",
-      "Loyalty program management",
-      "Google Business Profile optimization",
-      "Calendar and CRM integration",
-      "Multi-channel content generation",
+      { en: "Everything in Starter", ar: "كل ما في البداية" },
+      {
+        en: "Content Engine — social on autopilot",
+        ar: "محرّك المحتوى — سوشيال على الطيّار الآلي",
+      },
+      { en: "Loyalty program management", ar: "إدارة برنامج الولاء" },
+      {
+        en: "Google Business Profile optimization",
+        ar: "تحسين ملف قوقل بزنس",
+      },
+      { en: "Calendar and CRM integration", ar: "ربط التقويم والـ CRM" },
+      { en: "Multi-channel content generation", ar: "محتوى لكل القنوات" },
     ],
   },
   {
     id: "pro",
-    name: "Pro",
-    sub: "For growing teams",
+    name: { en: "Pro", ar: "المحترف" },
+    sub: { en: "For growing teams", ar: "للفرق المتنامية" },
     monthly_aed: 5000,
     setup_aed: 3000,
     popular: false,
     includes: [
-      "Everything in Growth",
-      "AI image prompt generator",
-      "Conversion tracking and attribution",
-      "Priority support — under 2h response",
-      "Voice message AI responses",
-      "Custom workflow automations",
+      { en: "Everything in Growth", ar: "كل ما في النمو" },
+      { en: "AI image prompt generator", ar: "مولّد بروميت الصور" },
+      {
+        en: "Conversion tracking and attribution",
+        ar: "تتبّع التحويلات وعزو المصدر",
+      },
+      {
+        en: "Priority support — under 2h response",
+        ar: "دعم بالأولوية — ردّ خلال أقلّ من ساعتين",
+      },
+      { en: "Voice message AI responses", ar: "ردود ذكاء على الرسائل الصوتية" },
+      { en: "Custom workflow automations", ar: "أتمتة خاصة لسير العمل" },
     ],
   },
   {
     id: "enterprise",
-    name: "Enterprise",
-    sub: "For scaling operations",
+    name: { en: "Enterprise", ar: "المؤسسات" },
+    sub: { en: "For scaling operations", ar: "للعمليات الموسّعة" },
     monthly_aed: 8000,
     setup_aed: 3000,
     popular: false,
     includes: [
-      "Everything, unlimited",
-      "Custom integrations and API access",
-      "UAE data residency option",
-      "Dedicated account manager",
-      "SLA guarantee",
-      "White-label available",
+      { en: "Everything, unlimited", ar: "كل شي بدون حدود" },
+      {
+        en: "Custom integrations and API access",
+        ar: "ربط مخصّص وواجهات API",
+      },
+      { en: "UAE data residency option", ar: "خيار استضافة البيانات بالإمارات" },
+      { en: "Dedicated account manager", ar: "مدير حساب مخصّص" },
+      { en: "SLA guarantee", ar: "ضمان مستوى خدمة (SLA)" },
+      { en: "White-label available", ar: "علامة بيضاء متاحة" },
     ],
   },
 ];
@@ -293,28 +454,61 @@ function CountUp({ to, suffix = "", duration = 1400 }: { to: number; suffix?: st
 
 interface ThreadMsg {
   side: "cust" | "ai";
-  t: string;
-  msg: string;
+  t: BiString;
+  msg: BiString;
   typing?: number;
 }
 
 function LiveThread() {
+  const { lang } = useLang();
   const thread = useMemo<ThreadMsg[]>(
     () => [
-      { side: "cust", t: "1:14 PM", msg: "Ahlan! Do you have a table for 4 tonight at 9?" },
-      { side: "ai", t: "1:14 PM", msg: "Hey! 👋 Yes, 9pm is open. Under what name?", typing: 700 },
-      { side: "cust", t: "1:15 PM", msg: "Mohammed. Same window table as last time if possible?" },
+      {
+        side: "cust",
+        t: { en: "1:14 PM", ar: "١:١٤ م" },
+        msg: {
+          en: "Ahlan! Do you have a table for 4 tonight at 9?",
+          ar: "هلا! عندكم طاولة لأربعة الليلة الساعة ٩؟",
+        },
+      },
       {
         side: "ai",
-        t: "1:15 PM",
-        msg: "Welcome back, Mohammed Al-Qahtani 👋 — table 12 by the window, same as last time. Booked. Want me to set up your usual (kabsa + tamr hindi)?",
+        t: { en: "1:14 PM", ar: "١:١٤ م" },
+        msg: {
+          en: "Hey! 👋 Yes, 9pm is open. Under what name?",
+          ar: "أهلاً 👋 أكيد، ٩ متاحة. باسم مين أحجز؟",
+        },
+        typing: 700,
+      },
+      {
+        side: "cust",
+        t: { en: "1:15 PM", ar: "١:١٥ م" },
+        msg: {
+          en: "Mohammed. Same window table as last time if possible?",
+          ar: "محمد. وأبغى نفس الطاولة عند النافذة لو يصير",
+        },
+      },
+      {
+        side: "ai",
+        t: { en: "1:15 PM", ar: "١:١٥ م" },
+        msg: {
+          en: "Welcome back, Mohammed Al-Qahtani 👋 — table 12 by the window, same as last time. Booked. Want me to set up your usual (kabsa + tamr hindi)?",
+          ar: "حياك يا محمد القحطاني 👋 — طاولة ١٢ عند النافذة، نفس آخر مرة. تمّ الحجز. أرتّب لك نفس الطلب (كبسة + تمر هندي)؟",
+        },
         typing: 1100,
       },
-      { side: "cust", t: "1:15 PM", msg: "Yes, shukran" },
+      {
+        side: "cust",
+        t: { en: "1:15 PM", ar: "١:١٥ م" },
+        msg: { en: "Yes, shukran", ar: "إي، مشكور" },
+      },
       {
         side: "ai",
-        t: "1:16 PM",
-        msg: "Done ✓ I'll send a reminder at 8:30. Have a great evening 🌙",
+        t: { en: "1:16 PM", ar: "١:١٦ م" },
+        msg: {
+          en: "Done ✓ I'll send a reminder at 8:30. Have a great evening 🌙",
+          ar: "تمّ ✓ راح أبعث تذكير الساعة ٨:٣٠. مساك الله بالخير 🌙",
+        },
         typing: 800,
       },
     ],
@@ -345,23 +539,26 @@ function LiveThread() {
     <div className="livethread">
       <div className="lt-hd">
         <div className="lt-av">
-          <span className="lt-av-init">L</span>
+          <span className="lt-av-init">{lang === "ar" ? "ل" : "L"}</span>
           <span className="lt-av-on" />
         </div>
         <div className="lt-meta">
-          <div className="lt-name">Layla · Saffron Kitchen</div>
+          <div className="lt-name">
+            {lang === "ar" ? "ليلى · مطعم زعفران" : "Layla · Saffron Kitchen"}
+          </div>
           <div className="lt-status">
-            <span className="d" /> AI Agent · online
+            <span className="d" />{" "}
+            {lang === "ar" ? "ذكاء اصطناعي · متّصل" : "AI Agent · online"}
           </div>
         </div>
-        <div className="lt-time">9:41</div>
+        <div className="lt-time">{lang === "ar" ? "٩:٤١" : "9:41"}</div>
       </div>
       <div className="lt-body">
         {thread.slice(0, shown).map((m, i) => (
           <div key={i} className={"lt-msg lt-" + m.side}>
-            <div className="lt-bubble">{m.msg}</div>
+            <div className="lt-bubble">{m.msg[lang]}</div>
             <div className="lt-t">
-              {m.t}
+              {m.t[lang]}
               {m.side === "ai" && <span className="lt-tick">✓✓</span>}
             </div>
           </div>
@@ -377,9 +574,11 @@ function LiveThread() {
         )}
       </div>
       <div className="lt-foot">
-        <span className="mono">∞ Self-improving overnight</span>
+        <span className="mono">
+          {lang === "ar" ? "∞ يتطوّر ذاتياً ليلاً" : "∞ Self-improving overnight"}
+        </span>
         <span className="mono">·</span>
-        <span className="mono">Persistent memory</span>
+        <span className="mono">{lang === "ar" ? "ذاكرة دائمة" : "Persistent memory"}</span>
       </div>
     </div>
   );
@@ -440,7 +639,7 @@ function Hero() {
 
             <Reveal as="div" className="hero-stats v2" delay={300}>
               {HERO_STATS.map((s) => (
-                <div className="hs" key={s.k}>
+                <div className="hs" key={s.k.en}>
                   <div className="hs-v">
                     {s.v.includes("+") ? (
                       <>
@@ -450,7 +649,7 @@ function Hero() {
                       s.v
                     )}
                   </div>
-                  <div className="hs-k">{s.k}</div>
+                  <div className="hs-k">{s.k[lang]}</div>
                 </div>
               ))}
             </Reveal>
@@ -474,7 +673,7 @@ function Pain() {
         <SectionMeta
           idx="01"
           label={lang === "ar" ? "المشكلة" : "the problem"}
-          right={<span className="mono">~30h/week</span>}
+          right={<span className="mono">{lang === "ar" ? "~٣٠ س/أسبوع" : "~30h/week"}</span>}
         />
         <div className="sec-title-row">
           <h2 className="display-2">
@@ -499,8 +698,8 @@ function Pain() {
             <Reveal key={p.code} delay={i * 50}>
               <div className="pain-cell">
                 <div className="pain-num">{p.code}</div>
-                <div className="pain-time">{p.t}</div>
-                <div className="pain-msg">{p.msg}</div>
+                <div className="pain-time">{p.t[lang]}</div>
+                <div className="pain-msg">{p.msg[lang]}</div>
               </div>
             </Reveal>
           ))}
@@ -560,6 +759,7 @@ function AgentsSection() {
 }
 
 function NeuralBar() {
+  const { lang } = useLang();
   return (
     <div className="neural">
       <div className="neural-track">
@@ -567,10 +767,10 @@ function NeuralBar() {
         <div className="neural-pulse" />
       </div>
       <div className="neural-labels mono">
-        <span>22:00 · Conversations close</span>
-        <span>02:00 · Rules drafted</span>
-        <span>04:00 · A/B verified</span>
-        <span>09:00 · Live + briefed</span>
+        <span>{lang === "ar" ? "٢٢:٠٠ · إقفال المحادثات" : "22:00 · Conversations close"}</span>
+        <span>{lang === "ar" ? "٠٢:٠٠ · صياغة القواعد" : "02:00 · Rules drafted"}</span>
+        <span>{lang === "ar" ? "٠٤:٠٠ · تحقّق A/B" : "04:00 · A/B verified"}</span>
+        <span>{lang === "ar" ? "٠٩:٠٠ · مباشر مع الموجز" : "09:00 · Live + briefed"}</span>
       </div>
     </div>
   );
@@ -586,7 +786,8 @@ function Intelligence() {
           label={lang === "ar" ? "محرّك الذكاء" : "the intelligence engine"}
           right={
             <span className="mono live">
-              <span className="d" /> SELF-IMPROVING · NIGHTLY
+              <span className="d" />{" "}
+              {lang === "ar" ? "يتطوّر ذاتياً · ليلاً" : "SELF-IMPROVING · NIGHTLY"}
             </span>
           }
         />
@@ -612,11 +813,11 @@ function Intelligence() {
         </div>
         <div className="intel-grid">
           {INTELLIGENCE.map((it, i) => (
-            <Reveal key={it.t} delay={i * 35}>
+            <Reveal key={it.t.en} delay={i * 35}>
               <div className="intel-cell">
                 <div className="intel-num mono">{String(i + 1).padStart(2, "0")}</div>
-                <h4 className="intel-t">{it.t}</h4>
-                <p className="intel-msg">{it.msg}</p>
+                <h4 className="intel-t">{it.t[lang]}</h4>
+                <p className="intel-msg">{it.msg[lang]}</p>
               </div>
             </Reveal>
           ))}
@@ -726,7 +927,7 @@ function MessageAnatomy() {
           label={lang === "ar" ? "تشريح رسالة واحدة" : "anatomy of a single message"}
           right={
             <span className="live mono">
-              <span className="d" /> LIVE TRACE
+              <span className="d" /> {lang === "ar" ? "تتبّع مباشر" : "LIVE TRACE"}
             </span>
           }
         />
@@ -767,7 +968,9 @@ function MessageAnatomy() {
             <div className="lane-hd">
               <div className="lane-num mono">01</div>
               <div className="lane-t">{lang === "ar" ? "الزبون" : "Customer"}</div>
-              <div className="lane-tag mono">whatsapp · inbound</div>
+              <div className="lane-tag mono">
+                {lang === "ar" ? "واتساب · وارد" : "whatsapp · inbound"}
+              </div>
             </div>
             <div className="lane-body lane-thread">
               <div className="lt-msg lt-cust" style={{ opacity: inShown ? 1 : 0 }}>
@@ -795,7 +998,17 @@ function MessageAnatomy() {
                   className="d-pulse"
                   style={{ opacity: step >= 0 && step < TRACE_EVENTS.length - 1 ? 1 : 0.25 }}
                 />
-                {step < 9 ? "processing" : step < TRACE_EVENTS.length - 1 ? "writing" : "idle"}
+                {lang === "ar"
+                  ? step < 9
+                    ? "قيد المعالجة"
+                    : step < TRACE_EVENTS.length - 1
+                      ? "قيد الكتابة"
+                      : "خامل"
+                  : step < 9
+                    ? "processing"
+                    : step < TRACE_EVENTS.length - 1
+                      ? "writing"
+                      : "idle"}
               </div>
             </div>
             <div className="lane-body trace-events">
@@ -812,13 +1025,13 @@ function MessageAnatomy() {
               })}
             </div>
             <div className="lane-foot mono">
-              <span>p50 latency 1.18s</span>
+              <span>{lang === "ar" ? "زمن الاستجابة p50: ١٫١٨ث" : "p50 latency 1.18s"}</span>
               <span>·</span>
               <span>
-                {beShown.length}/{beEvents.length} events
+                {beShown.length}/{beEvents.length} {lang === "ar" ? "حدث" : "events"}
               </span>
               <span>·</span>
-              <span>cost $0.0034</span>
+              <span>{lang === "ar" ? "الكلفة $٠٫٠٠٣٤" : "cost $0.0034"}</span>
             </div>
           </div>
 
@@ -827,38 +1040,52 @@ function MessageAnatomy() {
             <div className="lane-hd">
               <div className="lane-num mono">03</div>
               <div className="lane-t">{lang === "ar" ? "العقل المالك" : "Owner Brain"}</div>
-              <div className="lane-tag mono">brief · 09:00 next day</div>
+              <div className="lane-tag mono">
+                {lang === "ar" ? "موجز · ٠٩:٠٠ صباح الغد" : "brief · 09:00 next day"}
+              </div>
             </div>
             <div className="lane-body owner-body">
               <div className="owner-greet">
                 {lang === "ar" ? "صباح الخير، خالد ☀️" : "Good morning, Khaled ☀️"}
               </div>
               <div className="owner-blk">
-                <div className="owner-blk-t mono">VIP TONIGHT</div>
+                <div className="owner-blk-t mono">
+                  {lang === "ar" ? "VIP الليلة" : "VIP TONIGHT"}
+                </div>
                 <div className={`owner-line ${ledgerWritten ? "written" : ""}`}>
                   <span className="owner-bullet" />
                   {lang === "ar"
-                    ? "أبو محمد · حجز الطاولة 12 · 9 زيارات · يحب الكبسة"
+                    ? "أبو محمد · حجز الطاولة ١٢ · ٩ زيارات · يحب الكبسة"
                     : "Abu Mohammed · Table 12 · 9th visit · loves kabsa"}
-                  {ledgerWritten && <span className="owner-stamp mono">+ ledger</span>}
+                  {ledgerWritten && (
+                    <span className="owner-stamp mono">{lang === "ar" ? "+ سجلّ" : "+ ledger"}</span>
+                  )}
                 </div>
               </div>
               <div className="owner-blk">
-                <div className="owner-blk-t mono">MEMORY UPDATED</div>
+                <div className="owner-blk-t mono">
+                  {lang === "ar" ? "تحديث الذاكرة" : "MEMORY UPDATED"}
+                </div>
                 <div className={`owner-line owner-line-mem ${memoryWritten ? "written" : ""}`}>
                   <span className="owner-bullet" />
                   cust_8843.last_booking ← 2024-Q4
-                  {memoryWritten && <span className="owner-stamp mono">+ memory</span>}
+                  {memoryWritten && (
+                    <span className="owner-stamp mono">{lang === "ar" ? "+ ذاكرة" : "+ memory"}</span>
+                  )}
                 </div>
               </div>
               <div className="owner-blk">
-                <div className="owner-blk-t mono">LEARNING</div>
+                <div className="owner-blk-t mono">
+                  {lang === "ar" ? "التعلّم" : "LEARNING"}
+                </div>
                 <div className={`owner-line owner-line-learn ${learningQueued ? "written" : ""}`}>
                   <span className="owner-bullet" />
                   {lang === "ar"
-                    ? "قاعدة مرشّحة: حجوزات الجمعة 9م → اقترح الطاولة 12"
+                    ? "قاعدة مرشّحة: حجوزات الجمعة ٩م → اقترح الطاولة ١٢"
                     : "Rule candidate: Fri 9pm bookings → suggest table 12"}
-                  {learningQueued && <span className="owner-stamp mono">+ queue</span>}
+                  {learningQueued && (
+                    <span className="owner-stamp mono">{lang === "ar" ? "+ طابور" : "+ queue"}</span>
+                  )}
                 </div>
               </div>
               <div className="owner-foot mono">
@@ -908,7 +1135,7 @@ function Industries() {
         <SectionMeta
           idx="05"
           label={lang === "ar" ? "حسب القطاع" : "built for your industry"}
-          right={<span className="mono">3 verticals</span>}
+          right={<span className="mono">{lang === "ar" ? "٣ قطاعات" : "3 verticals"}</span>}
         />
         <div className="sec-title-row">
           <h2 className="display-2">
@@ -930,14 +1157,14 @@ function Industries() {
         </div>
         <div className="ind-grid">
           {INDUSTRIES.map((ind, i) => (
-            <Reveal key={ind.t} delay={i * 60}>
+            <Reveal key={ind.t.en} delay={i * 60}>
               <div className="ind-cell">
-                <h3 className="ind-t">{ind.t}</h3>
-                <p className="ind-msg">{ind.msg}</p>
+                <h3 className="ind-t">{ind.t[lang]}</h3>
+                <p className="ind-msg">{ind.msg[lang]}</p>
                 <ul className="ind-bullets">
                   {ind.bullets.map((b) => (
-                    <li key={b}>
-                      <span className="ac-tick">✓</span> {b}
+                    <li key={b.en}>
+                      <span className="ac-tick">✓</span> {b[lang]}
                     </li>
                   ))}
                 </ul>
@@ -947,7 +1174,7 @@ function Industries() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  See demo <Arrow size={11} />
+                  {lang === "ar" ? "شاهد العرض" : "See demo"} <Arrow size={11} />
                 </a>
               </div>
             </Reveal>
@@ -967,26 +1194,30 @@ function Memory() {
         <SectionMeta
           idx="06"
           label={lang === "ar" ? "الذاكرة الدائمة" : "persistent memory"}
-          right={<span className="mono">SPANS MONTHS</span>}
+          right={<span className="mono">{lang === "ar" ? "تمتدّ لأشهر" : "SPANS MONTHS"}</span>}
         />
         <div className="mem-grid">
           <div className="mem-card">
             <div className="mem-card-hd">
-              <div className="mem-av">L</div>
-              <div className="mem-card-name">{c.name}</div>
+              <div className="mem-av">{lang === "ar" ? "ل" : "L"}</div>
+              <div className="mem-card-name">{c.name[lang]}</div>
               <div className="mem-card-vip mono">VIP</div>
             </div>
             <table className="mem-table">
               <tbody>
                 {c.fields.map((f) => (
-                  <tr key={f.k}>
-                    <td className="mem-k mono">{f.k}</td>
-                    <td className="mem-v">{f.v}</td>
+                  <tr key={f.k.en}>
+                    <td className="mem-k mono">{f.k[lang]}</td>
+                    <td className="mem-v">{f.v[lang]}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className="mem-foot mono">∞ remembered across every conversation</div>
+            <div className="mem-foot mono">
+              {lang === "ar"
+                ? "∞ تُحفظ عبر كل محادثة"
+                : "∞ remembered across every conversation"}
+            </div>
           </div>
           <div>
             <h2 className="display-2">
@@ -1009,8 +1240,8 @@ function Memory() {
             </p>
             <ul className="mem-list">
               {MEMORY_BULLETS.map((m) => (
-                <li key={m}>
-                  <span className="ac-tick">✓</span> {m}
+                <li key={m.en}>
+                  <span className="ac-tick">✓</span> {m[lang]}
                 </li>
               ))}
             </ul>
@@ -1029,7 +1260,11 @@ function HowItWorks() {
         <SectionMeta
           idx="07"
           label={lang === "ar" ? "كيف يعمل" : "how it works"}
-          right={<span className="mono">10 MIN · NOT 10 WEEKS</span>}
+          right={
+            <span className="mono">
+              {lang === "ar" ? "١٠ دقائق · ليس ١٠ أسابيع" : "10 MIN · NOT 10 WEEKS"}
+            </span>
+          }
         />
         <div className="sec-title-row">
           <h2 className="display-2">
@@ -1057,8 +1292,8 @@ function HowItWorks() {
               <div className="how-cell">
                 <div className="how-num">{s.n}</div>
                 <div className="how-line" />
-                <h3 className="how-t">{s.t}</h3>
-                <p className="how-msg">{s.msg}</p>
+                <h3 className="how-t">{s.t[lang]}</h3>
+                <p className="how-msg">{s.msg[lang]}</p>
               </div>
             </Reveal>
           ))}
@@ -1074,18 +1309,22 @@ function PricingCardV2({ tier, lang }: { tier: PricingTier; lang: Lang }) {
       {tier.popular && (
         <div className="pv2-pop">{lang === "ar" ? "الأكثر طلباً" : "Most popular"}</div>
       )}
-      <div className="pv2-name">{tier.name}</div>
-      <div className="pv2-sub">{tier.sub}</div>
+      <div className="pv2-name">{tier.name[lang]}</div>
+      <div className="pv2-sub">{tier.sub[lang]}</div>
       <div className="pv2-price">
-        <span className="pv2-cur">AED</span>
+        <span className="pv2-cur">{lang === "ar" ? "د.إ" : "AED"}</span>
         <span className="pv2-num">{tier.monthly_aed.toLocaleString()}</span>
-        <span className="pv2-per">/mo</span>
+        <span className="pv2-per">{lang === "ar" ? "/شهر" : "/mo"}</span>
       </div>
-      <div className="pv2-setup mono">AED {tier.setup_aed.toLocaleString()} ONE-TIME SETUP</div>
+      <div className="pv2-setup mono">
+        {lang === "ar"
+          ? `د.إ ${tier.setup_aed.toLocaleString()} رسوم إعداد لمرة واحدة`
+          : `AED ${tier.setup_aed.toLocaleString()} ONE-TIME SETUP`}
+      </div>
       <ul className="pv2-feats">
         {tier.includes.map((f) => (
-          <li key={f}>
-            <span className="pv2-tick">✓</span> {f}
+          <li key={f.en}>
+            <span className="pv2-tick">✓</span> {f[lang]}
           </li>
         ))}
       </ul>
@@ -1104,7 +1343,11 @@ function Pricing() {
         <SectionMeta
           idx="08"
           label={lang === "ar" ? "الأسعار" : "pricing"}
-          right={<span className="mono">AED · NO SURPRISES</span>}
+          right={
+            <span className="mono">
+              {lang === "ar" ? "د.إ · بلا مفاجآت" : "AED · NO SURPRISES"}
+            </span>
+          }
         />
         <div className="sec-title-row">
           <h2 className="display-2">
@@ -1181,36 +1424,45 @@ function CTA() {
 
 function AgentsFooter() {
   const { lang } = useLang();
-  type FooterLink = [string, string];
-  type FooterCol = [string, FooterLink[]];
+  type FooterLink = { label: BiString; href: string };
+  type FooterCol = { heading: BiString; links: FooterLink[] };
   const cols: FooterCol[] = [
-    [
-      lang === "ar" ? "المنتج" : "Product",
-      [
-        ["Services", "/"],
-        ["Pricing", "/pricing"],
-        ["Process", "/demo"],
-        ["Dashboard", "/app"],
+    {
+      heading: { en: "Product", ar: "المنتج" },
+      links: [
+        { label: { en: "Services", ar: "الخدمات" }, href: "/" },
+        { label: { en: "Pricing", ar: "الأسعار" }, href: "/pricing" },
+        { label: { en: "Process", ar: "العملية" }, href: "/demo" },
+        { label: { en: "Dashboard", ar: "اللوحة" }, href: "/app" },
       ],
-    ],
-    [
-      lang === "ar" ? "بدء" : "Get started",
-      [
-        ["Sign up", "/app/onboarding"],
-        ["Login", "/app"],
-        ["Book free audit", "/app/onboarding"],
-        ["Live WhatsApp demo", "https://wa.me/12058582516?text=Hi"],
+    },
+    {
+      heading: { en: "Get started", ar: "ابدأ" },
+      links: [
+        { label: { en: "Sign up", ar: "تسجيل" }, href: "/app/onboarding" },
+        { label: { en: "Login", ar: "دخول" }, href: "/app" },
+        {
+          label: { en: "Book free audit", ar: "احجز تدقيقاً مجانياً" },
+          href: "/app/onboarding",
+        },
+        {
+          label: { en: "Live WhatsApp demo", ar: "عرض واتساب مباشر" },
+          href: "https://wa.me/12058582516?text=Hi",
+        },
       ],
-    ],
-    [
-      lang === "ar" ? "الشركة" : "Company",
-      [
-        ["About AI Agent Systems", "#"],
-        ["dcp.sa (parent)", "https://dcp.sa"],
-        ["Privacy", "#"],
-        ["Terms", "#"],
+    },
+    {
+      heading: { en: "Company", ar: "الشركة" },
+      links: [
+        {
+          label: { en: "About AI Agent Systems", ar: "عن AI Agent Systems" },
+          href: "#",
+        },
+        { label: { en: "dcp.sa (parent)", ar: "dcp.sa (الأم)" }, href: "https://dcp.sa" },
+        { label: { en: "Privacy", ar: "الخصوصية" }, href: "#" },
+        { label: { en: "Terms", ar: "الشروط" }, href: "#" },
       ],
-    ],
+    },
   ];
   return (
     <footer className="agents-foot">
@@ -1222,7 +1474,9 @@ function AgentsFooter() {
               <img src="/dcp-logo-square.jpeg" alt="" />
             </div>
             <div>
-              <div className="af-name">AI Agent Systems</div>
+              <div className="af-name">
+                {lang === "ar" ? "أنظمة الموظفين الذكيين" : "AI Agent Systems"}
+              </div>
               <div className="af-dom mono">agents.dcp.sa</div>
             </div>
           </div>
@@ -1232,18 +1486,19 @@ function AgentsFooter() {
               : "AI employees that run your business on WhatsApp — in Arabic and English. Live in the UAE and Saudi Arabia."}
           </p>
           <div className="af-status mono">
-            <span className="d" /> All systems operational ·{" "}
+            <span className="d" />{" "}
+            {lang === "ar" ? "جميع الأنظمة تعمل" : "All systems operational"} ·{" "}
             <span className="t">RUH 38ms · DXB 41ms</span>
           </div>
         </div>
         <div className="af-grid">
-          {cols.map(([h, ls]) => (
-            <div key={h}>
-              <h4 className="af-h mono">{h}</h4>
+          {cols.map((col) => (
+            <div key={col.heading.en}>
+              <h4 className="af-h mono">{col.heading[lang]}</h4>
               <ul>
-                {ls.map(([l, href]) => (
-                  <li key={l}>
-                    <a href={href}>{l}</a>
+                {col.links.map((l) => (
+                  <li key={l.label.en}>
+                    <a href={l.href}>{l.label[lang]}</a>
                   </li>
                 ))}
               </ul>
@@ -1251,8 +1506,14 @@ function AgentsFooter() {
           ))}
         </div>
         <div className="af-bottom mono">
-          <span>© 2026 AI Agent Systems · Dubai, UAE · A product of DC Power Solutions</span>
-          <span>Built in Riyadh · Hosted close to home</span>
+          <span>
+            {lang === "ar"
+              ? "© ٢٠٢٦ أنظمة الموظفين الذكيين · دبي، الإمارات · من إنتاج DC Power Solutions"
+              : "© 2026 AI Agent Systems · Dubai, UAE · A product of DC Power Solutions"}
+          </span>
+          <span>
+            {lang === "ar" ? "صُنع في الرياض · مستضاف قريباً منك" : "Built in Riyadh · Hosted close to home"}
+          </span>
         </div>
       </div>
     </footer>

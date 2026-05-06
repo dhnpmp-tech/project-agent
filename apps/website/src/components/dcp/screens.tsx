@@ -4,7 +4,7 @@
 // Ported from /tmp/dcp-design/assets/screens.jsx
 // (WhatsAppThread + OwnerBriefCard + AgentCard).
 
-import { fmtInt, type LangContextValue } from "./lib";
+import { fmtInt, useLang, type LangContextValue } from "./lib";
 import type { DemoMessage, OwnerBriefItem } from "@/lib/demo-data";
 import type { Agent } from "@/lib/agents-data";
 
@@ -52,24 +52,30 @@ export function WhatsAppThread({ thread, side, label, sublabel, lang }: WhatsApp
 
 /* AgentCard — homepage employee tile.
    Ported from /tmp/dcp-design/assets/screens.jsx (lines 38-53).
-   The original read a.ar.{name,role,summary} for Arabic; our typed Agent has
-   no `ar` sub-object, so we render the canonical English fields in both
-   languages (matches what the rest of the homepage already does). */
+   Bilingual fields are resolved via the active language context. */
 interface AgentCardProps {
   a: Agent;
 }
 
+const TIER_LABEL_AR: Record<Agent["tier"], string> = {
+  starter: "البداية",
+  growth: "النمو",
+  pro: "المحترف",
+  enterprise: "المؤسسات",
+};
+
 export function AgentCard({ a }: AgentCardProps) {
+  const { lang } = useLang();
   return (
     <div className="agent-card">
       <div className="agent-num mono">§ {a.code}</div>
-      <div className="agent-av">{a.monogram || a.name[0]}</div>
-      <div className="agent-name">{a.name}</div>
-      <div className="agent-role mono">{a.pitch}</div>
-      <p className="agent-sum">{a.summary}</p>
+      <div className="agent-av">{a.monogram || a.name[lang][0]}</div>
+      <div className="agent-name">{a.name[lang]}</div>
+      <div className="agent-role mono">{a.pitch[lang]}</div>
+      <p className="agent-sum">{a.summary[lang]}</p>
       <div className="agent-tier mono">
         <span className={"tier-dot tier-" + a.tier} />
-        {a.tier}
+        {lang === "ar" ? TIER_LABEL_AR[a.tier] : a.tier}
       </div>
     </div>
   );
@@ -94,7 +100,7 @@ export function OwnerBriefCard({ items, lang }: OwnerBriefCardProps) {
         {items.map((it, i) => (
           <li key={i}>
             <span className="brief-t mono">{it.t}</span>
-            <span className={"brief-k mono k-" + it.k.toLowerCase()}>{it.k}</span>
+            <span className={"brief-k mono k-" + it.k.toLowerCase()}>{it.kLabel}</span>
             <span className="brief-msg">{it.msg}</span>
           </li>
         ))}

@@ -470,8 +470,8 @@ function CompareMatrix() {
               <div key={a.id} className="cmp-row">
                 <div className="cmp-agent">
                   <span className="cmp-agent-num mono">§ {a.code}</span>
-                  <span className="cmp-agent-n">{a.name}</span>
-                  <span className="cmp-agent-r mono">{a.pitch}</span>
+                  <span className="cmp-agent-n">{a.name.en}</span>
+                  <span className="cmp-agent-r mono">{a.pitch.en}</span>
                 </div>
                 {TIER_ORDER.map((_, idx) => (
                   <div
