@@ -140,7 +140,7 @@ _last_activity: dict[str, float] = {}
 # ═══════════════════════════════════════════════════════
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5Ynpxa3RpcGltYm11anRvd296Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDUwOTY5NCwiZXhwIjoyMDkwMDg1Njk0fQ.-DoNS5fZv3aUsFcugKg23yh9RqXXFIlgc5_9Hrk97bg")
+_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -744,7 +744,7 @@ PHONE_TO_CLIENT = {
 }
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5Ynpxa3RpcGltYm11anRvd296Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDUwOTY5NCwiZXhwIjoyMDkwMDg1Njk0fQ.-DoNS5fZv3aUsFcugKg23yh9RqXXFIlgc5_9Hrk97bg")
+SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 
 
 class RegisterRouteRequest(BaseModel):
@@ -3551,6 +3551,125 @@ async def ceo_cron_github():
 @app.post("/ceo/cron/market-intel")
 async def ceo_cron_intel():
     return await cron_market_intel()
+
+# ─── No-Show Recovery ────────────────────────────────────────────────────
+
+from no_show_recovery import (
+    handle_deposit_response,
+    nightly_sweep as no_show_nightly_sweep,
+    request_deposit as no_show_request_deposit,
+)
+
+
+@app.post("/no-show/cron/sweep")
+async def no_show_cron_sweep():
+    """Hourly cron — walk upcoming bookings and progress reminder/deposit/release."""
+    return await no_show_nightly_sweep()
+
+
+@app.post("/no-show/deposit/request/{booking_id}")
+async def no_show_request(booking_id: str):
+    """Manual trigger from dashboard — request deposit for a single booking."""
+    booking = await _fetch_booking_for_action(booking_id)
+    if not booking:
+        return {"error": "booking_not_found"}
+    return await no_show_request_deposit(booking)
+
+
+@app.post("/no-show/deposit/webhook")
+async def no_show_deposit_webhook(request: Request):
+    """Provider webhook — Tabby/Tamara/Stripe POST here when payment settles."""
+    body = await request.json()
+    booking_id = body.get("booking_id") or body.get("metadata", {}).get("booking_id")
+    paid = (body.get("status") or "").lower() in {"paid", "captured", "succeeded"}
+    if not booking_id:
+        return {"error": "missing_booking_id"}
+    return await handle_deposit_response(booking_id, paid)
+
+
+async def _fetch_booking_for_action(booking_id: str):
+    from no_show_recovery import _fetch_booking
+    return await _fetch_booking(booking_id)
+
+
+# ─── Receipt → Expense ───────────────────────────────────────────────────
+
+from receipt_capture import handle_receipt as _handle_receipt
+
+
+# ─── Daily Pulse ─────────────────────────────────────────────────────────
+
+from daily_pulse import (
+    compose_pulse as _pulse_compose,
+    cron_daily_pulse_all_clients as _pulse_cron,
+    send_pulse as _pulse_send,
+)
+
+
+@app.get("/owner/daily-pulse/preview/{client_id}")
+async def daily_pulse_preview(client_id: str):
+    """Dashboard preview tile — composes the pulse without delivering it."""
+    return await _pulse_compose(client_id)
+
+
+@app.post("/owner/daily-pulse/send/{client_id}")
+async def daily_pulse_send(client_id: str):
+    """Manual trigger — composes and pushes to owner WhatsApp."""
+    return await _pulse_send(client_id)
+
+
+@app.post("/owner/daily-pulse/cron")
+async def daily_pulse_cron():
+    """Hourly scheduler entrypoint — sends to clients in their delivery window."""
+    return await _pulse_cron()
+
+
+# ─── Skill Exporter (Hermes-style) ───────────────────────────────────────
+
+from skill_exporter import (
+    export_skills_for_client as _export_skills,
+    parse_skill_md as _parse_skill_md,
+)
+
+
+@app.get("/karpathy/skills/{client_id}")
+async def karpathy_export_skills(client_id: str):
+    """Return verified karpathy rules as SKILL.md files."""
+    skills = await _export_skills(client_id)
+    return {"client_id": client_id, "count": len(skills), "skills": skills}
+
+
+@app.post("/karpathy/skills/parse")
+async def karpathy_parse_skill(request: Request):
+    """Parse a single SKILL.md (body in JSON `content`) back to a rule dict.
+
+    Lets the dashboard render an editable form from a hand-edited SKILL.md.
+    """
+    body = await request.json()
+    return _parse_skill_md(body.get("content", ""))
+
+
+@app.post("/owner/receipt")
+async def owner_receipt(request: Request):
+    """Receive an owner receipt image and extract → log → confirm.
+
+    Body: { client_id, owner_phone, media_url, default_currency? }
+    Wire Kapso owner-channel image webhooks to this endpoint.
+    """
+    body = await request.json()
+    client_id = body.get("client_id")
+    owner_phone = body.get("owner_phone")
+    media_url = body.get("media_url")
+    default_currency = body.get("default_currency", "AED")
+    if not (client_id and owner_phone and media_url):
+        return {"error": "client_id, owner_phone, and media_url are required"}
+    return await _handle_receipt(
+        client_id=client_id,
+        owner_phone=owner_phone,
+        media_url=media_url,
+        default_currency=default_currency,
+    )
+
 
 @app.get("/health")
 def health():
