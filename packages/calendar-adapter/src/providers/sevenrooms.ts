@@ -100,11 +100,11 @@ export class SevenRoomsAdapter implements CalendarAdapter {
         `&time_end=${timeEnd}`
     )) as {
       data: {
-        availability: Array<{
+        availability: {
           time: string;
           shift_id?: string;
           type?: string;
-        }>;
+        }[];
       };
     };
 

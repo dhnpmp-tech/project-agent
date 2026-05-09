@@ -35,7 +35,6 @@ export function createCalendarAdapter(
     case "sevenrooms":
       return new SevenRoomsAdapter(credentials);
     default: {
-      const _exhaustive: never = credentials;
       throw new Error(
         `Unknown calendar provider: ${(credentials as ProviderCredentials).provider}`
       );
@@ -47,13 +46,13 @@ export function createCalendarAdapter(
  * Registry of all supported providers with metadata.
  * Useful for building UI dropdowns in the client dashboard.
  */
-export const SUPPORTED_PROVIDERS: Array<{
+export const SUPPORTED_PROVIDERS: {
   provider: CalendarProvider;
   name: string;
   writable: boolean;
   description: string;
   region_notes?: string;
-}> = [
+}[] = [
   {
     provider: "google",
     name: "Google Calendar",

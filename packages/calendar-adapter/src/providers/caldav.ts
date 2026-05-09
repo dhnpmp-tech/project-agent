@@ -8,7 +8,7 @@ import type {
   BookingResult,
   CancelResult,
 } from "../types";
-import { computeFreeSlots, buildDateTime } from "../utils";
+import { computeFreeSlots } from "../utils";
 import { v4 as uuidv4 } from "uuid";
 
 /**

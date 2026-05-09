@@ -73,8 +73,7 @@ export class ICalAdapter implements CalendarAdapter {
 
   async testConnection(): Promise<{ ok: boolean; error?: string }> {
     try {
-      const events = await nodeIcal.async.fromURL(this.feedUrl);
-      const count = Object.keys(events).length;
+      await nodeIcal.async.fromURL(this.feedUrl);
       return { ok: true };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
