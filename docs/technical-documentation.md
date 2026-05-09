@@ -1,8 +1,9 @@
 # DCP AI Agent Platform — Technical Documentation
 
-**Version:** 1.0
-**Last Updated:** March 28, 2026
+**Version:** 1.4 (synced)
+**Last Updated:** April 26, 2026
 **Repository:** https://github.com/dhnpmp-tech/project-agent
+**Canonical spec:** `docs/2026-04-05-project-agent-technical-spec.md` (v1.4) — refer there for the authoritative architecture; this doc is an operator-friendly overview.
 
 ---
 
@@ -21,67 +22,53 @@ The platform is designed for scale: one platform account manages hundreds of cli
 ```
                     ┌─────────────────────────────────┐
                     │         End Customers            │
-                    │   (WhatsApp / Web Chat / SMS)    │
+                    │       (WhatsApp / Web)           │
                     └──────────────┬──────────────────┘
                                    │
                     ┌──────────────▼──────────────────┐
                     │        Kapso Platform            │
                     │   (Multi-tenant WhatsApp API)    │
                     │                                  │
-                    │  Customer A ←→ Phone Number A    │
-                    │  Customer B ←→ Phone Number B    │
+                    │  Per client: customer # + owner #│
                     └──────────────┬──────────────────┘
                                    │ webhooks
                     ┌──────────────▼──────────────────┐
-                    │     n8n Workflow Engine          │
-                    │     (n8n.dcp.sa — VPS)           │
+                    │  Hostinger VPS (Docker+Traefik)  │
                     │                                  │
-                    │  ┌─────────────────────────┐     │
-                    │  │ WhatsApp Intelligence   │     │
-                    │  │ Agent (20 nodes)        │     │
-                    │  │ • Parse message          │     │
-                    │  │ • Fetch knowledge base   │     │
-                    │  │ • Fetch customer memory  │     │
-                    │  │ • MiniMax M2.7 AI        │     │
-                    │  │ • Log activity           │     │
-                    │  └─────────────────────────┘     │
+                    │  ┌─────────────────────────────┐ │
+                    │  │ FastAPI prompt-builder      │ │
+                    │  │ • Assembles per-tenant      │ │
+                    │  │   prompt on each turn       │ │
+                    │  │ • Routes to Claude Sonnet   │ │
+                    │  │   4.6 (responses) /         │ │
+                    │  │   Haiku 4.5 (classify)      │ │
+                    │  │ • Reads vault_notes via     │ │
+                    │  │   pgvector                  │ │
+                    │  └─────────────────────────────┘ │
                     │                                  │
-                    │  ┌─────────────────────────┐     │
-                    │  │ Owner Brain Agent       │     │
-                    │  │ (8 nodes)               │     │
-                    │  │ • Owner messages         │     │
-                    │  │ • Daily briefs (9AM)     │     │
-                    │  │ • Knowledge base updates │     │
-                    │  │ • MiniMax M2.7 AI        │     │
-                    │  └─────────────────────────┘     │
+                    │  ┌─────────────────────────────┐ │
+                    │  │ n8n (owner-brain only)      │ │
+                    │  │ • Owner WhatsApp inbox      │ │
+                    │  │ • Daily briefs (9AM)        │ │
+                    │  │ • Karpathy/GEPA crons       │ │
+                    │  │ • MiniMax M2.7              │ │
+                    │  └─────────────────────────────┘ │
+                    │                                  │
+                    │  Mem0 + Graphiti (memory layer)  │
                     └──────────────┬──────────────────┘
                                    │
                     ┌──────────────▼──────────────────┐
                     │         Supabase                 │
-                    │   (PostgreSQL + Auth + RLS)      │
-                    │                                  │
-                    │  8 tables with full RLS:         │
-                    │  • clients                       │
-                    │  • agent_deployments             │
-                    │  • business_knowledge            │
-                    │  • customer_memory               │
-                    │  • conversation_summaries        │
-                    │  • activity_logs                 │
-                    │  • api_keys                      │
-                    │  • calendar_configs              │
+                    │  (PostgreSQL 17 + Auth + RLS +   │
+                    │   pgvector) — 21 tables          │
                     └──────────────┬──────────────────┘
                                    │
                     ┌──────────────▼──────────────────┐
-                    │    Client Dashboard (Vercel)     │
-                    │    agents.dcp.sa                 │
+                    │  Vercel — Next.js apps           │
+                    │  • agents.dcp.sa (marketing)     │
+                    │  • agents.dcp.sa/app (dashboard) │
                     │                                  │
-                    │  • Auth (login/signup/reset)     │
-                    │  • 6-step onboarding wizard      │
-                    │  • Agent management dashboard    │
-                    │  • WhatsApp inbox                │
-                    │  • Reports & analytics           │
-                    │  • Calendar integrations         │
-                    │  • Demo chat pages               │
+                    │  Composio (per-agent OAuth vault)│
                     └──────────────────────────────────┘
 ```
 
@@ -140,22 +127,25 @@ A customer who texted in January is greeted by name in December with their prefe
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **Frontend (Dashboard)** | Next.js 15 + React 19 + Tailwind CSS | Client portal, onboarding, agent management |
-| **Frontend (Website)** | Next.js 15 + Framer Motion | Marketing site with dark theme, animations |
-| **Database** | Supabase (PostgreSQL 17 + Auth + RLS) | Multi-tenant data with row-level security |
+| **Frontend (Dashboard)** | Next.js 15 + React 19 + Tailwind CSS 3.4 | Client portal, onboarding, agent management |
+| **Frontend (Website)** | Next.js 15 + Framer Motion | Marketing site, dark theme, Ask Rami widget |
+| **Database** | Supabase (PostgreSQL 17 + Auth + RLS + pgvector) | Multi-tenant data with row-level security |
 | **WhatsApp API** | Kapso Platform API | Multi-tenant WhatsApp, one account for all clients |
-| **AI (Agents)** | MiniMax M2.7 (230B params, 10B active) | Customer responses, owner brain, analysis |
-| **AI (Classification)** | MiniMax M2.7 | Intent classification, sentiment analysis |
-| **Web Search** | Firecrawl API | Live context (weather, events, traffic) for AI responses |
-| **Workflow Engine** | n8n (self-hosted) | Message processing, webhook routing, cron jobs |
+| **AI (Customer agents)** | Claude Sonnet 4.6 (responses) + Claude Haiku 4.5 (classify) | Per-turn customer replies + intent/sentiment |
+| **AI (Owner brain + Rami)** | MiniMax M2.7 (230B MoE) | Owner WhatsApp brain + Rami CEO chat widget |
+| **AI (Memory analysis)** | MiniMax M2.7 | Post-conversation summarization (~$0.001/convo) |
+| **Vector embeddings** | OpenAI text-embedding-3-small (1536-dim) | `vault_notes` semantic retrieval |
+| **Memory layer** | Mem0 + Graphiti (Zep) on VPS | Long-term entity & temporal memory |
+| **Backend (FastAPI)** | prompt-builder service on VPS | Replaced n8n Code nodes for prompt assembly |
+| **Workflow orchestration** | n8n (self-hosted) | Owner brain workflows only (not per-client) |
+| **Tool integrations** | Composio | Per-agent OAuth vault, scope-minimized |
 | **Email** | Resend | Transactional emails (6 templates) |
 | **Payments** | Stripe (planned) | Subscription billing |
-| **Calendar** | Google Calendar, Outlook, CalDAV, SevenRooms | Booking and appointment management |
-| **Infrastructure** | Docker + Nginx + Let's Encrypt | VPS deployment with auto-SSL |
-| **Hosting (Dashboard)** | Vercel | Auto-deploy from GitHub |
-| **Hosting (Website)** | HereNow | Static site hosting |
-| **Build System** | Turborepo + pnpm | Monorepo management |
-| **Testing** | Vitest | Unit tests (32 tests in provisioning-sdk) |
+| **Calendar** | Google, Outlook, CalDAV, SevenRooms, iCal | Booking and appointment management |
+| **Infrastructure** | Docker + Traefik v3 + Let's Encrypt | VPS deployment with auto-SSL |
+| **Hosting (Dashboard + Website)** | Vercel (cross-project rewrite at agents.dcp.sa) | Auto-deploy from GitHub |
+| **Build System** | Turbo 2.4 + pnpm 9.15 | Monorepo management |
+| **Testing** | Vitest 3 + pytest | Unit tests (TS) + integration tests (FastAPI) |
 
 ---
 
@@ -234,20 +224,18 @@ project-agent/
 │   │       ├── sevenrooms.ts      # SevenRooms restaurant bookings
 │   │       └── types.ts           # Shared calendar types
 │   │
-│   └── supabase/                  # Database layer
-│       ├── migrations/
-│       │   ├── 001_clients.sql
-│       │   ├── 002_agent_deployments.sql
-│       │   ├── 003_activity_logs.sql
-│       │   ├── 004_api_keys.sql
-│       │   ├── 005_rls_policies.sql
-│       │   ├── 006_calendar_providers.sql
-│       │   ├── 007_business_knowledge.sql
-│       │   ├── 008_customer_memory.sql
-│       │   └── 009_fix_rls_policies.sql  # JWT-based RLS (auth.jwt())
+│   └── supabase/                  # Database layer (core migrations)
+│       ├── migrations/            # 001-009 (clients, agents, RLS, knowledge, memory, booking)
 │       └── seed.sql
 │
-├── agent-templates/               # n8n workflow templates
+├── backend/
+│   └── prompt-builder/            # FastAPI service on VPS
+│       ├── migrations/            # 010-013 (vault, Composio, Karpathy, GEPA, Rami chat)
+│       ├── ceo_persona.py         # Rami CEO chat persona
+│       ├── ceo_chat_engine.py     # SSE chat engine
+│       └── conftest.py            # pytest env bootstrap
+│
+├── agent-templates/               # n8n workflow templates (owner brain only)
 │   ├── _shared/
 │   │   ├── owner-brain-system-prompt.md
 │   │   ├── owner-brain-workflow.json
@@ -294,7 +282,15 @@ project-agent/
 
 ## 5. Database Schema
 
-### 5.1 Tables
+The platform has **21 tables** across two migration groups. See the v1.4 spec §19 for full reconciliation. The detail tables shown below are the load-bearing core; vault, Composio, Karpathy, GEPA, and Rami chat tables are documented in the spec.
+
+| Group | Migrations | Tables |
+|-------|-----------|--------|
+| Core | `packages/supabase/migrations/` 001-009 | clients, agent_deployments, activity_logs, api_keys, rls_policies, calendar_configs, business_knowledge, customer_memory, conversation_summaries, booking_state |
+| Vault + coordination | `backend/prompt-builder/migrations/` 010-012 | vault_notes, vault_categories, composio_connections, composio_tool_whitelist, karpathy_rules, gepa_runs, owner_actions, owner_briefings, agent_health |
+| Rami CEO chat | `backend/prompt-builder/migrations/` 011 | ceo_chat_sessions, ceo_chat_messages, ceo_chat_rate_limit |
+
+### 5.1 Core Tables (selected)
 
 **clients** — One row per tenant
 | Column | Type | Description |
@@ -371,46 +367,62 @@ Service role key bypasses all RLS for admin operations (n8n workflows, provision
 
 ```
 1. Customer sends WhatsApp message
-2. Kapso receives → fires webhook to n8n
-3. n8n parses the WhatsApp payload
-4. n8n fetches business_knowledge from Supabase (services, FAQ, menu, hours)
-5. n8n fetches customer_memory from Supabase (name, preferences, history)
-6. n8n builds system prompt with full context
-7. MiniMax M2.7 generates response (~500ms)
-8. <think> tags stripped from output
-9. Response sent back via Kapso → WhatsApp
-10. Activity logged to Supabase
-11. Post-conversation: customer memory updated asynchronously
+2. Kapso receives → fires webhook to FastAPI prompt-builder (VPS)
+3. FastAPI identifies tenant via phone_number_id → client_id
+4. FastAPI fetches business_knowledge + vault_notes (pgvector top-k)
+   + customer_memory + booking_state + Mem0/Graphiti context
+5. Haiku 4.5 classifies intent (booking, complaint, FAQ, lead, etc.)
+6. FastAPI assembles per-tenant system prompt
+7. Claude Sonnet 4.6 generates response
+8. Response sent back via Kapso → WhatsApp
+9. Activity logged to Supabase
+10. Post-conversation: MiniMax M2.7 summarizes + updates customer_memory
+    + writes to Mem0/Graphiti (~$0.001/convo)
 ```
 
 ### 6.2 Owner Brain Flow
 
 ```
 1. Owner sends WhatsApp message (or daily cron fires at 9AM Dubai time)
-2. n8n parses the message / triggers daily brief
-3. n8n fetches business_knowledge + recent activity_logs from Supabase
+2. n8n owner-brain workflow parses the message / triggers daily brief
+3. n8n fetches business_knowledge + vault_notes + recent activity_logs
 4. MiniMax M2.7 generates response as "AI Chief of Staff"
-5. If owner sent a command ("add special: X"), AI interprets and updates knowledge base
+5. If owner sent a command ("add special: X"), MiniMax extracts intent
+   and writes to business_knowledge / vault_notes (pending owner approval
+   for material changes via owner_actions table)
 6. Response sent back via Kapso → Owner WhatsApp
 ```
 
-### 6.3 Web-Enriched Responses (Firecrawl)
+### 6.3 Karpathy Loop + GEPA (nightly)
+
+```
+1. Karpathy nightly cron scans recent activity per agent
+2. MiniMax M2.7 distills behavioral patterns → karpathy_rules
+3. GEPA evolves the agent's system prompt against rules → gepa_runs
+4. Owner approves significant prompt changes via owner_actions queue
+5. Approved prompts go live in next FastAPI prompt assembly
+```
+
+### 6.4 Web-Enriched Responses (Firecrawl)
 
 When a customer asks about weather, events, traffic, or nearby attractions:
 
 ```
-1. Message classified as needing web context
+1. Haiku 4.5 classifies the message as needing web context
 2. Firecrawl Search API called with relevant query
-3. Top 3 results (with full page content) injected into system prompt
-4. AI weaves live web data into a restaurant-relevant response
-   "It's 28°C and gorgeous outside! Perfect for our outdoor terrace 😊"
+3. Top 3 results (with full page content) injected into FastAPI prompt
+4. Sonnet 4.6 weaves live web data into a tenant-relevant response
+   "It's 28°C and gorgeous outside! Perfect for our outdoor terrace."
 ```
 
-### 6.4 Model Configuration
+### 6.5 Model Configuration
 
 | Model | Endpoint | Use Case | Cost |
 |-------|----------|----------|------|
-| MiniMax-M2.7 | api.minimax.io/v1/chat/completions | All AI responses | ~$0.001/conversation |
+| Claude Sonnet 4.6 | api.anthropic.com | Customer responses | ~$0.003/conversation |
+| Claude Haiku 4.5 | api.anthropic.com | Intent + sentiment classification | ~$0.0001/classification |
+| MiniMax M2.7 | api.minimax.io/v1/chat/completions | Owner brain + memory analysis + Rami CEO chat | ~$0.001/conversation |
+| OpenAI text-embedding-3-small | api.openai.com | `vault_notes` embeddings | ~$0.00001/note |
 | Firecrawl Search | api.firecrawl.dev/v1/search | Live web context | ~$0.01/search |
 | Firecrawl Scrape | api.firecrawl.dev/v1/scrape | Website crawling (onboarding) | ~$0.01/page |
 
@@ -484,25 +496,32 @@ All templates use dark theme matching the website (bg #09090b, green #22c55e acc
 
 | Service | Container | Port | URL |
 |---------|-----------|------|-----|
-| n8n | project-agent-n8n | 5678 | https://n8n.dcp.sa |
-| PostgreSQL 16 | project-agent-postgres | 5432 | Internal |
+| FastAPI prompt-builder | prompt-builder | 8000 | https://prompt-builder.dcp.sa |
+| n8n (owner-brain only) | project-agent-n8n | 5678 | https://n8n.dcp.sa |
+| Mem0 | mem0 | 8001 | Internal |
+| Graphiti (Zep) | graphiti | 8002 | Internal |
 | Redis 7 | project-agent-redis | 6379 | Internal |
-| Nginx | System service | 80/443 | Reverse proxy |
+| Traefik v3 | traefik | 80/443 | Reverse proxy + auto-SSL |
 
 ### 9.3 Active n8n Workflows
 
-| Workflow | Nodes | Webhook | Status |
-|----------|-------|---------|--------|
-| WhatsApp Intelligence Agent | 11 | /webhook/whatsapp-webhook | ACTIVE |
-| Owner Brain Agent | 8 | /webhook/owner-brain | ACTIVE |
+| Workflow | Webhook | Status |
+|----------|---------|--------|
+| Owner Brain | /webhook/owner-brain | ACTIVE |
+| Karpathy nightly | cron | ACTIVE |
+| GEPA prompt evolution | cron | ACTIVE |
+
+Customer-facing message handling runs in the FastAPI prompt-builder, not n8n.
 
 ### 9.4 Deployments
 
-| App | Platform | URL | Domain |
-|-----|----------|-----|--------|
-| Client Dashboard | Vercel | project-agent-chi.vercel.app | agents.dcp.sa |
-| Marketing Website | HereNow | clear-fjord-96p9.here.now | — |
-| n8n Engine | Docker (VPS) | n8n.dcp.sa | n8n.dcp.sa |
+| App | Platform | URL |
+|-----|----------|-----|
+| Marketing Website | Vercel (project `marketing-website`) | https://agents.dcp.sa/ |
+| Client Dashboard | Vercel (project `project-agent`) | https://agents.dcp.sa/app/* |
+| Dashboard origin (do not link directly) | Vercel | https://project-agent-dc11.vercel.app |
+| FastAPI prompt-builder | Docker on Hostinger VPS | https://prompt-builder.dcp.sa |
+| n8n owner brain | Docker on Hostinger VPS | https://n8n.dcp.sa |
 
 ---
 
@@ -543,7 +562,7 @@ All templates use dark theme matching the website (bg #09090b, green #22c55e acc
 
 ## 11. Environment Variables
 
-### Vercel (Dashboard)
+### Vercel (Dashboard + Marketing)
 
 | Variable | Source | Purpose |
 |----------|--------|---------|
@@ -552,19 +571,28 @@ All templates use dark theme matching the website (bg #09090b, green #22c55e acc
 | SUPABASE_SERVICE_ROLE_KEY | Supabase | Admin API key (bypasses RLS) |
 | KAPSO_PLATFORM_API_KEY | Kapso | WhatsApp provisioning |
 | RESEND_API_KEY | Resend | Transactional emails |
-| MINIMAX_API_KEY | MiniMax | AI model API |
+| ANTHROPIC_API_KEY | Anthropic | Claude Sonnet 4.6 + Haiku 4.5 |
+| MINIMAX_API_KEY | MiniMax | Owner brain + Rami CEO chat |
+| OPENAI_API_KEY | OpenAI | text-embedding-3-small for vault_notes |
 | FIRECRAWL_API_KEY | Firecrawl | Web search/scrape |
+| COMPOSIO_API_KEY | Composio | Per-agent OAuth vault |
 | GOOGLE_CALENDAR_CLIENT_ID | Google | Calendar integration |
 | GOOGLE_CALENDAR_CLIENT_SECRET | Google | Calendar integration |
+| CALENDAR_ENCRYPTION_KEY | self-managed | AES-256-GCM key for `calendar_configs` |
 
-### n8n Server
+### VPS (FastAPI prompt-builder + n8n)
 
 | Variable | Purpose |
 |----------|---------|
-| MINIMAX_API_KEY | AI responses in workflows |
+| ANTHROPIC_API_KEY | Sonnet 4.6 + Haiku 4.5 for customer-agent responses |
+| MINIMAX_API_KEY | Owner brain + memory analysis |
+| OPENAI_API_KEY | Embeddings for vault retrieval |
 | KAPSO_PLATFORM_API_KEY | WhatsApp message routing |
 | SUPABASE_URL | Database access |
 | SUPABASE_SERVICE_ROLE_KEY | Database admin access |
+| MEM0_API_URL | Internal Mem0 endpoint |
+| GRAPHITI_API_URL | Internal Graphiti endpoint |
+| COMPOSIO_API_KEY | Per-agent tool execution |
 
 ---
 
@@ -610,10 +638,11 @@ All templates use dark theme matching the website (bg #09090b, green #22c55e acc
 - Session refresh after onboarding to update JWT metadata
 
 ### 13.2 Authorization
-- Row Level Security (RLS) on all 8 tables
+- Row Level Security (RLS) on all 21 tables
 - All policies use `auth.jwt() -> 'user_metadata' ->> 'client_id'`
-- Service role key for admin operations (n8n, provisioning)
+- Service role key for admin operations (FastAPI prompt-builder, n8n owner brain, provisioning)
 - API routes validate session or service role key
+- Composio per-agent OAuth tokens scoped to a single `agent_deployment` (whitelist enforced via `composio_tool_whitelist`)
 
 ### 13.3 Data Isolation
 - Each client can only see their own data via RLS
@@ -622,8 +651,9 @@ All templates use dark theme matching the website (bg #09090b, green #22c55e acc
 
 ### 13.4 Rate Limiting
 - Demo chat: 30 requests/minute per IP
+- Rami CEO chat: sliding-window IP limit via `ceo_chat_rate_limit` (composite PK: ip + bucket_start_minute)
 - Supabase auth: 2 emails/hour, 30 signups/hour
-- n8n webhooks: No rate limit (Kapso handles this)
+- Kapso webhooks: No rate limit (Kapso handles this)
 
 ---
 
@@ -647,18 +677,18 @@ All templates use dark theme matching the website (bg #09090b, green #22c55e acc
 
 | Service | Monthly Cost | Notes |
 |---------|-------------|-------|
-| Supabase | $0 | Micro (free) plan |
-| Vercel | $0 | Hobby (free) plan |
-| HereNow | $0 | Authenticated (permanent) |
-| Hostinger VPS | Shared with DCP | ~$0 marginal |
+| Supabase | Micro tier | Scales as tenants grow |
+| Vercel | Hobby (free) | Marketing + dashboard projects |
+| Hostinger VPS | Shared with DCP | FastAPI prompt-builder + n8n + Mem0 + Graphiti |
 | Resend | $0 | 3,000 emails/month free |
-| Kapso | $0 | Free to start |
-| MiniMax M2.7 | ~$0.001/conversation | Pay-per-use |
+| Kapso | Pay-per-conversation | Per-tenant WhatsApp |
+| Anthropic (Sonnet 4.6 + Haiku 4.5) | ~$0.003/conversation | Customer-agent responses + classification |
+| MiniMax M2.7 | $80/mo plan + ~$0.001/conv | Owner brain + memory analysis + Rami |
+| OpenAI embeddings | ~$0.00001/note | `vault_notes` indexing |
+| Composio | Free tier | Per-agent OAuth vault |
 | Firecrawl | ~$0.01/search | Pay-per-use |
 
-**At 10 clients × 1,000 conversations/month: ~$30/month total cost**
-**Revenue at 10 Starter clients: AED 15,000/month ($4,100)**
-**Margin: 98%**
+See `docs/cost-overview.md` and the v1.4 spec §Pricing for canonical OPEX/revenue breakdown.
 
 ---
 
@@ -683,27 +713,27 @@ All templates use dark theme matching the website (bg #09090b, green #22c55e acc
 
 ## 17. Roadmap
 
-### Completed
-- [x] Auth system (login, signup, password reset, autoconfirm)
-- [x] 6-step onboarding wizard with website crawler
-- [x] Dashboard (agents, activity, reports, WhatsApp inbox)
-- [x] RLS policies (JWT-based, fully isolated)
-- [x] n8n deployment with Owner Brain + WIA workflows
-- [x] Email system (6 Resend templates)
-- [x] Auto-provisioning trigger
-- [x] Demo chat pages (customer + owner)
-- [x] Marketing website with updated copy
-- [x] Firecrawl web search integration
-- [x] Kapso Platform SDK
-- [x] Calendar adapter (5 providers)
-- [x] Customer memory system
+See the v1.4 spec §24 for the canonical roadmap. Summary as of April 2026:
 
-### Next
-- [ ] Payment integration (Stripe)
-- [ ] Admin dashboard (all clients, plans, revenue)
-- [ ] Connect first real WhatsApp number via Kapso
-- [ ] Owner Brain knowledge base update parser
-- [ ] Daily/weekly summary cron workflows
-- [ ] Apollo.io + Perplexity for SDR/Content agents
-- [ ] Monitoring stack (Prometheus + Grafana)
-- [ ] Run models on DCP GPUs (cost → near-zero)
+### Completed (Phase 0-9a)
+- [x] Auth system, 6-step onboarding, dashboard, RLS, email, auto-provisioning
+- [x] Marketing website + Ask Rami CEO chat widget (live on agents.dcp.sa)
+- [x] Calendar adapter (5 providers), Kapso Platform SDK, customer memory
+- [x] FastAPI prompt-builder on VPS (replaced n8n Code nodes)
+- [x] Vault (`vault_notes` + pgvector), Composio per-agent OAuth
+- [x] Karpathy nightly + GEPA prompt evolution
+- [x] Owner brain (n8n) on MiniMax M2.7
+- [x] First production tenant (Saffron Demo) on Kapso
+- [x] Vercel cutover: marketing on `/`, dashboard on `/app/*`
+
+### In Progress / Next (Phase 9b+)
+- [ ] Cross-Agent Integration (Phase 9b)
+- [ ] Rami Admin Inspector (cross-client memory graph)
+- [ ] Recraft integration for Rami v2 photos
+- [ ] Apollo.io (SDR), Perplexity (Content + Research)
+- [ ] Universal Onboarding L3 (Composio auto-discovery)
+- [ ] Resend wired for auth confirmation emails
+- [ ] Observability stack (Sentry + Loki + Prometheus + Grafana Tempo)
+- [ ] Q2 2026 disaster recovery restore drill
+- [ ] UAE data residency migration
+- [ ] Linq iMessage/RCS channel (future)

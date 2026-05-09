@@ -1,8 +1,8 @@
 # Project Agent -- Master Technical Specification
 
-**Date:** April 24, 2026 (last updated)
-**Version:** 1.3
-**Status:** Phase 0-8 complete. Phase 9 (Cross-Agent Integration) and Ask Rami Chat Widget shipped. Phase 10+ in design.
+**Date:** April 26, 2026 (last updated)
+**Version:** 1.5
+**Status:** Phase 0-8 complete. Phase 9a (Ask Rami Chat Widget) and Phase 9c (Apr 26 Quick-Wins — No-Show Recovery, Receipt → Expense, Daily Pulse, Hermes SKILL.md Exporter, Owner Hub) shipped. Phase 9b (Cross-Agent Integration) and Rami Admin Inspector in design. Phase 10+ queued.
 
 ---
 
@@ -56,6 +56,10 @@
 46. [Google Business Profile Agent (Phase 8)](#46-google-business-profile-agent-phase-8)
 47. [Market Intelligence — Social Listening (Phase 8)](#47-market-intelligence--social-listening-phase-8)
 48. [GEPA Prompt Evolution (Phase 8)](#48-gepa-prompt-evolution-phase-8)
+49. [No-Show Recovery Loop (Phase 9c)](#49-no-show-recovery-loop-phase-9c)
+50. [Receipt → Expense Capture (Phase 9c)](#50-receipt--expense-capture-phase-9c)
+51. [Daily Pulse — Productized Morning Brief (Phase 9c)](#51-daily-pulse--productized-morning-brief-phase-9c)
+52. [Hermes-Style SKILL.md Exporter (Phase 9c)](#52-hermes-style-skillmd-exporter-phase-9c)
 
 ---
 
@@ -226,7 +230,7 @@ The six agents are not parallel silos — they share state through three rails:
 |  Customer         |     |   VPS: 76.13.179.86      |     |  Supabase        |
 |  WhatsApp         |     |   (Hostinger, 31GB RAM)   |     |  (Cloud, Tokyo)  |
 |                   |     |                           |     |                  |
-|  +1 205-858-2516  |     |  +---------------------+ |     |  17 tables       |
+|  +1 205-858-2516  |     |  +---------------------+ |     |  21 tables       |
 |  (Saffron Demo)   +---->+  | nginx               | |     |  + pgvector      |
 |                   |     |  | :443 (SSL)           | |     |  + RLS           |
 +-------------------+     |  +---+--------+--------+ |     +--------+---------+
@@ -428,18 +432,22 @@ location / {
 
 | Property | Value |
 |----------|-------|
-| URL | https://agents.dcp.sa |
-| Alternate | https://project-agent-chi.vercel.app |
+| URL | https://agents.dcp.sa/app/* |
+| Origin (do not link) | https://project-agent-dc11.vercel.app — cross-project rewrite target only |
+| basePath | `/app` |
 | Framework | Next.js 15 |
 | Source | `apps/client-dashboard/` |
 | Deploy | Auto on push to `main` |
 
-### HereNow (Marketing Website)
+### Vercel (Marketing Website)
+
+Apr 22, 2026 cutover migrated the marketing site off HereNow (`clear-fjord-96p9.here.now`) onto Vercel. See §40 for the cross-project rewrite that keeps both apps under one apex.
 
 | Property | Value |
 |----------|-------|
-| URL | https://clear-fjord-96p9.here.now |
-| Framework | Next.js 15 (static export) |
+| URL | https://agents.dcp.sa/ (apex) |
+| Vercel project | `marketing-website` |
+| Framework | Next.js 15 |
 | Source | `apps/website/` |
 
 ### GitHub
@@ -469,6 +477,10 @@ location / {
 | `proactive_engine.py` | Follow-ups and re-engagement -- 8 template messages, churn detection, opt-in tracking | ~500 |
 | `owner_brain.py` | Owner Brain v2 -- SCQA briefs, review responder, guest intelligence (RFM), risk surfacing, automation governance | ~600 |
 | `integrations.py` | Custom API clients -- SevenRooms (OAuth + reservations), Tabby (BNPL UAE), Tamara (BNPL KSA) | ~400 |
+| `no_show_recovery.py` | Phase 9c — booking deposit/waitlist decision loop (24h/15h/12h thresholds), nightly sweep, deposit webhook handler | ~250 |
+| `receipt_capture.py` | Phase 9c — Claude Sonnet 4.6 vision extraction for owner-snapped receipts → `expenses` rows; AED 5% / SAR 15% VAT inference | ~220 |
+| `daily_pulse.py` | Phase 9c — productized SCQA morning brief; per-tenant timezone delivery (8:30am ±30min), idempotent via `activity_logs.daily_pulse_sent` | ~200 |
+| `skill_exporter.py` | Phase 9c — Hermes-style SKILL.md serializer/parser for `karpathy_rules` (YAML frontmatter + markdown body, full roundtrip) | ~180 |
 
 ### All Endpoints
 
@@ -530,6 +542,35 @@ location / {
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/register-route` | Dynamically register a phone_number_id -> client_id mapping |
+
+**No-Show Recovery (Phase 9c — see §49):**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/no-show/cron/sweep` | Hourly sweep — for each upcoming booking, decide reminder / deposit-request / waitlist-release based on 24h/15h/12h thresholds |
+| POST | `/no-show/deposit/request/{booking_id}` | Manually trigger a deposit request for one booking (Tabby/Tamara/Stripe link) |
+| POST | `/no-show/deposit/webhook` | Provider webhook — flips `deposit_requests.status` to `paid`/`failed`/`expired`; on success unlocks the booking, on fail triggers waitlist release |
+
+**Receipt → Expense (Phase 9c — see §50):**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/owner/receipt` | Owner snaps a receipt on WhatsApp; vision LLM extracts vendor / amount / VAT / category → `expenses` row in `pending_review` |
+
+**Daily Pulse (Phase 9c — see §51):**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/owner/daily-pulse/preview/{client_id}` | Render today's pulse payload (headline + metrics + highlights + owner_message) without sending |
+| POST | `/owner/daily-pulse/send/{client_id}` | Send the pulse to the owner WhatsApp now (manual trigger from Owner Hub) |
+| POST | `/owner/daily-pulse/cron` | Hourly sweep — sends to each tenant whose local time is inside the 8:30am ±30min delivery window, idempotent via `activity_logs.daily_pulse_sent` |
+
+**Hermes-Style SKILL Exporter (Phase 9c — see §52):**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/karpathy/skills/{client_id}` | Export all `verified` / `active` karpathy rules as a SKILL.md bundle (YAML frontmatter + markdown body) |
+| POST | `/karpathy/skills/parse` | Reverse — parse hand-edited SKILL.md back into a karpathy rule dict for re-import |
 
 ---
 
@@ -1437,10 +1478,13 @@ Protected by `ADMIN_EMAILS` environment variable in Next.js middleware. Only spe
 
 ### Pages
 
-| Path | Description |
-|------|-------------|
-| `/admin` | Overview -- all clients with stats table (status, plan, agent count, created_at) |
-| `/admin/clients/[id]` | Client detail -- persona story, agent deployments, interactive memory graph |
+| Path | Description | Status |
+|------|-------------|--------|
+| `/admin` | Overview -- all clients with stats table (status, plan, agent count, created_at) | LIVE |
+| `/admin/clients/[id]` | Client detail -- persona story, agent deployments, interactive memory graph | LIVE |
+| `/admin/rami` | Rami Inspector — stats overview (sessions today/7d, avg messages, email-capture %) + last 25 sessions table | DESIGN (sub-spec: `docs/superpowers/specs/2026-04-23-rami-admin-inspector-design.md`) |
+| `/admin/rami/sessions` | Filterable list of all Rami chat sessions (date, confidence, language, free-text search), 50/page | DESIGN |
+| `/admin/rami/sessions/[id]` | Single session transcript: identity card, all messages chronological, tool calls, metadata, delete-session escape hatch | DESIGN |
 
 ### Admin Layout
 
@@ -1458,10 +1502,11 @@ Per-customer per-client visualization:
 
 ### API Routes
 
-| Route | Method | Purpose |
-|-------|--------|---------|
-| `/api/admin/clients` | GET | List all clients with stats |
-| `/api/admin/memory/[phone]` | GET | Get Mem0 memory graph for a customer |
+| Route | Method | Purpose | Status |
+|-------|--------|---------|--------|
+| `/api/admin/clients` | GET | List all clients with stats | LIVE |
+| `/api/admin/memory/[phone]` | GET | Get Mem0 memory graph for a customer | LIVE |
+| `/api/admin/rami/sessions/[id]` | DELETE | Delete a Rami chat session — cascade FK removes all messages | DESIGN |
 
 ---
 
@@ -1506,22 +1551,22 @@ Every page mounts the Ask Rami chat widget (floating launcher, bottom-right). It
 
 ### Authoritative Migration List
 
-The Supabase project (`sybzqktipimbmujtowoz`, region: Northeast Asia / Tokyo) is migrated by the SQL files under `packages/supabase/migrations/` plus four CEO/Rami-related migrations under `backend/prompt-builder/migrations/`. **This list is the single source of truth — README and CLAUDE.md will be updated to match.**
+The Supabase project (`sybzqktipimbmujtowoz`, region: Northeast Asia / Tokyo) is migrated by the SQL files under `packages/supabase/migrations/` (001-010) plus the v1.5 family under `supabase/migrations/` (009-013). **This list is the single source of truth — README and CLAUDE.md will be updated to match.**
 
 | Migration | Adds | Lives in |
 |-----------|------|---------|
 | 001-008 | 8 original tables (clients, agent_deployments, business_knowledge, customer_memory, conversation_summaries, activity_logs, api_keys, calendar_configs) | `packages/supabase/migrations/` |
-| 009 | 9 vault/coordination tables (vault_notes, conversation_messages, outcome_tracking, scheduled_actions, research_queue, prompt_versions, eval_suites, customer_locks, agent_action_queue) | `packages/supabase/migrations/` |
-| 010 | `active_bookings` (in-flight booking SSOT — replaces Mem0 for booking state) | `packages/supabase/migrations/` |
-| 011 | `ceo_chat_sessions` (Rami's marketing-site chat) | `backend/prompt-builder/migrations/` |
-| 012 | `ceo_chat_messages` (Rami's per-turn messages, 50-msg history) | `backend/prompt-builder/migrations/` |
-| 013 | `ceo_chat_rate_limit` (composite-PK sliding-window buckets) | `backend/prompt-builder/migrations/` |
+| 009 (vault) | 9 vault/coordination tables (vault_notes, conversation_messages, outcome_tracking, scheduled_actions, research_queue, prompt_versions, eval_suites, customer_locks, agent_action_queue) | `supabase/migrations/009_vault_schema.sql` |
+| 010 (active_bookings) | `active_bookings` (in-flight booking SSOT — replaces Mem0 for booking state) | `packages/supabase/migrations/` |
+| 011 (Rami chat) | 3 tables in one file: `ceo_chat_sessions`, `ceo_chat_messages`, `ceo_chat_rate_limit` | `supabase/migrations/011_ceo_chat.sql` |
+| 012 (no-show) | 2 tables: `deposit_requests`, `no_show_log` (Phase 9c — see §49) | `supabase/migrations/012_no_show_recovery.sql` |
+| 013 (expense) | `expenses` (Phase 9c — see §50) | `supabase/migrations/013_expense_capture.sql` |
 
-**Total tables: 21** (8 original + 9 vault/coordination + 1 booking + 3 Rami chat).
+**Total tables: 24** (8 original + 9 vault/coordination + 1 booking + 3 Rami chat + 2 no-show + 1 expense).
 
-Earlier doc revisions cited "17 tables" (pre-vault), "18 tables" (pre-Rami), and other variants. v1.3 standardizes on 21.
+Earlier doc revisions cited "17 tables" (pre-vault), "18 tables" (pre-Rami), "21 tables" (v1.3, pre-Apr 26 quick-wins). v1.5 standardizes on 24.
 
-### All Tables (21 total)
+### All Tables (24 total)
 
 #### Original Tables (8) -- Migrations 001-008
 
@@ -1556,13 +1601,26 @@ Earlier doc revisions cited "17 tables" (pre-vault), "18 tables" (pre-Rami), and
 |---|-------|---------|-------------|
 | 18 | `active_bookings` | Current booking state per customer | id, client_id, customer_phone, guest_name, booking_time, booking_date, party_size, seating, dietary, occasion, status |
 
-#### Rami Chat Tables (3) -- Migrations 011-013
+#### Rami Chat Tables (3) -- Migration 011 (single file)
 
 | # | Table | Purpose | Key Columns |
 |---|-------|---------|-------------|
 | 19 | `ceo_chat_sessions` | Per-visitor session for Ask Rami widget; cross-device merge on shared email | id (uuid), cookie_id, identity (jsonb: name/email/company/phone), summary, last_seen_at |
 | 20 | `ceo_chat_messages` | Last 50 messages per session for Rami's context window | id, session_id, role (user/assistant), content, created_at |
 | 21 | `ceo_chat_rate_limit` | Sliding-window rate limit (composite PK: ip + bucket_start_minute) | ip, bucket_start_minute, count |
+
+#### No-Show Recovery Tables (2) -- Migration 012 (Phase 9c — see §49)
+
+| # | Table | Purpose | Key Columns |
+|---|-------|---------|-------------|
+| 22 | `deposit_requests` | Outbound deposit asks from the no-show loop; tracks provider link + paid/expired/failed lifecycle | id, client_id, booking_id, customer_phone, amount_minor, currency (AED/SAR), provider (tabby/tamara/stripe), payment_link, status, requested_at, responded_at, expires_at |
+| 23 | `no_show_log` | Per-booking outcome ledger — `released`, `deposit_paid`, `no_show`, `recovered` — with revenue saved/lost | id, client_id, booking_id, customer_phone, outcome, reason, recovered_revenue_minor, created_at |
+
+#### Expense Capture Table (1) -- Migration 013 (Phase 9c — see §50)
+
+| # | Table | Purpose | Key Columns |
+|---|-------|---------|-------------|
+| 24 | `expenses` | Owner-snapped receipts auto-extracted via Claude vision; categorized + VAT-inferred (AED 5% / SAR 15%) | id, client_id, source (whatsapp_photo / manual), vendor, category (inventory/utilities/salaries/marketing/misc), amount_minor, currency, vat_minor, receipt_date, receipt_url, raw_text, extracted_meta (jsonb), status (pending_review/confirmed/rejected), created_by_phone |
 
 ### Vault Detail (`vault_notes`)
 
@@ -1611,6 +1669,8 @@ The vault is the platform's long-term **organizational memory** — the place wh
 | Proactive Engine | `0 * * * *` | Every hour | Every hour | Process pending follow-ups (reminders, feedback, re-engagement) |
 | Research Briefs | `0 5 * * 0` | 5:00 AM Sunday | 9:00 AM Sunday | Weekly intelligence reports per client |
 | SCQA Morning Brief | `0 5 * * *` | 5:00 AM | 9:00 AM | Daily SCQA brief sent to owner on WhatsApp (variance detection, guest intelligence, recommended actions) |
+| No-Show Sweep (Phase 9c — §49) | `0 * * * *` | Every hour | Every hour | For each upcoming booking, decide reminder / deposit-request / waitlist-release based on 24h/15h/12h thresholds → `POST /no-show/cron/sweep` |
+| Daily Pulse (Phase 9c — §51) | `*/30 * * * *` | Every 30 min | Every 30 min | Per-tenant timezone fan-out — sends to each client whose local time is in 8:30am ±30min, idempotent via `activity_logs.daily_pulse_sent` → `POST /owner/daily-pulse/cron` |
 
 All cron jobs are triggered via n8n scheduled workflows that call the prompt-builder API endpoints.
 
@@ -1736,7 +1796,7 @@ All test failures in recent cycles are MiniMax API timeouts (network), not logic
 
 | Phase | Name | Status | Key Deliverables |
 |-------|------|--------|-----------------|
-| 0 | Foundation | COMPLETE | VPS infrastructure, Supabase schema (17 tables), Kapso integration, Mem0 deployment, Ollama embeddings, n8n workflows |
+| 0 | Foundation | COMPLETE | VPS infrastructure, Supabase schema (24 tables — see §19), Kapso integration, Mem0 deployment, Ollama embeddings, n8n workflows |
 | 1 | Stateful Agent | COMPLETE | WhatsApp pipeline, Mem0 memory, persona system, multi-message delivery, conversation history, booking detection |
 | 2 | Integrations | COMPLETE | Composio SDK (1,034 apps), custom SevenRooms/Tabby/Tamara clients, tool injection into prompts |
 | 3 | Onboarding | COMPLETE | WhatsApp-based 5-question onboarding, auto KB/persona generation, dynamic route registration, provisioning API |
@@ -1747,6 +1807,7 @@ All test failures in recent cycles are MiniMax API timeouts (network), not logic
 
 | 8 | Full Platform Build | COMPLETE | Sales Rep (29 functions), Content Engine (34 functions), Loyalty Engine (35 functions), GBP (33 functions), Karpathy v2 (28 functions), Conversion Tracking (10 functions), Gamified Achievements (10 toggleable), Intent Classification (SQOS), Content Learnings, Image Prompt Generator, Onboarding v2 |
 | 9a | Ask Rami Chat Widget | COMPLETE (Apr 22-23) | In-character CEO chat shipped to `agents.dcp.sa/`. SSE streaming, multi-bubble (`|||`), Hard Facts KB injection, zero-fabrication discipline, sliding-window rate limit (5/60s, 30/h, 100/day), session merge on email, 50-msg history. See Section 41. |
+| 9c | Apr 26 Quick-Wins | COMPLETE (Apr 26) | Four pure-code modules + Owner Hub dashboard, 53 new tests (130/130 backend total): No-Show Recovery Loop (§49) — 24h/15h/12h thresholds, deposit/waitlist decision tree, 2 tables. Receipt → Expense Capture (§50) — Claude Sonnet 4.6 vision, AED 5% / SAR 15% VAT inference, 1 table. Daily Pulse productization (§51) — wraps owner_brain SCQA brief with delivery-window scheduler, idempotency. Hermes-style SKILL.md Exporter (§52) — karpathy rules ↔ SKILL.md roundtrip with YAML frontmatter. Owner Hub dashboard page at `/dashboard/owner` aggregates all four into one server-rendered surface. 9 new endpoints, 2 new crons. |
 
 ### Next Phase
 
@@ -1754,22 +1815,40 @@ All test failures in recent cycles are MiniMax API timeouts (network), not logic
 |-------|------|--------|-------------|
 | 9b | Cross-Agent Integration | NEXT | Multiple agents (WhatsApp, Owner Brain, Content Engine, SDR, HR, Finance) coordinate via `agent_action_queue`. Content Engine generates social posts from conversation insights. Rami can dispatch tasks into the same queue from the marketing site (e.g., "schedule a demo" → SDR pickup). Includes hardening Hard Facts discipline + injection detection across all client-facing agents (currently only enforced on Rami widget). |
 
+### Recently Shipped (Apr 22-23, 2026)
+
+| Item | Notes |
+|------|-------|
+| **Arabic intent parsing fix** in `parse_founder_intent()` | Added `_normalize_arabic()` (alef/ya/ta-marbuta normalization, tatweel + diacritic stripping) and Gulf Arabic approve/reject/edit dictionaries. Owner Brain now correctly classifies `ايوه`, `تمام`, `يلا انشره`, `لا`, `الغي`, `غير الكلام شوي`, etc. 12/12 unit tests pass in `tests/test_ceo_persona.py`. Closes task #22. |
+| **Tier 1 docs sync** | Homepage pricing, `CLAUDE.md`, `README.md` now reflect v1.3 spec: canonical 4-tier pricing, 21-table schema, dual-onboarding-path framing, Vercel cross-project rewrite topology. |
+| **Resend email infrastructure** | `lib/email.ts` with 6 templates (welcome, onboarding-complete, WhatsApp setup, agent active, weekly summary, payment receipt) wired into `/api/provisioning/trigger` and `/api/provisioning/complete`. Only **Supabase Auth SMTP dashboard config** remains for confirmation/reset email switchover. |
+
+### Recently Shipped (Apr 26, 2026 — Phase 9c Quick-Wins)
+
+| Item | Notes |
+|------|-------|
+| **Gap A — No-Show Recovery Loop** (§49) | `no_show_recovery.py` with `_next_action_for()` decision logic, `request_deposit()`, `release_to_waitlist()`, `nightly_sweep()`. Migration 012 adds `deposit_requests` + `no_show_log`. 13 unit tests in `tests/test_no_show_recovery.py`. 3 new endpoints. **Activation pending:** apply migration 012 in Supabase SQL Editor + set `DEPOSIT_LINK_BASE` / `DEPOSIT_PROVIDER` / `DEFAULT_DEPOSIT_AED` env vars on the VPS + add the hourly cron entry. |
+| **Gap B — Receipt → Expense via WhatsApp** (§50) | `receipt_capture.py` calls Claude Sonnet 4.6 vision with strict JSON schema; `_build_expense_record()` infers VAT (AED 5% / SAR 15%) from inclusive total when missing. Migration 013 adds `expenses`. 13 unit tests in `tests/test_receipt_capture.py`. 1 new endpoint. **Activation pending:** apply migration 013. |
+| **Gap C — Daily Pulse productization** (§51) | `daily_pulse.py` wraps the existing `owner_brain.generate_morning_brief()` with a productized payload (headline + metrics + highlights + owner_message), per-tenant timezone (`_TZ_HINTS`: Asia/Dubai +4, Asia/Riyadh +3, etc.), 8:30am ±30min delivery window, idempotency via `activity_logs.daily_pulse_sent`. 14 unit tests in `tests/test_daily_pulse.py`. 3 new endpoints. **Activation pending:** add the half-hourly cron entry. |
+| **Hermes lift — SKILL.md exporter** (§52) | `skill_exporter.py` serializes `karpathy_rules` (status `verified` or `active`) to SKILL.md (YAML frontmatter — name/description/status/added/expires — + markdown body with Rule blockquote, Why, Baseline metrics, Verified-state metrics, Replaces). `parse_skill_md()` reverses for hand-edited imports. 13 unit tests in `tests/test_skill_exporter.py` covering full roundtrip. 2 new endpoints. |
+| **Owner Hub dashboard** | `apps/client-dashboard/src/app/dashboard/owner/page.tsx` — server component with parallel fetch (1 FastAPI call + 4 Supabase queries) rendering 4 tiles: Daily Pulse (with "Send to WhatsApp" form action), No-Show Recovery, Recent Receipts, Active Skills. Reachable from the dashboard header via emerald "Owner Hub" link. POST proxy at `/api/owner/daily-pulse/send/[clientId]/route.ts`. |
+
 ### Near-Term Backlog (next 30-60 days)
 
 Items from `CLAUDE.md` roadmap, MEMORY, and superpower plans now consolidated here:
 
 | Item | Why | Status |
 |------|-----|--------|
-| **Resend wiring for auth confirmations** | New-account email verification + password-reset are currently stubbed | API key set in Vercel env; wiring pending |
-| **Apollo.io integration for SDR outbound** | Lead enrichment + targeted outbound mode for the AI SDR (§26) | Researched; integration not yet built |
-| **Perplexity integration for Content + Research engines** | Real-time web grounding for the Content Engine and Research Engine | Researched; integration not yet built |
+| **Supabase Auth SMTP → Resend** | Switch Supabase's built-in confirmation/reset email sender from default to Resend so verification flows use the branded `auth@dcp.sa` sender | Supabase dashboard config — code already shipped |
+| **Apollo.io integration for SDR outbound** | Lead enrichment + targeted outbound mode for the AI SDR (§26) | Researched; integration not yet built; needs API key + brainstorm pass |
+| **Perplexity integration for Content + Research engines** | Real-time web grounding for the Content Engine and Research Engine | Researched; integration not yet built; needs brainstorm pass |
 | **Universal Agent Onboarding — Layer 3** | Per `docs/superpowers/specs/2026-03-31-universal-agent-onboarding-design.md`: Layer 1 (KB schema) + Layer 2 (build prompt) shipped; Layer 3 = automated WhatsApp onboarding bot driving the full provisioning pipeline end-to-end | Spec complete, build queued |
 | **Kapso Platform auto-provisioning** | Trigger `POST /provision` on dashboard onboarding completion to spin Kapso customer + setup link + webhook automatically | SDK shipped; trigger wiring pending |
-| **Rami v2 photoshoot via Recraft** | Higher-fidelity Rami headshot + lifestyle photos to replace MiniMax image-01 placeholders on the marketing site | Pending — task #20 |
-| **CEO admin view in dashboard** | `/app/admin/rami` to inspect Rami sessions, KB versions, draft queue | Pending — task #21 |
-| **Arabic intent parsing fix** in `parse_founder_intent()` | Owner Brain mis-parses Arabic-script commands in some cases; fix required before scaling Arabic-first tenants | Pending — task #22 |
-| **Observability stack (Sentry + Loki + Prometheus + Grafana)** | Currently zero infra-level observability; covered in §44 | Build queued |
-| **Quarterly DR drill #1** | First scheduled restore drill per §43 | Target: end of Q2 2026 |
+| **Rami v2 photoshoot via Recraft** | Higher-fidelity Rami headshot + lifestyle photos to replace MiniMax image-01 placeholders on the marketing site | Pending — task #20; needs Recraft API key + style direction |
+| **Rami Admin Inspector** (`/app/admin/rami`) | Read-only browse of `ceo_chat_sessions` + `ceo_chat_messages`: stats overview, last 25 sessions index, filterable session list, transcript view with delete (cascade FK) escape hatch. Inherits `ADMIN_EMAILS` middleware. v1 deliberately scoped narrow — no live tail, no identity_audit migration, no cross-client memory graph. | Design in progress (task #21); sub-spec pending at `docs/superpowers/specs/2026-04-23-rami-admin-inspector-design.md` |
+| **Hard Facts discipline rollout** | Currently enforced only on Rami widget (Section 41); needs to extend to all client-facing agents (WhatsApp Intelligence, Content Engine outputs, SDR outreach) as part of Phase 9b | Tied to Phase 9b; design pending |
+| **Observability stack (Sentry + Loki + Prometheus + Grafana)** | Currently zero infra-level observability; covered in §44 | Build queued; needs brainstorm + VPS capacity check |
+| **Quarterly DR drill #1** | First scheduled restore drill per §43 | Target: end of Q2 2026 (operational, not code) |
 
 ### Future Phases
 
@@ -1822,10 +1901,10 @@ All model assignments are centralized in `infrastructure/model-routing.json`.
 project-agent/
 |
 +-- apps/
-|   +-- client-dashboard/          # Next.js 15 -- deployed at agents.dcp.sa (Vercel)
+|   +-- client-dashboard/          # Next.js 15 -- deployed at agents.dcp.sa/app/* (Vercel project `project-agent`, basePath `/app`)
 |   |   +-- src/
 |   |       +-- app/
-|   |       |   +-- admin/         # Admin dashboard (protected)
+|   |       |   +-- admin/         # Admin dashboard (protected by ADMIN_EMAILS)
 |   |       |   +-- dashboard/     # Client dashboard pages
 |   |       |   +-- demo/          # Live demo pages
 |   |       |   +-- api/           # 20+ API routes
@@ -1834,7 +1913,7 @@ project-agent/
 |   |       |   +-- onboarding/
 |   |       +-- middleware.ts      # Auth + admin email check
 |   |
-|   +-- website/                   # Next.js 15 -- deployed at clear-fjord-96p9.here.now
+|   +-- website/                   # Next.js 15 -- deployed at agents.dcp.sa/ (Vercel project `marketing-website`, cross-project rewrite — see §40)
 |       +-- src/
 |           +-- app/
 |           |   +-- services/
@@ -1916,8 +1995,9 @@ project-agent/
 | n8n Workflow ID (legacy) | `diBRXsn1iDFODqeC` |
 | VPS IP | 76.13.179.86 |
 | Supabase URL | sybzqktipimbmujtowoz.supabase.co |
-| Vercel Dashboard | agents.dcp.sa |
-| HereNow Website | clear-fjord-96p9.here.now |
+| Marketing site (Vercel) | agents.dcp.sa/ — project `marketing-website` |
+| Dashboard (Vercel) | agents.dcp.sa/app/* — project `project-agent`, basePath `/app` |
+| Dashboard origin (do not link) | project-agent-dc11.vercel.app — rewrite target only |
 | GitHub | github.com/dhnpmp-tech/project-agent |
 
 ---
@@ -2476,6 +2556,31 @@ Count Unicode range U+0600-U+06FF characters (Arabic block); if >30% of non-spac
 
 ## 37. Arabic Dialect Rules
 
+Two layers: **input parsing** (deterministic Owner Brain intent classification) and **output generation** (Haiku system prompt rules).
+
+### Input Parsing — Owner Brain Intent Classification
+
+`backend/prompt-builder/ceo_persona.py::parse_founder_intent()` deterministically classifies founder WhatsApp replies as `approve` / `reject` / `edit` / `conversation` before any LLM is invoked. Arabic input is normalized via `_normalize_arabic()`:
+
+- **Alef variants** collapse to bare alef: `أ`, `إ`, `آ`, `ٱ` → `ا`
+- **Alef maksura** → ya: `ى` → `ي`
+- **Ta marbuta** → ha: `ة` → `ه`
+- **Tatweel** stripped: `تــمام` → `تمام`
+- **Diacritics** (fatha/kasra/damma/sukun/shadda/tanween) stripped: `نَعَم` → `نعم`
+
+Gulf Arabic dictionaries (with hamza/diacritic variants normalizing to a single bucket):
+
+| Intent | Examples |
+|--------|----------|
+| approve | `ايوه`, `نعم`, `تمام`, `يلا انشره`, `ماشي`, `زين`, `موافق`, `اوكي` |
+| reject | `لا`, `لأ`, `ما ابي`, `مو الحين`, `الغي`, `استنى`, `توقف` |
+| edit | `غير .+`, `خليها .+`, `اقصر`, `اطول`, `احذف .+`, `ضيف .+`, `بدل .+` |
+| conversation | Anything else (questions, statements) → routed to LLM |
+
+Tested in `backend/prompt-builder/tests/test_ceo_persona.py` (12/12 passing). Closes Apr-23 silent-bug case where Saudi/UAE founders' approvals were falling through to expensive LLM conversation handling.
+
+### Output Generation — Haiku System Prompt Rules
+
 Added to the system prompt to enforce natural Gulf Arabic output from Claude Haiku:
 
 ### Language Matching
@@ -2736,10 +2841,16 @@ apps/website/src/
 ### Roadmap
 
 **Near term (Apr-May 2026):**
-1. **Rami v2 photo set** — upgrade the placeholder avatar to a proper brand photoshoot (consistent face across multiple expressions, used in the CEO admin view, on X profile, and in the morning brief signature). Prompted via the platform's own Image Prompt Generator and rendered through Recraft.
-2. **CEO admin view** — at `/app/admin/rami` show session list, full conversation transcripts, identity merges, tool-call audit log, refusal events. Lets the founder watch Rami work in real time.
-3. **Fix Arabic intent parsing in `parse_founder_intent`** — current regex over-triggers on `لا` (no) inside larger words; rebuild as token-aware.
+1. **Rami v2 photo set** — upgrade the placeholder avatar to a proper brand photoshoot (consistent face across multiple expressions, used in the Rami Inspector, on X profile, and in the morning brief signature). Prompted via the platform's own Image Prompt Generator and rendered through Recraft.
+2. **Rami Admin Inspector v1** — `/app/admin/rami` read-only browse over `ceo_chat_sessions` + `ceo_chat_messages`: stats overview, last 25 sessions, filterable list, session transcript with delete (cascade FK) escape hatch. v1 deliberately ships with current schema only — identity merges, tool-call audit log, and refusal-event tracking are deferred to v2 (require schema extensions: `identity_audit` table, `refusal_reason` column on `ceo_chat_messages`). Sub-spec at `docs/superpowers/specs/2026-04-23-rami-admin-inspector-design.md`.
+3. ~~Fix Arabic intent parsing in `parse_founder_intent`~~ — **SHIPPED Apr 23, 2026**. See §24 Recently Shipped and §37 Input Parsing.
 4. **Wire Rami → `agent_action_queue`** — when Rami calls `book_audit` or `request_intro` from the marketing site, file a row that the AI SDR agent picks up. Closes the cross-agent loop from the *marketing* side, not just the customer side.
+
+**Deferred to Rami Inspector v2:**
+- Identity merge audit trail (requires `identity_audit` table — currently no migration written)
+- Refusal-event tracking (requires `refusal_reason` column on `ceo_chat_messages`)
+- Live tail / SSE streaming view of in-progress sessions
+- Cross-client memory graph view
 
 **Mid term (Q3 2026):**
 5. **Voice mode on the widget** — accept voice notes (mirror the WhatsApp Voice Notes pipeline in Section 35) so Arabic-first prospects can speak their question and hear Rami answer back in their dialect.
@@ -3072,4 +3183,201 @@ If GEPA proposes restructuring the section that holds Karpathy rules, Karpathy r
 
 ---
 
-*Document generated April 5, 2026. Updated April 24, 2026 (v1.3) with: pricing authority + onboarding-speed reconciliation + AI-disclosure stance (§1); Eat App / Foodics / Fresha integrations + Composio security model (§10); authoritative migration list, vault note categories, embedding/retrieval detail, and 21-table reconciliation (§19); new §42 Compliance & Data Protection (PDPL, sub-processor list, residency commitment); new §43 Disaster Recovery & Backup (RTO/RPO, restore drills, scenario playbooks); new §44 Observability & Incident Response (Sentry/Loki/Prometheus stack plan, severity matrix, runbook structure); new §45 Loyalty Engine; new §46 Google Business Profile Agent; new §47 Market Intelligence (social listening across 13+ platforms); new §48 GEPA Prompt Evolution; and refreshed §24 roadmap to surface Apollo.io, Perplexity, Linq iMessage/RCS, Resend auth wiring, Universal Onboarding L3, and Recraft pipeline. Previous April 23, 2026 (v1.2) added: deep agent-by-agent product overview (§1), six-axis system evaluation framework (§2), Vercel cutover details (§40), and full Rami Mansour persona / role / purpose / function / roadmap (§41 — promoted from "chat widget" to first-class CIO documentation). Previous April 11 update added Voice Notes (WhatsApp In & Out), Smart Language Routing, Arabic Dialect Rules, Production Fixes & Bug Corrections, Bloom Salon Onboarding Simulation, and Vercel Deployment Architecture. Earlier updates: Owner Brain v2, Karpathy Loop v2, Agency-Agents research, Sales Rep, Content Engine, Morning Brief v3, Onboarding v2, Gamified Achievements, Intent Classification (SQOS), Content Learnings, Conversion Tracking, and Image Prompt Generator.*
+## 49. No-Show Recovery Loop (Phase 9c)
+
+### Overview
+
+A booking deposit / waitlist decision loop that turns no-shows from passive revenue loss into an automated recovery flow. The loop runs hourly (`/no-show/cron/sweep`), looks at every upcoming booking, and decides one of: do nothing, send a reminder, request a deposit, or release the seat to the waitlist.
+
+Source: `backend/prompt-builder/no_show_recovery.py` (~250 LOC). Tables: `deposit_requests`, `no_show_log` (Migration 012).
+
+### Decision Logic
+
+`_next_action_for(booking, now)` returns the next action by time-to-booking:
+
+| Time to booking | Action |
+|-----------------|--------|
+| > 24h | nothing |
+| 24h–15h | send reminder |
+| 15h–12h | request deposit (if not already paid) |
+| < 12h with no deposit + no confirmation | release to waitlist |
+| any time, status `released` or `cancelled` | nothing |
+
+Pure decision logic is separated from I/O so it tests deterministically (13 tests in `tests/test_no_show_recovery.py`).
+
+### Deposit Request Flow
+
+1. `request_deposit(booking, amount_aed)` — composes a Tabby/Tamara/Stripe payment link via `_build_payment_link()` and `DEPOSIT_LINK_BASE`, writes a `deposit_requests` row in status `requested` with a 12h expiry, and pushes a WhatsApp message to the customer with the link.
+2. Provider posts back to `POST /no-show/deposit/webhook` → flips status to `paid` / `failed` / `expired`.
+3. On `paid`: booking is held; `no_show_log` row written with outcome `deposit_paid` and `recovered_revenue_minor` = booking party_size × 150 AED × 100 (`_estimate_revenue`).
+4. On `failed` or `expired`: `release_to_waitlist(booking, reason)` runs — frees the seat, optionally messages the next waitlist customer, writes `no_show_log` outcome `released`.
+
+### Currency Handling
+
+`_currency_for(client)` defaults: AED for UAE clients, SAR for KSA. Configurable per-client.
+
+### Activation
+
+Pure code is shipped; activation requires (out-of-band):
+- Apply `supabase/migrations/012_no_show_recovery.sql` in the Supabase SQL Editor
+- Set `DEPOSIT_LINK_BASE`, `DEPOSIT_PROVIDER` (`tabby` / `tamara` / `stripe`), `DEFAULT_DEPOSIT_AED` env vars on the VPS
+- Add `0 * * * *  curl -fsSX POST http://127.0.0.1:8200/no-show/cron/sweep` to the crontab
+
+---
+
+## 50. Receipt → Expense Capture (Phase 9c)
+
+### Overview
+
+The owner snaps a photo of any receipt on their owner-WhatsApp number; the platform extracts vendor / total / VAT / category via a vision LLM and writes a `pending_review` row in `expenses`. The owner sees it on the Owner Hub dashboard (§16) with one-tap confirm / reject. Solves the SMB pain point of receipts piling up uncategorized between accountant cycles.
+
+Source: `backend/prompt-builder/receipt_capture.py` (~220 LOC). Table: `expenses` (Migration 013).
+
+### Pipeline
+
+```
+WhatsApp photo → /owner/receipt
+   ↓
+1. _guess_media_type(bytes)            # JPEG/PNG/GIF/WEBP from byte signature
+2. Claude Sonnet 4.6 vision call       # strict JSON schema prompt
+3. _parse_json_response(raw)           # extract first {...} block
+4. _build_expense_record(extracted)    # VAT inference, category clamping, vendor truncation
+5. INSERT INTO expenses                # status='pending_review'
+6. WhatsApp reply to owner             # "Logged AED 287.50 from Carrefour — confirm?"
+```
+
+### VAT Inference
+
+If the vision model didn't return `vat`, the platform infers it from the inclusive total using the local rate:
+
+| Currency | VAT rate | Formula |
+|----------|---------|---------|
+| AED | 5% | `vat = amount × 0.05 / 1.05` |
+| SAR | 15% | `vat = amount × 0.15 / 1.15` |
+
+Worked: AED 100 inclusive → VAT minor 476 (= 100 × 5/105 × 100 minor). SAR 115 inclusive → VAT minor 1500.
+
+### Categories
+
+Clamped to `inventory` / `utilities` / `salaries` / `marketing` / `misc`. Vendor field truncated to 80 chars to prevent prompt overflow attacks.
+
+### Activation
+
+Pure code is shipped; activation requires (out-of-band):
+- Apply `supabase/migrations/013_expense_capture.sql` in the Supabase SQL Editor
+- Wire the owner-WhatsApp media-message handler in `app.py` to call `POST /owner/receipt` with the media URL/bytes (currently stub)
+
+---
+
+## 51. Daily Pulse — Productized Morning Brief (Phase 9c)
+
+### Overview
+
+A productization wrapper around the existing SCQA morning brief generator (`owner_brain.generate_morning_brief()`, see §14 / §28). Where the prior shape was "n8n cron sends a brief at 9am UAE time," Daily Pulse turns it into a per-tenant, timezone-aware, idempotent product surface — the headline tile of the new Owner Hub dashboard (§16).
+
+Source: `backend/prompt-builder/daily_pulse.py` (~200 LOC). Reuses owner_brain output; no schema additions.
+
+### Payload Shape
+
+`compose_pulse(client_id)` returns:
+
+```json
+{
+  "client_id": "...",
+  "headline": "Strong Friday — 8 bookings, AED 4,200 projected",
+  "metrics": {
+    "bookings_today": 8,
+    "projected_revenue_aed": 4200,
+    "yesterday_conversations": 47,
+    "high_value_today": 2
+  },
+  "highlights": [
+    "VIP Ahmad Rashidi rebooking after 6 weeks — table 12, 8pm",
+    "...up to 5 highlights..."
+  ],
+  "owner_message": "Habibi sabah el khair...",
+  "generated_at": "2026-04-26T04:30:00Z"
+}
+```
+
+### Headline Composition
+
+`_make_headline()` chooses headline by booking count + day-of-week + plural/singular grammar. Quiet-day headline ("Quiet Tuesday — easy day to clean the kitchen") if 0 bookings. Comma-formatted AED via `f"AED {projected:,.0f} projected"`.
+
+### Per-Tenant Delivery
+
+`cron_daily_pulse_all_clients()` runs every 30 minutes. For each client:
+
+1. Look up local timezone from `_TZ_HINTS` (`Asia/Dubai` → +4, `Asia/Riyadh` → +3, GCC defaults).
+2. Compute current local hour-and-minute via `_utc_offset_hours()`.
+3. `_in_delivery_window(local_time)` → true iff inside 8:00am–9:00am window.
+4. Idempotency check: query `activity_logs` for `event_type='daily_pulse_sent'` today for this client. Skip if found.
+5. Compose pulse, send via WhatsApp to owner phone, log `daily_pulse_sent` event.
+
+### Activation
+
+Pure code is shipped; activation requires (out-of-band):
+- Add `*/30 * * * *  curl -fsSX POST http://127.0.0.1:8200/owner/daily-pulse/cron` to the crontab
+
+---
+
+## 52. Hermes-Style SKILL.md Exporter (Phase 9c)
+
+### Overview
+
+Adopts the SKILL.md pattern from NousResearch's Hermes Agent (ICLR 2026 Oral) — a portable, version-controllable, hand-editable representation of an agent's learned behaviors. We expose every `verified` or `active` rule from `karpathy_rules` (see §12) as a SKILL.md file with YAML frontmatter and a markdown body, with a full roundtrip parser so an operator can hand-edit a SKILL.md file and re-import it.
+
+Source: `backend/prompt-builder/skill_exporter.py` (~180 LOC). 13 tests in `tests/test_skill_exporter.py` cover full roundtrip.
+
+### File Shape
+
+```markdown
+---
+name: always-confirm-party-size-before-suggesting-menu
+description: Avoids over-ordering — confirm headcount before menu pitch
+status: verified
+added: 2026-04-20
+expires: null
+---
+
+**Rule:**
+
+> Always confirm party size before suggesting menu
+
+**Why:**
+Avoids over-ordering and wasted-food complaints (3 incidents in March)
+
+**Baseline metrics:**
+- conversion: 0.12
+- aov: 85
+
+**Verified-state metrics:**
+- conversion: 0.18
+- aov: 110
+
+**Replaces:**
+- confirm-allergies
+- ask-dietary
+```
+
+### Public API
+
+| Function | Purpose |
+|---------|---------|
+| `serialize_rule(rule: dict)` | One rule → `{filename, content}`. Returns `None` for empty rule (defensive). |
+| `export_skills_for_client(client_id)` | Bundle all `verified` / `active` rules for a client. |
+| `parse_skill_md(content: str)` | Reverse — markdown → rule dict. Handles frontmatter-less bare markdown gracefully. |
+| `_slugify(text)` | Filename slug — strips punctuation, kebab-case, caps at 60 chars, falls back to `"rule"` for empty input. |
+
+### Why This Matters
+
+Karpathy rules are normally opaque rows in `karpathy_rules`. SKILL.md makes them:
+
+1. **Portable** — operators can `git clone` a tenant's behavior set, diff it, branch it
+2. **Auditable** — exact rule text + metrics-at-add + verified-state metrics in one file
+3. **Hand-editable** — operator tweaks copy, re-imports via `POST /karpathy/skills/parse`, ships
+4. **Cross-tenant** — successful skills can be templated and proposed to similar tenants (groundwork for Phase 10)
+
+---
+
+*Document generated April 5, 2026. Updated April 26, 2026 (v1.5) with: Phase 9c Apr 26 Quick-Wins ship — new §49 No-Show Recovery Loop (24h/15h/12h thresholds, 2 tables, deposit/waitlist decision tree); new §50 Receipt → Expense Capture (Claude Sonnet 4.6 vision, AED 5% / SAR 15% VAT inference, 1 table); new §51 Daily Pulse productization (per-tenant timezone delivery window, idempotency); new §52 Hermes-style SKILL.md Exporter (karpathy rules ↔ SKILL.md roundtrip); 4 new source files (`no_show_recovery.py`, `receipt_capture.py`, `daily_pulse.py`, `skill_exporter.py`) + Owner Hub dashboard at `/dashboard/owner`; 9 new endpoints; 2 new crons; schema bumped 21 → 24 tables; migration table corrected (Rami chat is migration 011 in `supabase/migrations/`, not 011-013 in `backend/prompt-builder/migrations/`); §24 roadmap gains a Phase 9c COMPLETE row + Recently Shipped (Apr 26) block; 53 new tests, 130/130 backend total. Previous April 24, 2026 (v1.3 / v1.4) added: pricing authority + onboarding-speed reconciliation + AI-disclosure stance (§1); Eat App / Foodics / Fresha integrations + Composio security model (§10); authoritative migration list, vault note categories, embedding/retrieval detail, and 21-table reconciliation (§19); new §42 Compliance & Data Protection (PDPL, sub-processor list, residency commitment); new §43 Disaster Recovery & Backup (RTO/RPO, restore drills, scenario playbooks); new §44 Observability & Incident Response (Sentry/Loki/Prometheus stack plan, severity matrix, runbook structure); new §45 Loyalty Engine; new §46 Google Business Profile Agent; new §47 Market Intelligence (social listening across 13+ platforms); new §48 GEPA Prompt Evolution; and refreshed §24 roadmap to surface Apollo.io, Perplexity, Linq iMessage/RCS, Resend auth wiring, Universal Onboarding L3, and Recraft pipeline. Previous April 23, 2026 (v1.2) added: deep agent-by-agent product overview (§1), six-axis system evaluation framework (§2), Vercel cutover details (§40), and full Rami Mansour persona / role / purpose / function / roadmap (§41 — promoted from "chat widget" to first-class CIO documentation). Previous April 11 update added Voice Notes (WhatsApp In & Out), Smart Language Routing, Arabic Dialect Rules, Production Fixes & Bug Corrections, Bloom Salon Onboarding Simulation, and Vercel Deployment Architecture. Earlier updates: Owner Brain v2, Karpathy Loop v2, Agency-Agents research, Sales Rep, Content Engine, Morning Brief v3, Onboarding v2, Gamified Achievements, Intent Classification (SQOS), Content Learnings, Conversion Tracking, and Image Prompt Generator.*

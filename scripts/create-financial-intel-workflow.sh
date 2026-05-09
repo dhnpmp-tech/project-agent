@@ -3,7 +3,7 @@
 # Run: bash scripts/create-financial-intel-workflow.sh
 
 N8N_URL="https://n8n.dcp.sa"
-N8N_API_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OGU1M2EzMy0wMDJkLTQwNzEtODBiZC04NWJkMTcwYmVjZTkiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiM2JmYmIwMDgtNDE5MS00YzY3LWI1YjYtZDllZTJlMDkzOWYzIiwiaWF0IjoxNzc0NjUwOTI3LCJleHAiOjE4MDYxODY5MjcwMDB9.d9XJfElROuZDEairu6vuSPwqRrBlBUO4Kwx22iJodyc"
+N8N_API_KEY="${N8N_API_KEY:?N8N_API_KEY env var required}"
 
 echo "Creating Financial Intelligence Agent workflow..."
 
@@ -51,8 +51,8 @@ RESPONSE=$(curl -s -X POST "${N8N_URL}/api/v1/workflows" \
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5Ynpxa3RpcGltYm11anRvd296Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDUwOTY5NCwiZXhwIjoyMDkwMDg1Njk0fQ.-DoNS5fZv3aUsFcugKg23yh9RqXXFIlgc5_9Hrk97bg" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5Ynpxa3RpcGltYm11anRvd296Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDUwOTY5NCwiZXhwIjoyMDkwMDg1Njk0fQ.-DoNS5fZv3aUsFcugKg23yh9RqXXFIlgc5_9Hrk97bg" }
+            { "name": "apikey", "value": "${SUPABASE_SERVICE_ROLE_KEY}" },
+            { "name": "Authorization", "value": "Bearer ${SUPABASE_SERVICE_ROLE_KEY}" }
           ]
         },
         "options": {}

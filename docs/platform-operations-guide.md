@@ -11,44 +11,41 @@ how to onboard clients, and what needs to happen at each step.
 ┌─────────────────────────────────────────────────────────────┐
 │                    YOUR PLATFORM                             │
 │                                                              │
-│  ┌──────────┐    ┌──────────┐    ┌──────────────────────┐   │
-│  │ Marketing │    │  Client  │    │   Provisioning SDK   │   │
-│  │ Website   │    │Dashboard │    │  (Docker + Kapso +   │   │
-│  │(here.now) │    │ (Vercel) │    │   n8n + Supabase)    │   │
-│  └──────────┘    └────┬─────┘    └──────────┬───────────┘   │
-│                       │                      │               │
-│                       ▼                      ▼               │
-│              ┌─────────────────────────────────┐            │
-│              │         Supabase                 │            │
-│              │  - clients                       │            │
-│              │  - agent_deployments             │            │
-│              │  - business_knowledge            │            │
-│              │  - activity_logs                  │            │
-│              │  - calendar_configs               │            │
-│              └─────────────────────────────────┘            │
-│                            │                                 │
-│              ┌─────────────┼─────────────┐                  │
-│              ▼             ▼             ▼                   │
-│         ┌────────┐   ┌────────┐   ┌────────┐               │
-│         │Client A│   │Client B│   │Client C│               │
-│         │  n8n   │   │  n8n   │   │  n8n   │               │
-│         └───┬────┘   └───┬────┘   └───┬────┘               │
-│             │            │            │                      │
-└─────────────┼────────────┼────────────┼──────────────────────┘
-              │            │            │
-              ▼            ▼            ▼
-         ┌────────────────────────────────┐
-         │        Kapso Platform          │
-         │  (WhatsApp API for all clients)│
-         │                                │
-         │  Customer A ←→ Phone Number A  │
-         │  Customer B ←→ Phone Number B  │
-         │  Customer C ←→ Phone Number C  │
-         └────────────────────────────────┘
-              │            │            │
-              ▼            ▼            ▼
-         WhatsApp Users (3 billion potential customers)
+│  ┌──────────┐    ┌──────────────┐    ┌─────────────────┐    │
+│  │ Marketing│    │   Client     │    │  Provisioning   │    │
+│  │ Website  │    │  Dashboard   │    │  SDK (Kapso +   │    │
+│  │ (Vercel) │    │  (Vercel)    │    │  Composio)      │    │
+│  └──────────┘    └──────┬───────┘    └────────┬────────┘    │
+│                         │                     │             │
+│                         ▼                     ▼             │
+│              ┌────────────────────────────────────────┐     │
+│              │  Supabase (21 tables, RLS, pgvector)   │     │
+│              └─────────────────┬──────────────────────┘     │
+│                                │                            │
+│                                ▼                            │
+│              ┌────────────────────────────────────────┐     │
+│              │         Hostinger VPS (shared)         │     │
+│              │  • FastAPI prompt-builder (all clients)│     │
+│              │  • Mem0 + Graphiti                     │     │
+│              │  • n8n (owner-brain workflows only)    │     │
+│              └─────────────────┬──────────────────────┘     │
+└────────────────────────────────┼────────────────────────────┘
+                                 │
+                                 ▼
+              ┌────────────────────────────────┐
+              │        Kapso Platform          │
+              │  (multi-tenant WhatsApp API)   │
+              │                                │
+              │  Client A → customer + owner #s│
+              │  Client B → customer + owner #s│
+              │  Client C → customer + owner #s│
+              └────────────────────────────────┘
+                                 │
+                                 ▼
+                       WhatsApp end-users
 ```
+
+The FastAPI prompt-builder is a single shared service that assembles per-tenant prompts on each turn (knowledge + vault notes + customer memory + booking state). Per-client isolation is enforced at the data layer (Supabase RLS + Composio per-agent OAuth scopes), not by spawning a Docker container per client.
 
 ## Two WhatsApp Numbers Per Client
 
@@ -79,11 +76,13 @@ Customer WhatsApp ←→ AI Agent ←→ Owner WhatsApp
 ## Step-by-Step: Onboarding a New Client
 
 ### Prerequisites (One-Time Platform Setup)
-- [ ] Supabase project running with all 7 migrations
-- [ ] Vercel deployment live (client dashboard)
+- [ ] Supabase project running with all 13 migrations applied (`packages/supabase/migrations/` 001-009 + `backend/prompt-builder/migrations/` 010-013)
+- [ ] Vercel deployments live (marketing at agents.dcp.sa, dashboard at agents.dcp.sa/app)
 - [ ] Kapso Platform account (your master account, not client's)
-- [ ] Master n8n instance running on your server
-- [ ] Anthropic API key
+- [ ] Hostinger VPS running FastAPI prompt-builder + Mem0 + Graphiti + n8n (owner-brain only)
+- [ ] Composio account for per-agent OAuth vault
+- [ ] Anthropic API key (Claude Sonnet 4.6 + Haiku 4.5)
+- [ ] MiniMax API key (M2.7 for owner brain + memory analysis)
 
 ### Step 1: Client Signs Up
 **Who does it:** The client
@@ -147,43 +146,21 @@ const result = await kapso.provisionClient({
 5. Redirected back to dashboard with `?connected=true`
 6. Kapso fires `whatsapp.phone_number.created` webhook → you store the phone_number_id
 
-### Step 5: Deploy Agent Workflows
-**Who does it:** You (platform admin)
-**How:** Import n8n workflow + inject client config
+### Step 5: Activate Agents
+**Who does it:** You (platform admin) — usually automatic on onboarding completion
+**How:** Flip `agent_deployments.status` from `pending` → `active`
 
-```bash
-# Using the provisioning SDK:
-import { N8nApiClient, loadWorkflowTemplate, injectConfig } from "@project-agent/provisioning-sdk";
+There is **no per-client n8n workflow import**. The shared FastAPI prompt-builder on the VPS reads `agent_deployments` + `business_knowledge` + `vault_notes` per request and assembles the right prompt for the right tenant. Activation just means the row is live.
 
-const n8n = new N8nApiClient("https://acme-restaurant.yourdomain.com", apiKey);
-
-// Load the WhatsApp agent workflow
-const workflow = loadWorkflowTemplate("wia");
-
-// Inject client-specific config from business_knowledge
-const configured = injectConfig(workflow, {
-  clientId: "uuid",
-  clientSlug: "acme-restaurant",
-  companyName: "Acme Restaurant",
-  companyNameAr: "مطعم أكمي",
-  businessDescription: "Lebanese restaurant in Dubai Marina...",
-  businessHours: "Daily 12:00-00:00",
-  knowledgeBaseContent: "Q: What cuisine?\nA: Lebanese...",
-  // ... from business_knowledge table
-});
-
-// Import and activate
-const workflowId = await n8n.importWorkflow(configured);
-await n8n.activateWorkflow(workflowId);
-```
+If the client uses any Composio integrations (Apollo, Perplexity, Google Calendar, etc.), the OAuth handshakes happen during onboarding and tokens land in `composio_connections` with scopes restricted by `composio_tool_whitelist`.
 
 ### Step 6: Set Up Owner Channel
 **Who does it:** You (platform admin)
-**What:** Configure a second Kapso webhook for the owner's WhatsApp number
+**What:** Configure the owner's WhatsApp number in Kapso so messages route to the owner-brain n8n workflow on the VPS
 
-The owner's number (collected in onboarding step 5) gets a special workflow:
+The owner's number (collected in onboarding step 5) is wired to a single shared owner-brain n8n workflow that fans out per-tenant via `client_id`:
 
-**Inbound from owner → n8n parses the message → updates business_knowledge**
+**Inbound from owner → n8n parses the message (MiniMax M2.7) → updates business_knowledge / vault_notes**
 
 Owner can text:
 - "Add today's special: Wagyu Steak AED 280" → AI updates menu in knowledge base
@@ -314,23 +291,31 @@ Agent sends:
 | Data | Storage | Who Reads It |
 |------|---------|-------------|
 | Client info (name, contact, plan) | Supabase `clients` | Dashboard, provisioning |
-| Agent configs | Supabase `agent_deployments` | n8n workflows |
-| Business knowledge (FAQ, services, etc.) | Supabase `business_knowledge` | All agents via knowledge-base-subworkflow |
-| Industry config (SevenRooms, listings, etc.) | Supabase `business_knowledge.crawl_data` | Industry-specific n8n workflows |
-| Owner WhatsApp number | Supabase `business_knowledge.crawl_data.owner_whatsapp` | Owner notification workflow |
+| Agent configs | Supabase `agent_deployments` | FastAPI prompt-builder |
+| Business knowledge (FAQ, services, etc.) | Supabase `business_knowledge` + `vault_notes` (pgvector) | FastAPI prompt-builder |
+| Industry config (SevenRooms, listings, etc.) | Supabase `business_knowledge.crawl_data` | FastAPI prompt-builder (industry branch) |
+| Owner WhatsApp number | Supabase `business_knowledge.crawl_data.owner_whatsapp` | Owner-brain n8n workflow |
 | Kapso customer ID | Supabase `clients.metadata.kapso_customer_id` | Kapso Platform API calls |
 | Kapso phone number ID | Supabase `clients.metadata.kapso_phone_number_id` | Sending messages via Kapso |
 | Calendar credentials | Supabase `calendar_configs` (encrypted) | Booking workflows |
 | Activity logs | Supabase `activity_logs` | Dashboard reports |
 
-## What Still Needs to Be Built
+## Current Status
 
-These pieces require your n8n server running + Kapso Platform account:
+The shared infrastructure is live:
 
-1. **Owner notification n8n workflow** — listens for events (booking, complaint, lead) and sends WhatsApp to owner via Kapso
-2. **Owner update parser n8n workflow** — receives owner's WhatsApp messages, uses Claude to interpret intent, updates business_knowledge in Supabase
-3. **Webhook routing** — Kapso webhook → your server → routes to correct client n8n instance
-4. **Daily summary cron** — n8n workflow that runs at 9pm daily, compiles stats, sends to owner
-5. **Auto-provisioning trigger** — when client completes onboarding, auto-run provisionClient()
+- **FastAPI prompt-builder** (VPS) — assembles prompts on every Kapso webhook
+- **Owner-brain n8n workflow** (VPS, single shared instance) — parses owner intent and writes to Supabase
+- **Webhook routing** — Kapso fires to FastAPI; tenant identified by phone-number-id → client_id
+- **Daily summary** — Karpathy nightly cron compiles per-tenant stats; owner-brain delivers via WhatsApp
+- **Auto-provisioning** — onboarding completion triggers `KapsoPlatformClient.provisionClient()`
 
-These are all n8n workflows that run on YOUR server — not code changes. Once your server + n8n is live, you can import the workflow templates and configure them per client.
+Open backlog (see CLAUDE.md §Roadmap for the canonical list):
+1. Wire Resend for auth confirmation emails
+2. Apollo.io integration (SDR agent prospecting)
+3. Perplexity integration (Content + Research agents)
+4. Universal Onboarding L3 (Composio auto-discovery)
+5. Recraft integration for Rami v2 photo generation
+6. CEO admin view in dashboard (cross-client memory graph)
+7. Observability stack (Sentry + Loki + Prometheus + Grafana Tempo)
+8. Q2 2026 disaster recovery restore drill
