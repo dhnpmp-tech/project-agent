@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(result);
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { error: "Crawl failed. Please try again." },
       { status: 500 }

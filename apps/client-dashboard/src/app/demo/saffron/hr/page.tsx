@@ -222,6 +222,7 @@ export default function SaffronHRDemo() {
         </button>
       </form>
 
+      {/* eslint-disable-next-line react/no-unknown-property */}
       <style jsx global>{`
         @keyframes fadeInUp {
           from {

@@ -21,20 +21,6 @@ async function apiFetch<T>(path: string): Promise<T | null> {
   }
 }
 
-async function apiPost<T>(path: string, body?: unknown): Promise<T | null> {
-  try {
-    const res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
 /* ------------------------------------------------------------------ */
 /*  TypeScript interfaces                                              */
 /* ------------------------------------------------------------------ */

@@ -221,7 +221,7 @@ export default function ChannelsPage() {
       setLoading(false);
       return;
     }
-    apiFetch<{ channels: Array<{ channel: string; count: number }> }>(
+    apiFetch<{ channels: { channel: string; count: number }[] }>(
       `/chat/channels/${clientId}?days=7`
     ).then((res) => {
       if (res?.channels) {

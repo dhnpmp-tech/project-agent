@@ -83,8 +83,6 @@ export function StepIndustrySetup({ selectedAgents, config, onChange, onNext, on
   const inputClass =
     "w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500";
 
-  const hasWhatsApp = selectedAgents.includes("wia");
-
   return (
     <div className="space-y-6">
       <p className="text-sm text-gray-500">

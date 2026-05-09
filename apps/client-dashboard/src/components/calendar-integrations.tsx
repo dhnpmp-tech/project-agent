@@ -6,14 +6,14 @@ import { apiUrl } from "@/lib/api-url";
 
 // --- Provider metadata ---
 
-const PROVIDERS: Array<{
+const PROVIDERS: {
   id: CalendarProviderType;
   name: string;
   description: string;
   writable: boolean;
   oauth?: boolean; // Use OAuth flow instead of manual form
   fields: ProviderField[];
-}> = [
+}[] = [
   {
     id: "google",
     name: "Google Calendar",
@@ -143,7 +143,7 @@ export function CalendarIntegrations() {
       });
       const data = await res.json();
       setTestResult(data);
-    } catch (err) {
+    } catch {
       setTestResult({ ok: false, error: "Network error — could not reach API" });
     } finally {
       setTesting(false);

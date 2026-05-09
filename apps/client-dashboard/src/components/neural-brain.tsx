@@ -199,7 +199,8 @@ function useTravelingParticle(
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!svgRef.current || edges.length === 0) return;
+    const svg = svgRef.current;
+    if (!svg || edges.length === 0) return;
 
     // Create the particle element once
     const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -207,7 +208,7 @@ function useTravelingParticle(
     circle.setAttribute("fill", "#34d399");
     circle.setAttribute("opacity", "0");
     circle.setAttribute("filter", "url(#particle-glow)");
-    svgRef.current.appendChild(circle);
+    svg.appendChild(circle);
     particleRef.current = circle;
 
     const TRAVEL_DURATION = 1200; // ms per edge
@@ -261,9 +262,9 @@ function useTravelingParticle(
     return () => {
       cancelAnimationFrame(rafRef.current);
       clearInterval(interval);
-      if (particleRef.current && svgRef.current) {
+      if (particleRef.current && svg) {
         try {
-          svgRef.current.removeChild(particleRef.current);
+          svg.removeChild(particleRef.current);
         } catch {
           /* already removed */
         }

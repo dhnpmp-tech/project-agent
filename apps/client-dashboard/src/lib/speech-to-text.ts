@@ -71,7 +71,7 @@ export async function transcribeAudio(
  * and extract the audio URL from the Kapso webhook payload.
  */
 export function extractAudioUrl(webhookPayload: Record<string, unknown>): string | null {
-  const entry = (webhookPayload as { entry?: Array<{ changes?: Array<{ value?: { messages?: Array<{ type?: string; audio?: { url?: string; id?: string } }> } }> }> })?.entry?.[0];
+  const entry = (webhookPayload as { entry?: { changes?: { value?: { messages?: { type?: string; audio?: { url?: string; id?: string } }[] } }[] }[] })?.entry?.[0];
   const message = entry?.changes?.[0]?.value?.messages?.[0];
 
   if (!message) return null;

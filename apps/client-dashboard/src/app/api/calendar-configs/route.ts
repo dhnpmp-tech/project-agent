@@ -25,18 +25,6 @@ function encrypt(plaintext: string): string {
   return `${iv.toString("base64")}:${tag.toString("base64")}:${encrypted}`;
 }
 
-function decrypt(blob: string): string {
-  const key = getEncryptionKey();
-  const [ivB64, tagB64, ciphertext] = blob.split(":");
-  const iv = Buffer.from(ivB64, "base64");
-  const tag = Buffer.from(tagB64, "base64");
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(tag);
-  let decrypted = decipher.update(ciphertext, "base64", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
-}
-
 async function getSupabase() {
   const cookieStore = await cookies();
   return createServerClient(

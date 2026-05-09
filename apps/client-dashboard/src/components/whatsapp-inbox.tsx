@@ -35,24 +35,23 @@ export function WhatsAppInbox({ companyName }: Props) {
   const [kapsoConfigured, setKapsoConfigured] = useState(false);
   const [kapsoApiKey, setKapsoApiKey] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
-  const [setupStep, setSetupStep] = useState<"key" | "done">("key");
+  const [, setSetupStep] = useState<"key" | "done">("key");
 
   useEffect(() => {
+    async function checkKapsoConfig() {
+      // Check if KAPSO_API_KEY is stored
+      const res = await fetch(apiUrl("/api/kapso/status"));
+      if (res.ok) {
+        const data = await res.json();
+        if (data.configured) {
+          setKapsoConfigured(true);
+          loadConversations();
+        }
+      }
+      setLoading(false);
+    }
     checkKapsoConfig();
   }, []);
-
-  async function checkKapsoConfig() {
-    // Check if KAPSO_API_KEY is stored
-    const res = await fetch(apiUrl("/api/kapso/status"));
-    if (res.ok) {
-      const data = await res.json();
-      if (data.configured) {
-        setKapsoConfigured(true);
-        loadConversations();
-      }
-    }
-    setLoading(false);
-  }
 
   async function loadConversations() {
     const res = await fetch(apiUrl("/api/kapso/conversations"));

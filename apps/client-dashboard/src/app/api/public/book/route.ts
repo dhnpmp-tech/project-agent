@@ -124,7 +124,6 @@ export async function POST(request: NextRequest) {
     const adapter = createCalendarAdapter(credentials);
 
     // Build start/end times
-    const [hours, minutes] = time.split(":").map(Number);
     const start = new Date(`${date}T${time}:00`);
     const end = new Date(start);
     end.setMinutes(end.getMinutes() + 30);

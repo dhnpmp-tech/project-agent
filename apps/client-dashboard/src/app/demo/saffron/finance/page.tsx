@@ -224,6 +224,7 @@ export default function SaffronFinanceDemo() {
         </button>
       </form>
 
+      {/* eslint-disable-next-line react/no-unknown-property */}
       <style jsx global>{`
         @keyframes fadeInUp {
           from {
