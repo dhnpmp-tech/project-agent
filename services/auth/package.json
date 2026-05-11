@@ -1,0 +1,24 @@
+{
+  "name": "@project-agent/auth-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Resend OTP magic-link auth service. Issues JWTs for the dashboard + backend. Self-hosted replacement for Supabase Auth.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "postgres": "^3.4.5",
+    "jose": "^5.9.6",
+    "resend": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "zod": "^3.23.8"
+  }
+}
