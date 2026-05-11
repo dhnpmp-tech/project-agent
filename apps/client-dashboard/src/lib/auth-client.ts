@@ -43,5 +43,5 @@ export async function verifyOtp(
 
 export async function signout(): Promise<void> {
   await fetch(apiUrl("/api/auth/signout"), { method: "POST" });
-  window.location.href = "/login";
+  window.location.href = apiUrl("/login");
 }

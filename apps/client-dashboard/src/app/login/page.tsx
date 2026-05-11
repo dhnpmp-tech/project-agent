@@ -8,6 +8,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { sendOtp, verifyOtp } from "@/lib/auth-client";
+import { apiUrl } from "@/lib/api-url";
 
 type Step = "email" | "code";
 
@@ -44,7 +45,7 @@ export default function LoginPage() {
         setError(messageFor(result.error));
         return;
       }
-      window.location.href = "/";
+      window.location.href = apiUrl("/");
     } finally {
       setLoading(false);
     }
