@@ -1,0 +1,76 @@
+version: "3.8"
+
+# agents-platform — the post-Supabase data plane for Project Agent.
+# Lives at /opt/agents-platform on the VPS, isolated from project-agent
+# (n8n) compose so n8n is never touched by changes here.
+#
+# Bring up: docker compose --env-file .env up -d
+# Verify:   docker exec agents-postgres psql -U agents_admin -d agents -c "\dx"
+
+services:
+  agents-postgres:
+    image: pgvector/pgvector:pg17
+    container_name: agents-postgres
+    environment:
+      POSTGRES_DB: agents
+      POSTGRES_USER: agents_admin
+      POSTGRES_PASSWORD: ${PG_ADMIN_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+      PG_APP_PASSWORD: ${PG_APP_PASSWORD}
+    volumes:
+      - agents-postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./postgres/backups:/backups
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agents_admin -d agents"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # Internal-only: no host port exposed. Other containers reach this
+    # via the agents-net network. Host processes (prompt-builder on the
+    # VPS host) reach it via 127.0.0.1 if we add a port mapping later.
+    ports:
+      - "127.0.0.1:5433:5432"
+    networks:
+      - agents-net
+
+  agents-auth:
+    build:
+      context: ../../services/auth
+    image: agents-auth:local
+    container_name: agents-auth
+    restart: unless-stopped
+    depends_on:
+      agents-postgres:
+        condition: service_healthy
+    environment:
+      PORT: 8201
+      PG_HOST: agents-postgres
+      PG_PORT: 5432
+      PG_DATABASE: agents
+      PG_USER: agents_app
+      PG_PASSWORD: ${PG_APP_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      OTP_FROM: ${OTP_FROM:-Project Agent <noreply@dcp.sa>}
+      AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS}
+    ports:
+      - "127.0.0.1:8201:8201"
+    networks:
+      - agents-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8201/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  agents-postgres-data:
+
+networks:
+  agents-net:
+    name: agents-net
+    driver: bridge
