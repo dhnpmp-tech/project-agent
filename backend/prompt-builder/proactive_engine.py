@@ -16,10 +16,11 @@ import os
 import json
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -94,7 +95,7 @@ async def get_pending_followups() -> list:
     """Get all scheduled follow-ups that are due."""
     now = datetime.now(timezone.utc).isoformat()
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/scheduled_actions?status=eq.pending&scheduled_at=lte.{now}&select=*&order=scheduled_at.asc&limit=50",
                 headers=_SUPA_HEADERS,
@@ -116,7 +117,7 @@ async def schedule_followup(
     """Schedule a follow-up message."""
     scheduled_at = (datetime.now(timezone.utc) + timedelta(hours=delay_hours)).isoformat()
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/scheduled_actions",
                 headers=_SUPA_HEADERS,
@@ -155,7 +156,7 @@ async def send_template_message(
                 "parameters": [{"type": "text", "text": p} for p in params],
             })
 
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             r = await http.post(
                 f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
                 headers={
@@ -244,7 +245,7 @@ async def detect_churn_risk(client_id: str) -> list:
     """Find customers who haven't interacted in 14+ days."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Get all customers who had conversations
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/conversation_messages?client_id=eq.{client_id}&direction=eq.inbound&select=customer_phone,created_at&order=created_at.desc",
@@ -281,7 +282,7 @@ async def send_immediate_followup(
 ) -> bool:
     """Send a free-form follow-up within the 24h window."""
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             r = await http.post(
                 f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
                 headers={
@@ -347,7 +348,7 @@ async def process_pending_actions() -> dict:
 
         # Update status
         try:
-            async with httpx.AsyncClient(timeout=5) as http:
+            async with supa.client(timeout=5) as http:
                 await http.patch(
                     f"{_SUPA_URL}/rest/v1/scheduled_actions?id=eq.{action_id}",
                     headers=_SUPA_HEADERS,
@@ -385,7 +386,7 @@ async def record_opt_in(client_id: str, customer_phone: str, opted_in: bool = Tr
     _opt_in_cache[f"{client_id}_{customer_phone}"] = opted_in
     # Also store in Supabase (in the booking or a dedicated table)
     try:
-        async with httpx.AsyncClient(timeout=5) as http:
+        async with supa.client(timeout=5) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers=_SUPA_HEADERS,
@@ -463,7 +464,7 @@ async def submit_template_to_meta(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             r = await http.post(
                 f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/message_templates",
                 headers={
@@ -496,7 +497,7 @@ async def submit_template_to_meta(
 async def get_template_status(template_name: str, phone_number_id: str = "") -> dict:
     """Check the approval status of a submitted template."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/message_templates"
                 f"?name={template_name}",

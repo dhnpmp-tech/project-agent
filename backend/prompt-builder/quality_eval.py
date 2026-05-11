@@ -16,6 +16,7 @@ import re
 import json
 import asyncio
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -24,7 +25,7 @@ from typing import Optional
 # ═══════════════════════════════════════════════════════
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -44,7 +45,7 @@ _EVAL_MODEL = os.environ.get("EVAL_MODEL", "google/gemini-2.0-flash-001")  # che
 async def _fetch_client(client_id: str) -> dict:
     """Fetch client record with metadata."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&limit=1",
                 headers=_SUPA_HEADERS,
@@ -60,7 +61,7 @@ async def _fetch_client(client_id: str) -> dict:
 async def _fetch_deployment(client_id: str) -> dict:
     """Fetch agent deployment config (persona, KB, brand voice)."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/agent_deployments?client_id=eq.{client_id}&limit=1",
                 headers=_SUPA_HEADERS,
@@ -77,7 +78,7 @@ async def _fetch_conversations(client_id: str, days: int = 1) -> list:
     """Fetch conversation messages from the last N days."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%S")
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/conversation_messages"
                 f"?client_id=eq.{client_id}"
@@ -97,7 +98,7 @@ async def _fetch_conversations(client_id: str, days: int = 1) -> list:
 async def _log_quality_event(client_id: str, payload: dict, summary: str = None):
     """Store quality evaluation in activity_logs."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers=_SUPA_HEADERS,
@@ -376,7 +377,7 @@ Respond ONLY with valid JSON, no markdown:
 {{"faithfulness": 0.0, "hallucination_free": 0.0, "relevancy": 0.0, "persona_consistency": 0.0, "issues": ["issue1"], "notes": "brief explanation"}}"""
 
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with supa.client(timeout=30) as http:
             resp = await http.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
@@ -635,7 +636,7 @@ async def get_quality_dashboard(client_id: str, days: int = 7) -> dict:
     """
     try:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%S")
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/activity_logs"
                 f"?client_id=eq.{client_id}"
@@ -755,7 +756,7 @@ async def get_quality_brief(client_id: str, lang: str = "en") -> str:
     """
     # Get latest evaluation
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/activity_logs"
                 f"?client_id=eq.{client_id}"

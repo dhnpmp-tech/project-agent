@@ -16,10 +16,11 @@ import os
 import json
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -58,7 +59,7 @@ async def _kapso_request(method: str, path: str, body: dict = None) -> dict:
     if not _KAPSO_KEY:
         return {"error": "Kapso API key not configured"}
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             kwargs = {
                 "headers": {
                     "X-API-Key": _KAPSO_KEY,
@@ -93,7 +94,7 @@ async def create_kapso_customer(client_id: str, company_name: str) -> dict:
     if result.get("id"):
         # Store the Kapso customer ID
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 await http.patch(
                     f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}",
                     headers=_SUPA_HEADERS,
@@ -148,7 +149,7 @@ async def start_provisioning(client_id: str, owner_phone: str, lang: str = "ar")
     """
     # Get client info
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=company_name,metadata",
                 headers=_SUPA_HEADERS,
@@ -334,7 +335,7 @@ async def handle_provisioning_complete(client_id: str, phone_number_id: str = ""
 
     # Store the phone_number_id in the client record
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Get existing metadata
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=metadata",
@@ -415,7 +416,7 @@ Congratulations! 🎉"""
     if owner_phone and phone_number_id:
         try:
             kapso_msg_key = os.environ.get("KAPSO_PLATFORM_API_KEY", "")
-            async with httpx.AsyncClient(timeout=15) as http:
+            async with supa.client(timeout=15) as http:
                 await http.post(
                     f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
                     headers={"X-API-Key": kapso_msg_key, "Content-Type": "application/json"},
@@ -455,7 +456,7 @@ async def get_provisioning_status(client_id: str) -> dict:
 
     # Check if already provisioned
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=metadata",
                 headers=_SUPA_HEADERS,

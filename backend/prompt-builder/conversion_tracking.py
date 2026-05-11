@@ -8,11 +8,12 @@ import os
 import json
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 import hashlib
 from datetime import datetime, timezone, timedelta
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -55,7 +56,7 @@ def _generate_event_id(client_id: str, event_name: str, phone: str) -> str:
 async def _get_client_config(client_id: str) -> dict:
     """Fetch client config including Meta pixel and GA4 settings."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=meta_config,ga4_config,company_name",
                 headers=_SUPA_HEADERS,
@@ -101,7 +102,7 @@ async def track_event(
 
     # Store in activity_logs
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers=_SUPA_HEADERS,
@@ -194,7 +195,7 @@ async def send_meta_capi_event(
         payload["data"][0]["custom_data"]["currency"] = event_data.get("currency", "AED")
 
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             r = await http.post(
                 f"https://graph.facebook.com/v19.0/{pixel_id}/events",
                 params={"access_token": access_token},
@@ -223,7 +224,7 @@ async def get_conversion_funnel(client_id: str, days: int = 7) -> dict:
     start_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/activity_logs"
                 f"?client_id=eq.{client_id}"
@@ -298,7 +299,7 @@ async def get_event_timeline(client_id: str, customer_phone: str) -> list:
     phone_hash = _hash_phone(customer_phone)
 
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/activity_logs"
                 f"?client_id=eq.{client_id}"
@@ -340,7 +341,7 @@ async def get_analytics_dashboard(client_id: str, days: int = 7) -> dict:
     start_iso = start.isoformat()
 
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/activity_logs"
                 f"?client_id=eq.{client_id}"

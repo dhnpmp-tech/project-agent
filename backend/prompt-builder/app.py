@@ -9,6 +9,7 @@ from typing import Any, Optional, List
 import os
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 import asyncio
 from onboarding import is_onboarding, process_onboarding_message, get_onboarding_state
 from research_engine import generate_weekly_brief, run_weekly_research, send_owner_brief, get_customer_stats
@@ -140,7 +141,7 @@ _last_activity: dict[str, float] = {}
 # ═══════════════════════════════════════════════════════
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -156,7 +157,7 @@ async def _get_booking(phone: str, client_id: str = "") -> dict:
     if phone in _booking_cache:
         return _booking_cache[phone]
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
+        async with supa.client(timeout=5) as client:
             url = f"{_SUPA_URL}/rest/v1/active_bookings?customer_phone=eq.{phone}&status=in.(collecting,confirming)&order=created_at.desc&limit=1"
             if client_id:
                 url += f"&client_id=eq.{client_id}"
@@ -181,7 +182,7 @@ async def _update_booking(phone: str, client_id: str = "", **kwargs):
     print(f"[booking] _update_booking called: phone={phone}, fields={fields}")
 
     try:
-        async with httpx.AsyncClient(timeout=5) as http:
+        async with supa.client(timeout=5) as http:
             # Check if booking exists
             existing = await _get_booking(phone, client_id)
             if existing and existing.get("id"):
@@ -225,7 +226,7 @@ async def _cancel_booking(phone: str):
     existing = await _get_booking(phone)
     if existing and existing.get("id"):
         try:
-            async with httpx.AsyncClient(timeout=5) as client:
+            async with supa.client(timeout=5) as client:
                 await client.patch(
                     f"{_SUPA_URL}/rest/v1/active_bookings?id=eq.{existing['id']}",
                     headers=_SUPA_HEADERS,
@@ -744,7 +745,7 @@ PHONE_TO_CLIENT = {
 }
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
 
 class RegisterRouteRequest(BaseModel):
@@ -777,7 +778,7 @@ async def resolve_client(phone_number_id: str) -> str:
         return PHONE_TO_CLIENT[phone_number_id]
 
     # Fallback: check Supabase agent_deployments
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with supa.client(timeout=10) as client:
         resp = await client.get(
             f"{SUPABASE_URL}/rest/v1/agent_deployments?config->>phoneNumberId=eq.{phone_number_id}&select=client_id&limit=1",
             headers={
@@ -844,7 +845,7 @@ async def send_reply(request: Request):
     req = SendReplyRequest(**{k: v for k, v in raw.items() if k in SendReplyRequest.model_fields})
     parts = req.replyParts or [req.replyText]
     results = []
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with supa.client(timeout=30) as client:
         for i, part in enumerate(parts):
             if i > 0:
                 await asyncio.sleep(1.5)
@@ -1312,7 +1313,7 @@ async def test_message(req: TestMessageRequest):
     # Fetch KB
     kb = {}
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=*",
                 headers=_SUPA_HEADERS,
@@ -1328,7 +1329,7 @@ async def test_message(req: TestMessageRequest):
     try:
         mem0_url = os.environ.get("MEM0_URL", "http://172.17.0.1:8888")
         mem0_key = os.environ.get("MEM0_API_KEY", "brain-mem0-admin-key-2026")
-        async with httpx.AsyncClient(timeout=5) as http:
+        async with supa.client(timeout=5) as http:
             r = await http.get(
                 f"{mem0_url}/memories?user_id={req.phone}",
                 headers={"X-API-Key": mem0_key},
@@ -1349,7 +1350,7 @@ async def test_message(req: TestMessageRequest):
     # Call MiniMax
     minimax_key = os.environ.get("MINIMAX_API_KEY", "")
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with supa.client(timeout=30) as http:
             mm_resp = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={"Authorization": f"Bearer {minimax_key}", "Content-Type": "application/json"},
@@ -1446,7 +1447,7 @@ async def _whatsapp_pipeline(
         # ── 2. FETCH KB FROM SUPABASE ──────────────────────
         kb = {}
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 kb_resp = await http.get(
                     f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=*",
                     headers={
@@ -1463,7 +1464,7 @@ async def _whatsapp_pipeline(
         # ── 3. FETCH MEMORY FROM MEM0 ─────────────────────
         memory_data = {}
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 mem_resp = await http.get(
                     f"{_MEM0_URL}/memories?user_id={phone}",
                     headers={"X-API-Key": _MEM0_API_KEY},
@@ -1514,7 +1515,7 @@ async def _whatsapp_pipeline(
             print(f"[webhook] Arabic detected — routing to Claude Haiku")
             for attempt in range(2):
                 try:
-                    async with httpx.AsyncClient(timeout=45) as http:
+                    async with supa.client(timeout=45) as http:
                         mm_resp = await http.post(
                             "https://openrouter.ai/api/v1/chat/completions",
                             headers={
@@ -1542,7 +1543,7 @@ async def _whatsapp_pipeline(
             print("[webhook] Using MiniMax M2.7")
             for attempt in range(3):
                 try:
-                    async with httpx.AsyncClient(timeout=30) as http:
+                    async with supa.client(timeout=30) as http:
                         mm_resp = await http.post(
                             "https://api.minimax.io/v1/chat/completions",
                             headers={
@@ -1625,7 +1626,7 @@ async def _whatsapp_pipeline(
 
         # ── 7. SEND REPLY VIA KAPSO ────────────────────────
         try:
-            async with httpx.AsyncClient(timeout=30) as http:
+            async with supa.client(timeout=30) as http:
                 for i, part in enumerate(parts):
                     if i > 0:
                         await asyncio.sleep(1.5)
@@ -1698,7 +1699,7 @@ async def _whatsapp_pipeline(
                     rf"\b{relative}\b", absolute, user_msg_for_mem, flags=re.IGNORECASE
                 )
 
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 await http.post(
                     f"{_MEM0_URL}/memories",
                     headers={
@@ -1734,7 +1735,7 @@ async def _whatsapp_pipeline(
 
         # ── 10. STORE CONVERSATION IN SUPABASE ─────────────
         try:
-            async with httpx.AsyncClient(timeout=5) as http:
+            async with supa.client(timeout=5) as http:
                 # Store customer message
                 await http.post(
                     f"{_SUPA_URL}/rest/v1/conversation_messages",
@@ -1775,7 +1776,7 @@ async def _whatsapp_pipeline(
 
         # Attempt to send fallback message
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 await http.post(
                     f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
                     headers={
@@ -1813,7 +1814,7 @@ async def _widget_pipeline(
         # ── 1. FETCH KB FROM SUPABASE ──────────────────────
         kb = {}
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 kb_resp = await http.get(
                     f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=*",
                     headers={
@@ -1841,7 +1842,7 @@ async def _widget_pipeline(
         # ── 2. FETCH MEMORY FROM MEM0 ─────────────────────
         memory_data = {}
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 mem_resp = await http.get(
                     f"{_MEM0_URL}/memories?user_id={phone}",
                     headers={"X-API-Key": _MEM0_API_KEY},
@@ -1879,7 +1880,7 @@ async def _widget_pipeline(
         minimax_response = {}
         for attempt in range(3):
             try:
-                async with httpx.AsyncClient(timeout=30) as http:
+                async with supa.client(timeout=30) as http:
                     mm_resp = await http.post(
                         "https://api.minimax.io/v1/chat/completions",
                         headers={
@@ -1951,7 +1952,7 @@ async def _widget_pipeline(
                     rf"\b{relative}\b", absolute, user_msg_for_mem, flags=re.IGNORECASE
                 )
 
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 await http.post(
                     f"{_MEM0_URL}/memories",
                     headers={
@@ -1985,7 +1986,7 @@ async def _widget_pipeline(
 
         # ── 8. STORE CONVERSATION IN SUPABASE ─────────────
         try:
-            async with httpx.AsyncClient(timeout=5) as http:
+            async with supa.client(timeout=5) as http:
                 # Store customer message (tagged as widget channel)
                 await http.post(
                     f"{_SUPA_URL}/rest/v1/conversation_messages",
@@ -2070,7 +2071,7 @@ async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
             _logger.warning(f"[webhook] Voice note transcription failed for {phone}: {vn_result.get('error', 'unknown')}")
             try:
                 kapso_key = os.environ.get("KAPSO_PLATFORM_API_KEY", "")
-                async with httpx.AsyncClient(timeout=15) as http_client:
+                async with supa.client(timeout=15) as http_client:
                     await http_client.post(
                         f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
                         headers={"X-API-Key": kapso_key, "Content-Type": "application/json"},
@@ -2093,7 +2094,7 @@ async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
     client_id = PHONE_TO_CLIENT.get(phone_number_id, "")
     if not client_id:
         try:
-            async with httpx.AsyncClient(timeout=5) as http_client:
+            async with supa.client(timeout=5) as http_client:
                 r = await http_client.get(
                     f"{_SUPA_URL}/rest/v1/agent_deployments?phone_number_id=eq.{phone_number_id}&select=client_id&limit=1",
                     headers=_SUPA_HEADERS,
@@ -2113,7 +2114,7 @@ async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
             if block_msg and phone_number_id:
                 try:
                     kapso_key = os.environ.get("KAPSO_PLATFORM_API_KEY", "")
-                    async with httpx.AsyncClient(timeout=15) as http_client:
+                    async with supa.client(timeout=15) as http_client:
                         await http_client.post(
                             f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
                             headers={"X-API-Key": kapso_key, "Content-Type": "application/json"},
@@ -2223,7 +2224,7 @@ async def webhook_onboarding(request: Request, background_tasks: BackgroundTasks
             # Split on ||| for multi-message
             parts = [p.strip() for p in reply.split("|||") if p.strip()] if "|||" in reply else [reply]
 
-            async with httpx.AsyncClient(timeout=30) as http:
+            async with supa.client(timeout=30) as http:
                 for i, part in enumerate(parts):
                     if i > 0:
                         await asyncio.sleep(1)
@@ -2332,7 +2333,7 @@ async def owner_send_brief(client_id: str):
     """Generate and send morning brief to owner via WhatsApp."""
     brief = await generate_morning_brief(client_id)
     # Get owner phone and phone_number_id
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=contact_phone",
             headers=_SUPA_HEADERS,
@@ -2344,7 +2345,7 @@ async def owner_send_brief(client_id: str):
             kapso_key = os.environ.get("KAPSO_PLATFORM_API_KEY", "")
             # Use the client's phone_number_id (would come from agent_deployments)
             try:
-                async with httpx.AsyncClient(timeout=15) as http:
+                async with supa.client(timeout=15) as http:
                     await http.post(
                         f"https://api.kapso.ai/meta/whatsapp/v24.0/1050764414786995/messages",
                         headers={"X-API-Key": kapso_key, "Content-Type": "application/json"},

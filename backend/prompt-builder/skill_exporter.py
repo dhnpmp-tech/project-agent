@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
 _SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -200,7 +201,7 @@ async def _fetch_learned_rules(client_id: str) -> list[dict]:
     if not _SUPA_KEY:
         return []
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge"
                 f"?client_id=eq.{client_id}&select=crawl_data",

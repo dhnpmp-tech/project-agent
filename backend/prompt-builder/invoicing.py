@@ -11,6 +11,7 @@ When a customer completes an order via WhatsApp, we:
 import os
 import json
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone
 
 _NINJA_URL = os.environ.get("INVOICE_NINJA_URL", "http://localhost:8300")
@@ -26,7 +27,7 @@ _HEADERS = {
 async def find_or_create_client(name: str, phone: str, email: str = "") -> dict:
     """Find existing client by phone or create new one."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Search by phone
             r = await http.get(
                 f"{_NINJA_URL}/api/v1/clients?search={phone}",
@@ -69,7 +70,7 @@ async def create_invoice(client_id: str, items: list, currency: str = "AED") -> 
         })
 
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.post(
                 f"{_NINJA_URL}/api/v1/invoices",
                 headers=_HEADERS,
@@ -88,7 +89,7 @@ async def create_invoice(client_id: str, items: list, currency: str = "AED") -> 
 async def get_invoice_pdf(invoice_id: str) -> bytes:
     """Download invoice PDF."""
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             r = await http.get(
                 f"{_NINJA_URL}/api/v1/invoices/{invoice_id}/download",
                 headers=_HEADERS,
@@ -126,7 +127,7 @@ async def create_and_send_invoice(
     if pdf and phone_number_id:
         try:
             kapso_key = os.environ.get("KAPSO_PLATFORM_API_KEY", "")
-            async with httpx.AsyncClient(timeout=15) as http:
+            async with supa.client(timeout=15) as http:
                 # Upload PDF
                 files = {"file": ("invoice.pdf", pdf, "application/pdf")}
                 r = await http.post(
@@ -168,7 +169,7 @@ async def create_and_send_invoice(
 async def get_outstanding_invoices(client_phone: str = "") -> list:
     """Get unpaid invoices, optionally filtered by client phone."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             url = f"{_NINJA_URL}/api/v1/invoices?status=active&per_page=20"
             r = await http.get(url, headers=_HEADERS)
             invoices = r.json().get("data", [])

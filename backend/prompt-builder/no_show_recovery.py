@@ -14,6 +14,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any
 
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
 _SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -201,7 +202,7 @@ async def _fetch_upcoming_bookings(cutoff_iso: str) -> list[dict]:
         f"&booking_date=lte.{cutoff_iso}"
         f"&select=*"
     )
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(url, headers=_SUPA_HEADERS)
         rows = r.json() if r.status_code == 200 else []
 
@@ -222,7 +223,7 @@ async def _fetch_upcoming_bookings(cutoff_iso: str) -> list[dict]:
 async def _fetch_booking(booking_id: str) -> dict | None:
     if not _SUPA_KEY:
         return None
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/active_bookings?id=eq.{booking_id}&select=*",
             headers=_SUPA_HEADERS,
@@ -234,7 +235,7 @@ async def _fetch_booking(booking_id: str) -> dict | None:
 async def _latest_deposit(booking_id: str) -> dict | None:
     if not _SUPA_KEY:
         return None
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/deposit_requests"
             f"?booking_id=eq.{booking_id}&order=requested_at.desc&limit=1",
@@ -247,7 +248,7 @@ async def _latest_deposit(booking_id: str) -> dict | None:
 async def _insert(table: str, payload: dict) -> dict:
     if not _SUPA_KEY:
         return payload
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.post(f"{_SUPA_URL}/rest/v1/{table}", headers=_SUPA_HEADERS, json=payload)
         if r.status_code in (200, 201):
             data = r.json()
@@ -258,7 +259,7 @@ async def _insert(table: str, payload: dict) -> dict:
 async def _patch(table: str, query: str, payload: dict) -> bool:
     if not _SUPA_KEY:
         return False
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.patch(
             f"{_SUPA_URL}/rest/v1/{table}?{query}", headers=_SUPA_HEADERS, json=payload
         )
@@ -270,7 +271,7 @@ async def _find_waitlist_match(released: dict) -> dict | None:
     if not _SUPA_KEY:
         return None
     party = released.get("party_size") or 99
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/active_bookings"
             f"?client_id=eq.{released['client_id']}"
@@ -303,7 +304,7 @@ async def _log_outcome(booking: dict, outcome: str, reason: str = "", recovered:
 async def _send_whatsapp(phone: str, body: str, client_id: str) -> bool:
     if not _KAPSO_KEY:
         return False
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.post(
             "https://app.kapso.ai/api/v1/whatsapp/messages",
             headers={"X-API-Key": _KAPSO_KEY, "Content-Type": "application/json"},

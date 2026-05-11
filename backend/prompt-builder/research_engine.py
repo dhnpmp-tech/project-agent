@@ -6,12 +6,13 @@ Delivers weekly intelligence briefs to owners via WhatsApp.
 import os
 import json
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 import re
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -24,7 +25,7 @@ _MEM0_KEY = os.environ.get("MEM0_API_KEY", "brain-mem0-admin-key-2026")
 
 async def get_all_clients() -> list:
     """Fetch all active clients."""
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/clients?status=eq.active&select=id,company_name,contact_phone",
             headers=_SUPA_HEADERS,
@@ -34,7 +35,7 @@ async def get_all_clients() -> list:
 
 async def get_client_kb(client_id: str) -> dict:
     """Fetch business knowledge for a client."""
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=*",
             headers=_SUPA_HEADERS,
@@ -45,7 +46,7 @@ async def get_client_kb(client_id: str) -> dict:
 
 async def get_customer_stats(client_id: str) -> dict:
     """Deep analytics from active_bookings — patterns, failures, insights."""
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/active_bookings?client_id=eq.{client_id}&select=id,customer_phone,status,created_at,booking_time,booking_date,party_size,occasion,guest_name,seating_preference,dietary_notes,last_updated_at",
             headers=_SUPA_HEADERS,
@@ -284,7 +285,7 @@ async def generate_weekly_brief(client_id: str) -> str:
         data_dump = "\n".join(data_lines)
 
         try:
-            async with httpx.AsyncClient(timeout=90) as http:
+            async with supa.client(timeout=90) as http:
                 r = await http.post(
                     "https://api.minimax.io/v1/chat/completions",
                     headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
@@ -339,7 +340,7 @@ async def send_owner_brief(client_id: str, phone_number_id: str = "", kapso_key:
         # Send via WhatsApp
         owner_phone = client.get("contact_phone", "")
         if owner_phone:
-            async with httpx.AsyncClient(timeout=15) as http:
+            async with supa.client(timeout=15) as http:
                 await http.post(
                     f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
                     headers={"X-API-Key": kapso_key, "Content-Type": "application/json"},

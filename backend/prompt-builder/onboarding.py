@@ -8,11 +8,12 @@ import os
 import json
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -202,7 +203,7 @@ async def _create_business(phone: str, data: dict, contact_name: str, lang: str)
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Create client
             await http.post(
                 f"{_SUPA_URL}/rest/v1/clients",

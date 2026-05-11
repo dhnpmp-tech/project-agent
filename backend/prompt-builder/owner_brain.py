@@ -13,11 +13,12 @@ import os
 import json
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -50,7 +51,7 @@ async def build_guest_intelligence(client_id: str) -> dict:
     # Fetch all conversations for this client (last 90 days)
     cutoff_90d = (now - timedelta(days=90)).isoformat()
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/conversation_messages?client_id=eq.{client_id}&direction=eq.inbound&created_at=gte.{cutoff_90d}&select=customer_phone,created_at&order=created_at.asc",
                 headers=_SUPA_HEADERS,
@@ -61,7 +62,7 @@ async def build_guest_intelligence(client_id: str) -> dict:
 
     # Fetch all bookings for this client (last 90 days)
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/active_bookings?client_id=eq.{client_id}&created_at=gte.{cutoff_90d}&select=customer_phone,guest_name,party_size,created_at,status",
                 headers=_SUPA_HEADERS,
@@ -212,7 +213,7 @@ async def draft_review_response(
 
     # Get business name
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=company_name",
                 headers=_SUPA_HEADERS,
@@ -250,7 +251,7 @@ Rules:
 - Do NOT use <think> tags. Output ONLY the reply text."""
 
     try:
-        async with httpx.AsyncClient(timeout=60) as http:
+        async with supa.client(timeout=60) as http:
             r = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
@@ -317,7 +318,7 @@ Rules:
     # Store the draft for later approval
     review_id = f"rev_{client_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers=_SUPA_HEADERS,
@@ -354,7 +355,7 @@ async def process_review_approval(client_id: str, owner_response: str, review_id
     if resp_lower in ("send", "أرسل", "ارسل", "✅"):
         # Approve as-is — fetch the draft
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 r = await http.get(
                     f"{_SUPA_URL}/rest/v1/activity_logs?client_id=eq.{client_id}&event_type=eq.review_draft&order=created_at.desc&limit=1&select=payload",
                     headers=_SUPA_HEADERS,
@@ -459,7 +460,7 @@ async def _fetch_history(client_id: str, days: int = 7) -> list[dict]:
         next_str = (target + timedelta(days=1)).strftime("%Y-%m-%d")
         entry = {"date": day_str, "day": target.strftime("%A"), "bookings": 0, "conversations": 0, "covers": 0, "cancelled": 0}
         try:
-            async with httpx.AsyncClient(timeout=8) as http:
+            async with supa.client(timeout=8) as http:
                 r = await http.get(
                     f"{_SUPA_URL}/rest/v1/active_bookings?client_id=eq.{client_id}&created_at=gte.{day_str}T00:00:00Z&created_at=lt.{next_str}T00:00:00Z&select=status,party_size,guest_name",
                     headers=_SUPA_HEADERS,
@@ -549,7 +550,7 @@ async def generate_morning_brief(client_id: str) -> str:
     today_name = uae_now.strftime("%A")
 
     # ── Fetch client info ──
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=company_name,contact_phone",
             headers=_SUPA_HEADERS,
@@ -560,28 +561,28 @@ async def generate_morning_brief(client_id: str) -> str:
     lang = "ar" if any(0x600 < ord(c) < 0x6FF for c in company) else "en"
 
     # ── Fetch yesterday's detailed data ──
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/active_bookings?client_id=eq.{client_id}&created_at=gte.{yesterday}T00:00:00Z&created_at=lt.{today}T00:00:00Z&select=*",
             headers=_SUPA_HEADERS,
         )
         bookings = r.json() if r.status_code == 200 else []
 
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/conversation_messages?client_id=eq.{client_id}&created_at=gte.{yesterday}T00:00:00Z&created_at=lt.{today}T00:00:00Z&select=customer_phone,direction,content,created_at",
             headers=_SUPA_HEADERS,
         )
         all_msgs = r.json() if r.status_code == 200 else []
 
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/active_bookings?client_id=eq.{client_id}&booking_date=like.*{today}*&select=guest_name,booking_time,party_size,occasion,dietary_notes,seating_preference,customer_phone",
             headers=_SUPA_HEADERS,
         )
         today_bookings = r.json() if r.status_code == 200 else []
 
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=crawl_data",
             headers=_SUPA_HEADERS,
@@ -1091,7 +1092,7 @@ async def process_owner_command(client_id: str, command: str) -> str:
         return "Command processing requires AI. API key not configured."
 
     try:
-        async with httpx.AsyncClient(timeout=60) as http:
+        async with supa.client(timeout=60) as http:
             r = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
@@ -1198,7 +1199,7 @@ Do NOT use <think> tags. Output ONLY the JSON."""},
 async def _update_kb_field(client_id: str, field: str, value: str):
     """Update a specific field in business_knowledge."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.patch(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}",
                 headers=_SUPA_HEADERS,
@@ -1211,7 +1212,7 @@ async def _update_kb_field(client_id: str, field: str, value: str):
 async def _update_kb_item(client_id: str, item: str, price: str):
     """Update a menu item price in crawl_data."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=crawl_data",
                 headers=_SUPA_HEADERS,
@@ -1238,7 +1239,7 @@ async def _update_kb_item(client_id: str, item: str, price: str):
 async def _add_daily_special(client_id: str, name: str, price: str, description: str):
     """Add a daily special to crawl_data."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=crawl_data",
                 headers=_SUPA_HEADERS,
@@ -1268,7 +1269,7 @@ async def _add_daily_special(client_id: str, name: str, price: str, description:
 async def send_owner_alert(client_id: str, alert_type: str, message: str, phone_number_id: str = ""):
     """Send a real-time alert to the business owner."""
     # Get owner phone
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=contact_phone",
             headers=_SUPA_HEADERS,
@@ -1297,7 +1298,7 @@ async def send_owner_alert(client_id: str, alert_type: str, message: str, phone_
     full_message = f"{prefix}: {message}"
 
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             await http.post(
                 f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
                 headers={"X-API-Key": _KAPSO_KEY, "Content-Type": "application/json"},
@@ -1327,7 +1328,7 @@ async def surface_risks(client_id: str, lang: str = "en") -> list[dict]:
     two_hours_ago = (now - timedelta(hours=2)).isoformat()
     today = now.strftime("%Y-%m-%d")
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Get recent inbound messages
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/conversation_messages?client_id=eq.{client_id}&direction=eq.inbound&created_at=gte.{today}T00:00:00Z&select=customer_phone,created_at&order=created_at.desc",
@@ -1368,7 +1369,7 @@ async def surface_risks(client_id: str, lang: str = "en") -> list[dict]:
 
     # 2. Today's bookings with no confirmation reminder sent
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/active_bookings?client_id=eq.{client_id}&booking_date=like.*{today}*&status=eq.confirmed&select=guest_name,booking_time,customer_phone",
                 headers=_SUPA_HEADERS,

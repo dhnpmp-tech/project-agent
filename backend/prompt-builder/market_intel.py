@@ -13,10 +13,11 @@ import os
 import json
 import subprocess
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -56,7 +57,7 @@ async def get_market_brief(client_id: str, lang: str = "en") -> str:
     Searches for the business name + industry trends."""
     # Get client info
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=company_name,metadata",
                 headers=_SUPA_HEADERS,
@@ -166,7 +167,7 @@ async def get_karpathy_signals(client_id: str) -> list:
     """Get external signals for the Karpathy Loop — what customers in this industry are talking about."""
     # Get client industry
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=metadata",
                 headers=_SUPA_HEADERS,

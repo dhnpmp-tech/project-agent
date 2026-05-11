@@ -20,6 +20,7 @@ import os
 import json
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -28,7 +29,7 @@ from typing import Optional
 # ═══════════════════════════════════════════════════════
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -68,7 +69,7 @@ async def _minimax_chat(
     if not _MINIMAX_KEY:
         return "[AI key not configured — set MINIMAX_API_KEY]"
     try:
-        async with httpx.AsyncClient(timeout=90) as http:
+        async with supa.client(timeout=90) as http:
             r = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={
@@ -138,7 +139,7 @@ async def _minimax_json(
 async def _fetch_knowledge(client_id: str) -> dict:
     """Fetch business_knowledge for a client."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge"
                 f"?client_id=eq.{client_id}&select=*",
@@ -153,7 +154,7 @@ async def _fetch_knowledge(client_id: str) -> dict:
 async def _fetch_client(client_id: str) -> dict:
     """Fetch client row (company_name, country, plan, etc.)."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients"
                 f"?id=eq.{client_id}&select=company_name,country,plan,contact_email,contact_phone",
@@ -173,7 +174,7 @@ async def _log_activity(
 ) -> None:
     """Write to activity_logs (append-only event stream)."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers=_SUPA_HEADERS,
@@ -241,7 +242,7 @@ async def _composio_available(client_id: str) -> bool:
     if not _COMPOSIO_KEY:
         return False
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_COMPOSIO_BASE}/connectedAccounts",
                 headers={"x-api-key": _COMPOSIO_KEY},
@@ -310,7 +311,7 @@ async def auto_detect_gbp(client_id: str, business_name: str = "", location: str
     # Method 2: Fallback — use Google Places Text Search (free tier, no key needed for basic)
     if not gbp_data:
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 # Use Nominatim (OpenStreetMap) as free fallback for basic location data
                 r = await http.get(
                     "https://nominatim.openstreetmap.org/search",
@@ -349,7 +350,7 @@ async def auto_detect_gbp(client_id: str, business_name: str = "", location: str
             "detected_at": datetime.now(timezone.utc).isoformat(),
             "auto_detected": True,
         }
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.patch(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}",
                 headers=_SUPA_HEADERS,
@@ -390,7 +391,7 @@ async def setup_composio_google(client_id: str, composio_connection_id: str = ""
     # If a connection ID was provided, validate it
     if composio_connection_id:
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 r = await http.get(
                     f"{_COMPOSIO_BASE}/connectedAccounts/{composio_connection_id}",
                     headers={"x-api-key": _COMPOSIO_KEY},
@@ -415,7 +416,7 @@ async def setup_composio_google(client_id: str, composio_connection_id: str = ""
 
     # Initiate a new connection
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             r = await http.post(
                 f"{_COMPOSIO_BASE}/connectedAccounts",
                 headers={
@@ -466,7 +467,7 @@ async def execute_composio_action(action_name: str, params: dict) -> dict:
         return {"success": False, "data": {"error": f"Unknown action: {action_name}", "supported": list(_COMPOSIO_ACTIONS.keys())}}
 
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with supa.client(timeout=30) as http:
             r = await http.post(
                 f"{_COMPOSIO_BASE}/actions/{action_name}/execute",
                 headers={
@@ -526,7 +527,7 @@ async def fetch_reviews(client_id: str, location_id: str = "", days: int = 7) ->
     if not reviews:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 r = await http.get(
                     f"{_SUPA_URL}/rest/v1/activity_logs"
                     f"?client_id=eq.{client_id}"
@@ -1568,7 +1569,7 @@ async def get_gbp_insights(client_id: str) -> dict:
     conversation_count = 0
     booking_count = 0
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Unique conversations
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/conversation_messages"

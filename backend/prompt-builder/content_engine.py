@@ -20,11 +20,12 @@ import os
 import json
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -67,7 +68,7 @@ async def _minimax_chat(
     if not _MINIMAX_KEY:
         return "[AI key not configured — set MINIMAX_API_KEY]"
     try:
-        async with httpx.AsyncClient(timeout=90) as http:
+        async with supa.client(timeout=90) as http:
             r = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={
@@ -138,7 +139,7 @@ async def _minimax_json(
 async def _fetch_knowledge(client_id: str) -> dict:
     """Fetch business_knowledge for a client."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge"
                 f"?client_id=eq.{client_id}&select=*",
@@ -153,7 +154,7 @@ async def _fetch_knowledge(client_id: str) -> dict:
 async def _fetch_client(client_id: str) -> dict:
     """Fetch client row (company_name, country, etc.)."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients"
                 f"?id=eq.{client_id}&select=company_name,country,plan",
@@ -173,7 +174,7 @@ async def _log_activity(
 ) -> None:
     """Write to activity_logs (append-only event stream)."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers=_SUPA_HEADERS,
@@ -192,7 +193,7 @@ async def _fetch_recent_content_logs(client_id: str, days: int = 30) -> list:
     """Fetch recent content-related activity logs for performance analysis."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/activity_logs"
                 f"?client_id=eq.{client_id}"

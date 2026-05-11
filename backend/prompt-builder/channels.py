@@ -21,6 +21,7 @@ import uuid
 import asyncio
 import logging
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from typing import Optional
@@ -32,7 +33,7 @@ _logger = logging.getLogger("channels")
 # ═══════════════════════════════════════════════════════
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -134,7 +135,7 @@ _telegram_bot_reverse: dict[str, str] = {}  # bot_id -> client_id
 async def _load_telegram_bots():
     """Load Telegram bot token mappings from Supabase."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/channel_configs?channel=eq.telegram&select=*",
                 headers=_SUPA_HEADERS,
@@ -180,7 +181,7 @@ async def identify_customer(channel: str, customer_id: str, client_id: str) -> d
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Strategy 1: Direct phone match (WhatsApp, Telegram, SMS)
             if channel in ("whatsapp", "sms"):
                 result["customer_phone"] = customer_id
@@ -248,7 +249,7 @@ async def identify_customer(channel: str, customer_id: str, client_id: str) -> d
 async def _fetch_kb(client_id: str) -> dict:
     """Fetch knowledge base from Supabase."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=*",
                 headers={"apikey": _SUPA_KEY, "Authorization": f"Bearer {_SUPA_KEY}"},
@@ -264,7 +265,7 @@ async def _fetch_kb(client_id: str) -> dict:
 async def _fetch_memory(customer_key: str) -> dict:
     """Fetch customer memory from Mem0."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.get(
                 f"{_MEM0_URL}/memories?user_id={customer_key}",
                 headers={"X-API-Key": _MEM0_API_KEY},
@@ -299,7 +300,7 @@ async def _update_memory(customer_key: str, user_msg: str, reply_text: str, clie
                 rf"\b{relative}\b", absolute, user_msg_for_mem, flags=re.IGNORECASE
             )
 
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.post(
                 f"{_MEM0_URL}/memories",
                 headers={"X-API-Key": _MEM0_API_KEY, "Content-Type": "application/json"},
@@ -323,7 +324,7 @@ async def _update_memory(customer_key: str, user_msg: str, reply_text: str, clie
 async def _fetch_booking(customer_key: str, client_id: str) -> dict:
     """Fetch active booking from Supabase."""
     try:
-        async with httpx.AsyncClient(timeout=5) as http:
+        async with supa.client(timeout=5) as http:
             url = (
                 f"{_SUPA_URL}/rest/v1/active_bookings"
                 f"?customer_phone=eq.{customer_key}"
@@ -503,7 +504,7 @@ async def _call_llm(messages: list[dict], max_tokens: int = 500) -> str:
 
     for attempt in range(3):
         try:
-            async with httpx.AsyncClient(timeout=30) as http:
+            async with supa.client(timeout=30) as http:
                 resp = await http.post(
                     "https://api.minimax.io/v1/chat/completions",
                     headers={
@@ -627,7 +628,7 @@ async def _log_conversation(
             "created_at": datetime.now(timezone.utc).isoformat(),
             "metadata": json.dumps(metadata or {}),
         }
-        async with httpx.AsyncClient(timeout=5) as http:
+        async with supa.client(timeout=5) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/conversation_logs",
                 headers=_SUPA_HEADERS,
@@ -791,7 +792,7 @@ async def send_via_whatsapp(phone_number_id: str, to_phone: str, message: str) -
         parts = [message]
 
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with supa.client(timeout=30) as http:
             for i, part in enumerate(parts):
                 if i > 0:
                     await asyncio.sleep(1.5)
@@ -847,7 +848,7 @@ async def send_via_telegram(chat_id: str, message: str, buttons: list = None) ->
                     }])
             payload["reply_markup"] = json.dumps({"inline_keyboard": keyboard})
 
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             resp = await http.post(
                 f"https://api.telegram.org/bot{_TELEGRAM_BOT_TOKEN}/sendMessage",
                 json=payload,
@@ -935,7 +936,7 @@ async def get_widget_config(client_id: str) -> dict:
     # Check for custom widget config in Supabase
     widget_config = {}
     try:
-        async with httpx.AsyncClient(timeout=5) as http:
+        async with supa.client(timeout=5) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/channel_configs"
                 f"?client_id=eq.{client_id}&channel=eq.widget&select=config&limit=1",
@@ -981,7 +982,7 @@ async def get_widget_history(client_id: str, session_id: str, limit: int = 50) -
 
     # Fallback: check Supabase conversation_logs
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/conversation_logs"
                 f"?client_id=eq.{client_id}"
@@ -1041,7 +1042,7 @@ async def handle_telegram_update(update: dict) -> dict:
         callback_id = update["callback_query"].get("id", "")
         if callback_id and _TELEGRAM_BOT_TOKEN:
             try:
-                async with httpx.AsyncClient(timeout=5) as http:
+                async with supa.client(timeout=5) as http:
                     await http.post(
                         f"https://api.telegram.org/bot{_TELEGRAM_BOT_TOKEN}/answerCallbackQuery",
                         json={"callback_query_id": callback_id},
@@ -1108,7 +1109,7 @@ async def setup_telegram_webhook(bot_token: str, webhook_url: str) -> dict:
     Calls Telegram's setWebhook API to register our endpoint.
     """
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             resp = await http.post(
                 f"https://api.telegram.org/bot{bot_token}/setWebhook",
                 json={
@@ -1164,7 +1165,7 @@ async def register_telegram_bot(client_id: str, bot_token: str) -> dict:
     """Register a Telegram bot token for a client and set up the webhook."""
     # Save to Supabase
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Upsert channel config
             config_data = {
                 "client_id": client_id,
@@ -1198,7 +1199,7 @@ async def register_telegram_bot(client_id: str, bot_token: str) -> dict:
     # Verify bot info
     bot_info = {}
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.get(f"https://api.telegram.org/bot{bot_token}/getMe")
             if resp.status_code == 200:
                 data = resp.json()
@@ -1232,7 +1233,7 @@ async def get_channel_stats(client_id: str, days: int = 7) -> dict:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             # Get conversation counts by channel
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/conversation_logs"
@@ -1306,7 +1307,7 @@ async def get_active_channels(client_id: str) -> list[dict]:
     """Get all active channels for a client."""
     active = []
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/channel_configs"
                 f"?client_id=eq.{client_id}&active=eq.true&select=*",
@@ -1351,7 +1352,7 @@ async def enable_channel(client_id: str, channel: str, config: dict) -> dict:
         return {"ok": False, "error": f"Unknown channel: {channel}"}
 
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.post(
                 f"{_SUPA_URL}/rest/v1/channel_configs",
                 headers={**_SUPA_HEADERS, "Prefer": "resolution=merge-duplicates,return=representation"},
@@ -1374,7 +1375,7 @@ async def enable_channel(client_id: str, channel: str, config: dict) -> dict:
 async def disable_channel(client_id: str, channel: str) -> dict:
     """Disable a channel for a client."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.patch(
                 f"{_SUPA_URL}/rest/v1/channel_configs"
                 f"?client_id=eq.{client_id}&channel=eq.{channel}",
@@ -1427,7 +1428,7 @@ async def handle_instagram_webhook(payload: dict) -> dict:
             client_id = ""
             access_token = ""
             try:
-                async with httpx.AsyncClient(timeout=5) as http:
+                async with supa.client(timeout=5) as http:
                     resp = await http.get(
                         f"{_SUPA_URL}/rest/v1/channel_configs"
                         f"?channel=eq.instagram&config->>page_id=eq.{page_id}"
@@ -1486,7 +1487,7 @@ async def send_via_instagram(page_id: str, recipient_id: str, message: str, acce
         # Split long messages (Instagram has a 1000 char limit per message)
         parts = [message[i:i + 1000] for i in range(0, len(message), 1000)] if len(message) > 1000 else [message]
 
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             for part in parts:
                 r = await http.post(
                     f"https://graph.facebook.com/v19.0/{page_id}/messages",
@@ -1525,7 +1526,7 @@ async def setup_instagram_for_client(client_id: str, page_id: str, access_token:
 
         # Subscribe to Instagram webhook fields
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 r = await http.post(
                     f"https://graph.facebook.com/v19.0/{page_id}/subscribed_apps",
                     params={

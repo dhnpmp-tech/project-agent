@@ -16,6 +16,7 @@ from datetime import datetime, time, timezone, timedelta
 from typing import Any
 
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
 _SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -196,7 +197,7 @@ async def _fetch_active_clients() -> list[dict]:
     if not _SUPA_KEY:
         return []
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?status=eq.active&select=id,timezone,contact_phone",
                 headers=_SUPA_HEADERS,
@@ -220,7 +221,7 @@ async def _fetch_metrics(client_id: str) -> dict[str, Any]:
 
     metrics: dict[str, Any] = _empty_metrics()
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             today_b = await http.get(
                 f"{_SUPA_URL}/rest/v1/active_bookings"
                 f"?client_id=eq.{client_id}&booking_date=eq.{today}&select=id,party_size",
@@ -276,7 +277,7 @@ async def _owner_phone(client_id: str) -> str:
     if not _SUPA_KEY:
         return ""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}&select=contact_phone",
                 headers=_SUPA_HEADERS,
@@ -295,7 +296,7 @@ async def _already_sent_today(client_id: str, local_date: str) -> bool:
     if not _SUPA_KEY:
         return False
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/activity_logs"
                 f"?client_id=eq.{client_id}&event_type=eq.daily_pulse_sent"
@@ -311,7 +312,7 @@ async def _mark_sent(client_id: str, local_date: str) -> None:
     if not _SUPA_KEY:
         return
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers={**_SUPA_HEADERS, "Prefer": "return=minimal"},
@@ -329,7 +330,7 @@ async def _send_whatsapp(phone: str, body: str, client_id: str) -> bool:
     if not _KAPSO_KEY:
         return False
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.post(
                 "https://app.kapso.ai/api/v1/whatsapp/messages",
                 headers={"X-API-Key": _KAPSO_KEY, "Content-Type": "application/json"},

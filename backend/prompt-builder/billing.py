@@ -18,6 +18,7 @@ import json
 import re
 import uuid
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -26,7 +27,7 @@ from typing import Optional
 # ═══════════════════════════════════════════════════════
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -141,7 +142,7 @@ def _plan_limits(plan: str) -> dict:
 async def _get_client(client_id: str) -> dict:
     """Fetch client record from Supabase. Billing fields live in metadata JSONB."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}"
                 "&select=id,company_name,contact_phone,plan,status,metadata,created_at",
@@ -209,7 +210,7 @@ async def _update_client(client_id: str, data: dict) -> dict:
 
         patch_data["updated_at"] = _now().isoformat()
 
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.patch(
                 f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}",
                 headers=_SUPA_HEADERS,
@@ -225,7 +226,7 @@ async def _update_client(client_id: str, data: dict) -> dict:
 async def _log_billing_event(client_id: str, event_type: str, data: dict = None) -> None:
     """Log a billing event to activity_logs."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers=_SUPA_HEADERS,
@@ -247,7 +248,7 @@ async def _get_today_usage(client_id: str) -> dict:
     messages_used = 0
     bookings_used = 0
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Count messages
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/activity_logs"
@@ -288,7 +289,7 @@ async def _send_whatsapp(phone: str, message: str) -> bool:
         print(f"[billing] WhatsApp not configured, would send to {phone}: {message[:80]}...")
         return False
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             r = await http.post(
                 _WHATSAPP_API_URL,
                 headers={
@@ -587,7 +588,7 @@ async def create_tap_checkout(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with supa.client(timeout=30) as http:
             r = await http.post(
                 f"{_TAP_BASE_URL}/charges",
                 headers={
@@ -786,7 +787,7 @@ async def create_tap_subscription(client_id: str, plan: str, currency: str = "AE
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with supa.client(timeout=30) as http:
             r = await http.post(
                 f"{_TAP_BASE_URL}/subscription/v1",
                 headers={
@@ -838,7 +839,7 @@ async def cancel_subscription(client_id: str, reason: str = "") -> dict:
     tap_sub_id = client.get("tap_subscription_id", "")
     if tap_sub_id and _TAP_SECRET_KEY and not tap_sub_id.startswith("sub_mock_"):
         try:
-            async with httpx.AsyncClient(timeout=15) as http:
+            async with supa.client(timeout=15) as http:
                 await http.delete(
                     f"{_TAP_BASE_URL}/subscription/v1/{tap_sub_id}",
                     headers={"Authorization": f"Bearer {_TAP_SECRET_KEY}"},
@@ -1091,7 +1092,7 @@ async def send_trial_reminders() -> list:
     now = _now()
 
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             # Get all trialing clients
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/clients"
@@ -1199,7 +1200,7 @@ async def generate_trial_summary(client_id: str, lang: str = "en") -> str:
     This is the 'look what you'd lose' message.
     """
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             # Count total messages
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/activity_logs"
@@ -1463,7 +1464,7 @@ async def process_billing_command(client_id: str, command: str, lang: str = "en"
     # ── Billing History ───────────────────────────────
     if cmd in ("billing", "invoices", "فواتير", "الفواتير"):
         try:
-            async with httpx.AsyncClient(timeout=10) as http:
+            async with supa.client(timeout=10) as http:
                 r = await http.get(
                     f"{_SUPA_URL}/rest/v1/activity_logs"
                     f"?client_id=eq.{client_id}"

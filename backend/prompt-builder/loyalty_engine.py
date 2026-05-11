@@ -21,11 +21,12 @@ import json
 import re
 import uuid
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -276,7 +277,7 @@ async def _minimax_chat(
     if not _MINIMAX_KEY:
         return "[AI key not configured — set MINIMAX_API_KEY]"
     try:
-        async with httpx.AsyncClient(timeout=90) as http:
+        async with supa.client(timeout=90) as http:
             r = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={
@@ -340,7 +341,7 @@ async def _minimax_json(
 async def _supa_get(path: str) -> list | dict:
     """GET from Supabase REST API. Returns parsed JSON or empty list."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(f"{_SUPA_URL}/rest/v1/{path}", headers=_SUPA_HEADERS)
             return r.json() if r.status_code == 200 else []
     except Exception:
@@ -350,7 +351,7 @@ async def _supa_get(path: str) -> list | dict:
 async def _supa_post(table: str, data: dict) -> dict:
     """POST (insert) to Supabase REST API. Returns inserted row or error."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.post(
                 f"{_SUPA_URL}/rest/v1/{table}",
                 headers=_SUPA_HEADERS,
@@ -365,7 +366,7 @@ async def _supa_post(table: str, data: dict) -> dict:
 async def _supa_patch(table: str, filter_path: str, data: dict) -> dict:
     """PATCH (update) rows in Supabase REST API matching the filter."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.patch(
                 f"{_SUPA_URL}/rest/v1/{table}?{filter_path}",
                 headers=_SUPA_HEADERS,
@@ -385,7 +386,7 @@ async def _log_activity(
 ) -> None:
     """Write to activity_logs (append-only event stream)."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers=_SUPA_HEADERS,

@@ -15,11 +15,12 @@ import os
 import json
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -87,7 +88,7 @@ def _migrate_old_rule(old_rule: dict) -> dict:
 async def get_todays_conversations(client_id: str) -> dict:
     """Get all conversation messages from today, grouped by customer."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/conversation_messages?client_id=eq.{client_id}&created_at=gte.{today}T00:00:00Z&select=customer_phone,direction,content,created_at&order=created_at.asc",
             headers=_SUPA_HEADERS,
@@ -152,7 +153,7 @@ async def analyze_conversations(conversations: dict) -> dict:
 async def get_todays_bookings(client_id: str) -> list:
     """Get all bookings created or updated today."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/active_bookings?client_id=eq.{client_id}&created_at=gte.{today}T00:00:00Z&select=*&order=created_at.desc",
             headers=_SUPA_HEADERS,
@@ -250,7 +251,7 @@ async def get_performance_snapshot(client_id: str, days: int = 1) -> dict:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Conversations
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/conversation_messages?client_id=eq.{client_id}&direction=eq.inbound&created_at=gte.{start}&select=customer_phone",
@@ -546,7 +547,7 @@ async def generate_improvement_suggestions(client_id: str, analysis: dict, kb: d
     data_summary = json.dumps(analysis, ensure_ascii=False, indent=2)
 
     try:
-        async with httpx.AsyncClient(timeout=90) as http:
+        async with supa.client(timeout=90) as http:
             r = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
@@ -572,7 +573,7 @@ async def generate_improvement_suggestions(client_id: str, analysis: dict, kb: d
 async def save_learning(client_id: str, analysis: dict, suggestions: str):
     """Save the learning to Supabase activity_logs."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers=_SUPA_HEADERS,
@@ -607,7 +608,7 @@ async def generate_prompt_patch(client_id: str, analysis: dict, kb: dict) -> dic
     data_summary = json.dumps(analysis, ensure_ascii=False)
 
     try:
-        async with httpx.AsyncClient(timeout=90) as http:
+        async with supa.client(timeout=90) as http:
             r = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
@@ -742,7 +743,7 @@ async def apply_prompt_patch(client_id: str, patch: dict, kb: dict) -> dict:
     # Save to Supabase
     cd["learned_rules"] = learned_rules
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.patch(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}",
                 headers=_SUPA_HEADERS,
@@ -784,7 +785,7 @@ async def run_karpathy_loop(client_id: str) -> dict:
     analysis["sample_transcripts"] = sample_transcripts
 
     # Get KB
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=*",
             headers=_SUPA_HEADERS,
@@ -849,7 +850,7 @@ async def run_karpathy_loop(client_id: str) -> dict:
 
 async def run_all_clients():
     """Run Karpathy Loop for all active clients."""
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/clients?status=eq.active&select=id,company_name",
             headers=_SUPA_HEADERS,
@@ -872,7 +873,7 @@ async def run_all_clients():
 async def get_rule_status(client_id: str) -> dict:
     """Get the current state of all learned rules for a client."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=crawl_data",
                 headers=_SUPA_HEADERS,
@@ -925,7 +926,7 @@ async def extract_customer_insights(client_id: str, days: int = 7) -> dict:
     """
     # Fetch conversations from the last N days
     start_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/conversation_messages"
             f"?client_id=eq.{client_id}&created_at=gte.{start_date}T00:00:00Z"
@@ -981,7 +982,7 @@ async def extract_customer_insights(client_id: str, days: int = 7) -> dict:
     all_transcripts = "\n---\n".join(transcripts[:10])
 
     try:
-        async with httpx.AsyncClient(timeout=90) as http:
+        async with supa.client(timeout=90) as http:
             r = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
@@ -1087,7 +1088,7 @@ async def generate_rules_with_inversion(client_id: str, analysis: dict) -> list:
     data_summary = json.dumps(analysis, ensure_ascii=False)
 
     try:
-        async with httpx.AsyncClient(timeout=90) as http:
+        async with supa.client(timeout=90) as http:
             r = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
@@ -1213,7 +1214,7 @@ LEARNINGS_SCHEMA = {
 async def get_content_learnings(client_id: str) -> dict:
     """Get the current content learnings for a client. Creates default if none exist."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=crawl_data",
                 headers=_SUPA_HEADERS,
@@ -1337,7 +1338,7 @@ async def update_content_learnings(client_id: str, new_data: dict) -> dict:
 
     # Persist to Supabase
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             # Fetch current crawl_data to merge
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=crawl_data",
@@ -1370,7 +1371,7 @@ async def analyze_conversation_patterns(client_id: str, days: int = 7) -> dict:
     Stores results in content_learnings.conversation_patterns"""
     start_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
 
-    async with httpx.AsyncClient(timeout=10) as http:
+    async with supa.client(timeout=10) as http:
         # Fetch messages
         r = await http.get(
             f"{_SUPA_URL}/rest/v1/conversation_messages"
@@ -1629,7 +1630,7 @@ async def apply_learnings_to_prompt(client_id: str) -> dict:
 
     # Fetch current KB
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}&select=crawl_data",
                 headers=_SUPA_HEADERS,
@@ -1667,7 +1668,7 @@ async def apply_learnings_to_prompt(client_id: str) -> dict:
             if _MINIMAX_KEY:
                 try:
                     trigger_list = "\n".join(f"- {d}" for d in drop_offs[:5])
-                    async with httpx.AsyncClient(timeout=90) as http:
+                    async with supa.client(timeout=90) as http:
                         r = await http.post(
                             "https://api.minimax.io/v1/chat/completions",
                             headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
@@ -1731,7 +1732,7 @@ async def apply_learnings_to_prompt(client_id: str) -> dict:
 
     # Save to Supabase
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             await http.patch(
                 f"{_SUPA_URL}/rest/v1/business_knowledge?client_id=eq.{client_id}",
                 headers=_SUPA_HEADERS,

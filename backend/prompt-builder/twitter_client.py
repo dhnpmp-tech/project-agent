@@ -25,6 +25,7 @@ import urllib.parse
 from typing import Optional
 
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 
 # ─── Configuration ────────────────────────────────────
 
@@ -221,7 +222,7 @@ async def _twitter_request(
             "Content-Type": "application/json",
         }
 
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with supa.client(timeout=15) as client:
         response = await client.request(
             method=method.upper(),
             url=url,

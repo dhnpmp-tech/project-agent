@@ -22,6 +22,7 @@ import os
 import json
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from enum import Enum
@@ -29,7 +30,7 @@ from enum import Enum
 # ─── Config ───────────────────────────────────────────
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -61,7 +62,7 @@ class Platform(str, Enum):
 async def _fetch_client_social_config(client_id: str) -> dict:
     """Fetch social media credentials from client_vault or api_keys."""
     try:
-        async with httpx.AsyncClient(timeout=8) as http:
+        async with supa.client(timeout=8) as http:
             # Try api_keys table
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/api_keys?client_id=eq.{client_id}&select=*",
@@ -100,7 +101,7 @@ async def _save_scheduled_post(post_data: dict) -> dict:
             "status": "pending",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        async with httpx.AsyncClient(timeout=8) as http:
+        async with supa.client(timeout=8) as http:
             resp = await http.post(
                 f"{_SUPA_URL}/rest/v1/scheduled_actions",
                 headers=_SUPA_HEADERS,
@@ -124,7 +125,7 @@ async def _update_post_status(post_id: str, status: str, result_data: dict = Non
         if result_data:
             # Merge result into existing payload
             update["payload"] = json.dumps(result_data)
-        async with httpx.AsyncClient(timeout=8) as http:
+        async with supa.client(timeout=8) as http:
             await http.patch(
                 f"{_SUPA_URL}/rest/v1/scheduled_actions?id=eq.{post_id}",
                 headers=_SUPA_HEADERS,
@@ -137,7 +138,7 @@ async def _update_post_status(post_id: str, status: str, result_data: dict = Non
 async def _log_activity(client_id: str, event_type: str, summary: str, payload: dict = None):
     """Log social posting activity."""
     try:
-        async with httpx.AsyncClient(timeout=5) as http:
+        async with supa.client(timeout=5) as http:
             await http.post(
                 f"{_SUPA_URL}/rest/v1/activity_logs",
                 headers=_SUPA_HEADERS,
@@ -170,7 +171,7 @@ async def _post_to_instagram(
     graph_url = "https://graph.facebook.com/v21.0"
     
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with supa.client(timeout=30) as http:
             # Step 1: Create media container
             container_params = {
                 "access_token": access_token,
@@ -242,7 +243,7 @@ async def _post_to_facebook(
     graph_url = "https://graph.facebook.com/v21.0"
     
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with supa.client(timeout=30) as http:
             if media_url and any(media_url.lower().endswith(ext) for ext in [".mp4", ".mov", ".avi"]):
                 # Video post
                 resp = await http.post(
@@ -300,7 +301,7 @@ async def _post_to_tiktok(
     The video must be publicly accessible via URL.
     """
     try:
-        async with httpx.AsyncClient(timeout=60) as http:
+        async with supa.client(timeout=60) as http:
             # Initialize upload via pull-from-URL
             init_resp = await http.post(
                 "https://open.tiktokapis.com/v2/post/publish/video/init/",
@@ -346,7 +347,7 @@ async def _post_to_reddit(
 ) -> dict:
     """Post to Reddit using OAuth2 script auth."""
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with supa.client(timeout=15) as http:
             # Step 1: Get access token
             auth_resp = await http.post(
                 "https://www.reddit.com/api/v1/access_token",
@@ -581,7 +582,7 @@ async def get_scheduled_posts(client_id: str, days: int = 7) -> list:
     end = now + timedelta(days=days)
     
     try:
-        async with httpx.AsyncClient(timeout=8) as http:
+        async with supa.client(timeout=8) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/scheduled_actions",
                 headers=_SUPA_HEADERS,
@@ -757,7 +758,7 @@ async def publish_pending_posts() -> dict:
     now = datetime.now(timezone.utc)
     
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             resp = await http.get(
                 f"{_SUPA_URL}/rest/v1/scheduled_actions",
                 headers=_SUPA_HEADERS,

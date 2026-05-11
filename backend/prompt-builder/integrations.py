@@ -2,6 +2,7 @@
 SevenRooms (reservations), Tabby (UAE BNPL), Tamara (KSA BNPL)."""
 
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 import os
 from typing import Optional
 from datetime import datetime
@@ -26,7 +27,7 @@ class SevenRoomsClient:
     async def _get_token(self) -> str:
         if self._token and datetime.now().timestamp() < self._token_expires:
             return self._token
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.post(
                 f"{self.BASE_URL}/auth",
                 data={
@@ -42,7 +43,7 @@ class SevenRoomsClient:
 
     async def check_availability(self, date: str, party_size: int, time_start: str = "17:00", time_end: str = "23:00") -> dict:
         token = await self._get_token()
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.get(
                 f"{self.BASE_URL}/venues/{self.venue_id}/availability",
                 params={
@@ -70,7 +71,7 @@ class SevenRoomsClient:
         email: str = "", notes: str = "", seating_area: str = ""
     ) -> dict:
         token = await self._get_token()
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.put(
                 f"{self.BASE_URL}/venues/{self.venue_id}/book",
                 data={
@@ -100,7 +101,7 @@ class SevenRoomsClient:
 
     async def cancel_reservation(self, reservation_id: str) -> dict:
         token = await self._get_token()
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.post(
                 f"{self.BASE_URL}/reservations/{reservation_id}/cancel",
                 headers={
@@ -112,7 +113,7 @@ class SevenRoomsClient:
 
     async def get_guest(self, client_id: str) -> dict:
         token = await self._get_token()
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.get(
                 f"{self.BASE_URL}/clients/{client_id}",
                 headers={"Authorization": f"Bearer {token}"},
@@ -168,7 +169,7 @@ class TabbyClient:
             },
         }
 
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.post(
                 f"{self.BASE_URL}/checkout",
                 json=payload,
@@ -191,7 +192,7 @@ class TabbyClient:
             }
 
     async def check_payment(self, payment_id: str) -> dict:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.get(
                 f"{self.BASE_URL}/payments/{payment_id}",
                 headers={"Authorization": f"Bearer {self.secret_key}"},
@@ -272,7 +273,7 @@ class TamaraClient:
             "shipping_amount": {"amount": "0.00", "currency": currency},
         }
 
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.post(
                 f"{self.base_url}/checkout",
                 json=payload,
@@ -289,7 +290,7 @@ class TamaraClient:
             }
 
     async def authorize_order(self, order_id: str) -> dict:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.post(
                 f"{self.base_url}/orders/{order_id}/authorise",
                 headers={
@@ -300,7 +301,7 @@ class TamaraClient:
             return {"status": resp.json().get("status", "unknown"), "order_id": order_id}
 
     async def check_order(self, order_id: str) -> dict:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.get(
                 f"{self.base_url}/orders/{order_id}",
                 headers={"Authorization": f"Bearer {self.api_token}"},
@@ -314,7 +315,7 @@ class TamaraClient:
             }
 
     async def check_availability(self, amount: str, currency: str, country: str = "SA") -> dict:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.post(
                 f"{self.base_url}/checkout/payment-types",
                 json={

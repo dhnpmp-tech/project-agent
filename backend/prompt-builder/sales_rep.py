@@ -16,6 +16,7 @@ import os
 import json
 import re
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -24,7 +25,7 @@ from typing import Optional
 # ═══════════════════════════════════════════════════════
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
-_SUPA_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+_SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
     "Authorization": f"Bearer {_SUPA_KEY}",
@@ -310,7 +311,7 @@ async def _minimax_generate(system_prompt: str, user_prompt: str, max_tokens: in
     if not _MINIMAX_KEY:
         return ""
     try:
-        async with httpx.AsyncClient(timeout=60) as http:
+        async with supa.client(timeout=60) as http:
             r = await http.post(
                 "https://api.minimax.io/v1/chat/completions",
                 headers={
@@ -339,7 +340,7 @@ async def _minimax_generate(system_prompt: str, user_prompt: str, max_tokens: in
 async def _supa_insert(table: str, row: dict) -> Optional[dict]:
     """Insert a row into a Supabase table. Returns the inserted row or None."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.post(
                 f"{_SUPA_URL}/rest/v1/{table}",
                 headers=_SUPA_HEADERS,
@@ -357,7 +358,7 @@ async def _supa_insert(table: str, row: dict) -> Optional[dict]:
 async def _supa_update(table: str, filters: str, data: dict) -> Optional[dict]:
     """Update rows in Supabase matching the filter string. Returns first updated row or None."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.patch(
                 f"{_SUPA_URL}/rest/v1/{table}?{filters}",
                 headers=_SUPA_HEADERS,
@@ -375,7 +376,7 @@ async def _supa_update(table: str, filters: str, data: dict) -> Optional[dict]:
 async def _supa_select(table: str, query_params: str) -> list:
     """Select rows from Supabase. Returns a list (empty on error)."""
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.get(
                 f"{_SUPA_URL}/rest/v1/{table}?{query_params}",
                 headers=_SUPA_HEADERS,

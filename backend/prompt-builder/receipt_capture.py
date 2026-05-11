@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
 _SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -162,7 +163,7 @@ async def _extract_with_vision(image_bytes: bytes) -> dict[str, Any]:
         ],
     }
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
+        async with supa.client(timeout=30) as http:
             r = await http.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
@@ -226,7 +227,7 @@ async def _download(url: str) -> bytes:
     if not url:
         return b""
     try:
-        async with httpx.AsyncClient(timeout=20) as http:
+        async with supa.client(timeout=20) as http:
             r = await http.get(
                 url,
                 headers={"X-API-Key": _KAPSO_KEY} if _KAPSO_KEY else {},
@@ -240,7 +241,7 @@ async def _insert(table: str, payload: dict) -> dict:
     if not _SUPA_KEY:
         return payload
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.post(
                 f"{_SUPA_URL}/rest/v1/{table}", headers=_SUPA_HEADERS, json=payload
             )
@@ -257,7 +258,7 @@ async def _send_confirm_message(owner_phone: str, expense: dict, client_id: str)
         return False
     body = _format_confirm(expense)
     try:
-        async with httpx.AsyncClient(timeout=10) as http:
+        async with supa.client(timeout=10) as http:
             r = await http.post(
                 "https://app.kapso.ai/api/v1/whatsapp/messages",
                 headers={"X-API-Key": _KAPSO_KEY, "Content-Type": "application/json"},

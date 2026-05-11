@@ -14,6 +14,7 @@ import os
 import re
 import json
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 import subprocess
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -168,7 +169,7 @@ Loop runs daily on their transcripts.
 
 async def _supabase_insert(table: str, data: dict) -> dict:
     """Insert a row into Supabase, return the created record."""
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with supa.client(timeout=15) as client:
         resp = await client.post(
             f"{_SUPA_URL}/rest/v1/{table}",
             json=data,
@@ -186,7 +187,7 @@ async def _supabase_insert(table: str, data: dict) -> dict:
 
 async def _supabase_query(table: str, params: str) -> list:
     """Query Supabase REST API."""
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with supa.client(timeout=15) as client:
         resp = await client.get(
             f"{_SUPA_URL}/rest/v1/{table}?{params}",
             headers={
@@ -200,7 +201,7 @@ async def _supabase_query(table: str, params: str) -> list:
 
 async def _supabase_update(table: str, record_id: str, data: dict) -> dict:
     """Update a row in Supabase by ID."""
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with supa.client(timeout=15) as client:
         resp = await client.patch(
             f"{_SUPA_URL}/rest/v1/{table}?id=eq.{record_id}",
             json=data,
@@ -225,7 +226,7 @@ async def _supabase_update_where(table: str, eq: dict, data: dict) -> list:
     if not eq:
         raise ValueError("_supabase_update_where requires at least one eq filter")
     qs = "&".join(f"{k}=eq.{v}" for k, v in eq.items())
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with supa.client(timeout=15) as client:
         resp = await client.patch(
             f"{_SUPA_URL}/rest/v1/{table}?{qs}",
             json=data,
@@ -247,7 +248,7 @@ async def _supabase_delete(table: str, eq: Optional[dict] = None, lt: Optional[d
         params[k] = f"eq.{v}"
     for k, v in (lt or {}).items():
         params[k] = f"lt.{v}"
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with supa.client(timeout=15) as client:
         resp = await client.request(
             "DELETE",
             f"{_SUPA_URL}/rest/v1/{table}",
@@ -270,7 +271,7 @@ async def _llm_generate(prompt: str, system: str = None, temperature: float = 0.
     if _MINIMAX_KEY:
         try:
             mm_budget = max(max_tokens + 4000, 4500)
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with supa.client(timeout=120) as client:
                 resp = await client.post(
                     "https://api.minimax.io/v1/text/chatcompletion_v2",
                     json={
@@ -294,7 +295,7 @@ async def _llm_generate(prompt: str, system: str = None, temperature: float = 0.
 
     # Fallback: OpenRouter (Claude Sonnet 4.6)
     if _OPENROUTER_KEY:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with supa.client(timeout=60) as client:
             resp = await client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 json={
@@ -328,7 +329,7 @@ async def send_to_founder(message: str, context: str = "conversation") -> dict:
         return {"error": "KAPSO_PLATFORM_API_KEY not set", "sent": False}
 
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with supa.client(timeout=15) as client:
             resp = await client.post(
                 f"https://api.kapso.ai/v1/messages",
                 json={
@@ -472,7 +473,7 @@ async def _aggregate_data_feeds() -> dict:
 
     # 4. GitHub (via API)
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with supa.client(timeout=10) as client:
             resp = await client.get(
                 "https://api.github.com/repos/dhnpmp-tech/project-agent/commits?per_page=5",
                 headers={"Accept": "application/vnd.github.v3+json"},
@@ -807,7 +808,7 @@ Write ONLY the tweet text (under 280 chars). No hashtags.
 async def cron_github_digest():
     """Called every 2 hours. Check for new commits, draft changelog/tweet if interesting."""
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with supa.client(timeout=10) as client:
             resp = await client.get(
                 "https://api.github.com/repos/dhnpmp-tech/project-agent/commits?per_page=10",
                 headers={"Accept": "application/vnd.github.v3+json"},

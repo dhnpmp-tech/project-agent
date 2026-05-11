@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Callable
 
 import httpx
+import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 
 logger = logging.getLogger("prompt_evolution")
 
@@ -45,7 +46,7 @@ GEPA_REFLECTION_LM = os.getenv("GEPA_REFLECTION_LM", "openai/gpt-4.1-mini")
 
 async def _supabase_query(table: str, params: dict) -> list[dict]:
     """Query Supabase REST API."""
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with supa.client(timeout=15.0) as client:
         resp = await client.get(
             f"{SUPABASE_URL}/rest/v1/{table}",
             params=params,
@@ -89,7 +90,7 @@ async def _save_prompt_variant(
 ) -> str:
     """Save a prompt variant to Supabase for A/B testing."""
     variant_id = hashlib.sha256(prompt.encode()).hexdigest()[:12]
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with supa.client(timeout=15.0) as client:
         await client.post(
             f"{SUPABASE_URL}/rest/v1/prompt_variants",
             json={
@@ -124,7 +125,7 @@ async def _llm_call(
     """Call an LLM via OpenRouter."""
     model = model or REFLECTION_MODEL
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with supa.client(timeout=120.0) as client:
         resp = await client.post(
             "https://openrouter.ai/api/v1/chat/completions",
             json={
