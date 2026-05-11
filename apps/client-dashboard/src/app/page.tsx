@@ -1,30 +1,18 @@
+// Post-login landing page. Reads the JWT session and routes:
+//   no session       → /login
+//   session with client_id → /dashboard
+//   session without client_id → /onboarding
+
 import { redirect } from "next/navigation";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { getServerSession } from "@/lib/session";
 
 export default async function Home() {
-  try {
-    const supabase = await createServerSupabase();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      redirect("/login");
-    }
-
-    // Check if user has a client record
-    const { data: client } = await supabase
-      .from("clients")
-      .select("id")
-      .limit(1)
-      .single();
-
-    if (!client) {
-      redirect("/onboarding");
-    }
-
-    redirect("/dashboard");
-  } catch {
-    redirect("/onboarding");
+  const session = await getServerSession();
+  if (!session) {
+    redirect("/login");
   }
+  if (session.clientId) {
+    redirect("/dashboard");
+  }
+  redirect("/onboarding");
 }

@@ -1,10 +1,9 @@
-import { createBrowserClient } from "@supabase/ssr";
+// LEGACY SHIM — returns a stub during the Postgres migration.
+// See @/lib/_supabase-stub for the shape it returns.
+// Browser-side callers should migrate to @/lib/auth-client + fetch.
 
-export function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    throw new Error("Supabase environment variables are not configured");
-  }
-  return createBrowserClient(url, key);
+import { createStubClient, type StubClient } from "./_supabase-stub";
+
+export function createClient(): StubClient {
+  return createStubClient();
 }

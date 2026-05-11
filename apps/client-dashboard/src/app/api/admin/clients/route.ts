@@ -30,7 +30,7 @@ export async function GET() {
     }
 
     // Fetch agent deployment counts per client
-    const clientIds = clients.map((c) => c.id);
+    const clientIds = clients.map((c: any) => c.id);
 
     const { data: deployments, error: deploymentsError } = await supabase
       .from("agent_deployments")
@@ -73,7 +73,7 @@ export async function GET() {
     }
 
     // Combine everything
-    const result = clients.map((client) => ({
+    const result = clients.map((client: any) => ({
       ...client,
       agent_count: agentCounts[client.id] || 0,
       persona_name: personaNames[client.id] || null,

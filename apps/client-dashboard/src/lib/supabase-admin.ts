@@ -1,26 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+// LEGACY SHIM — returns a stub during the Postgres migration.
+// Admin-side data writes should be done server-to-server via the
+// prompt-builder API or direct postgres-js (Phase 3b).
 
-/**
- * Create a Supabase client with the service role key.
- * This bypasses RLS and should only be used in server-side operations
- * (API routes, server actions) that need to read/write any client's data.
- *
- * NEVER expose this client to the browser.
- */
-export function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { createStubClient, type StubClient } from "./_supabase-stub";
 
-  if (!url || !serviceRoleKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables"
-    );
-  }
-
-  return createClient(url, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+export function createAdminClient(): StubClient {
+  return createStubClient();
 }

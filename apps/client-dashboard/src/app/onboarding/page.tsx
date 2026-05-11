@@ -166,7 +166,7 @@ export default function OnboardingPage() {
         if (clientError.code === "23505") {
           setError("A company with this name already exists.");
         } else {
-          setError(clientError.message);
+          setError(clientError.message || "Unknown error");
         }
         setLoading(false);
         return;
@@ -294,7 +294,7 @@ export default function OnboardingPage() {
         .insert(agentRows);
 
       if (agentsError) {
-        setError(agentsError.message);
+        setError(agentsError.message || "Failed to create agent deployments");
         setLoading(false);
         return;
       }

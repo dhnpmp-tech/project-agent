@@ -1,69 +1,98 @@
-import { createServerClient } from "@supabase/ssr";
+// JWT-cookie middleware. Replaces the Supabase Auth middleware.
+// Checks the agents_session cookie set by /api/auth/verify-otp, validates
+// the JWT signature + expiry, and routes accordingly.
+
+import { jwtVerify } from "jose";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    return NextResponse.next({ request });
+const JWT_SECRET = process.env.JWT_SECRET
+  ? new TextEncoder().encode(process.env.JWT_SECRET)
+  : null;
+
+const ISSUER = "auth.agents.dcp.sa";
+const AUDIENCE = "agents.dcp.sa";
+
+const SESSION_COOKIE = "agents_session";
+
+const AUTH_PAGES = new Set(["/login", "/signup", "/password-reset"]);
+
+async function readSession(req: NextRequest): Promise<{
+  userId: string;
+  email: string;
+  clientId: string | null;
+  role: string;
+} | null> {
+  if (!JWT_SECRET) return null;
+  const token = req.cookies.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET, {
+      issuer: ISSUER,
+      audience: AUDIENCE,
+    });
+    const meta = (payload.user_metadata ?? {}) as {
+      client_id?: string;
+      role?: string;
+    };
+    return {
+      userId: String(payload.sub),
+      email: String(payload.email ?? ""),
+      clientId: meta.client_id ?? null,
+      role: meta.role ?? "owner",
+    };
+  } catch {
+    return null;
   }
+}
 
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    url,
-    key,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options as never)
-          );
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const authPages = ["/login", "/signup", "/password-reset"];
+  const user = await readSession(request);
 
-  // Redirect unauthenticated users to login
-  if (!user && (pathname.startsWith("/dashboard") || pathname === "/onboarding" || pathname.startsWith("/admin"))) {
+  // Protected paths require auth
+  if (
+    !user &&
+    (pathname.startsWith("/dashboard") ||
+      pathname === "/onboarding" ||
+      pathname.startsWith("/admin"))
+  ) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Admin route protection — only specific admin emails allowed
-  const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "setup@dcp.sa").split(",").map(e => e.trim());
-  if (pathname.startsWith("/admin") && user && !ADMIN_EMAILS.includes(user.email || "")) {
+  // Admin gate
+  const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "setup@dcp.sa,dhnpmp@gmail.com")
+    .split(",")
+    .map((e) => e.trim());
+  if (
+    pathname.startsWith("/admin") &&
+    user &&
+    !ADMIN_EMAILS.includes(user.email) &&
+    user.role !== "admin"
+  ) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/dashboard";
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect authenticated users away from auth pages — go to / which
-  // checks for client record and routes to /onboarding or /dashboard
-  if (user && authPages.includes(pathname)) {
+  // Signed-in users on auth pages → dashboard
+  if (user && AUTH_PAGES.has(pathname)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/";
     return NextResponse.redirect(redirectUrl);
   }
 
-  return supabaseResponse;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/onboarding", "/login", "/signup", "/password-reset"],
+  matcher: [
+    "/dashboard/:path*",
+    "/admin/:path*",
+    "/onboarding",
+    "/login",
+    "/signup",
+    "/password-reset",
+  ],
 };
