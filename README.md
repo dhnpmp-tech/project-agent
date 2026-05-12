@@ -24,10 +24,11 @@ Customer WhatsApp  ──→  AI Persona  ──→  Owner WhatsApp
      │  (40+ facts)  │   │  (500+ tools)│
      └──────────────┘   └──────────────┘
                     ↕
-              ┌───────────────────────┐
-              │   Supabase (21 tables)│
-              │   RLS tenant isolation│
-              └───────────────────────┘
+              ┌────────────────────────────┐
+              │  Postgres 17 + pgvector    │
+              │  (21 tables, VPS, isolated)│
+              │  app-layer client_id scope │
+              └────────────────────────────┘
                     ↕           ↕
      ┌──────────────┐   ┌──────────────┐
      │   Dashboard   │   │    Admin     │
@@ -47,7 +48,7 @@ Each client gets **two WhatsApp channels**:
 - **Tool Execution (Composio + Custom)** — AI can book tables (SevenRooms), create payments (Stripe, Tabby, Tamara), update calendars (Google), manage CRM (HubSpot, Zoho). 500+ integrations via Composio + custom REST clients.
 - **Owner Brain (AI Chief of Staff)** — Daily briefs, complaint escalations, revenue reports — all via WhatsApp. Owner texts back commands to update menus, prices, availability.
 - **Admin Dashboard** — Client management, persona stories, interactive memory graph visualization, system health monitoring at /admin.
-- **Multi-Tenant at Scale** — One platform, hundreds of clients. Full data isolation via Supabase RLS. Cost per conversation: ~$0.001.
+- **Multi-Tenant at Scale** — One platform, hundreds of clients. Data isolation enforced at the query layer via `session.clientId` (every `server-queries.ts` helper auto-filters). Cost per conversation: ~$0.001.
 
 ## AI Agents
 
@@ -69,7 +70,8 @@ Each client gets **two WhatsApp channels**:
 |-------|-----------|
 | Dashboard | Next.js 15 + React 19 + Tailwind CSS |
 | Website | Next.js 15 + Framer Motion |
-| Database | Supabase (PostgreSQL 17 + Auth + RLS + pgvector) — 21 tables |
+| Database | Self-hosted PostgreSQL 17 + pgvector on VPS (`/opt/agents-platform`, isolated Docker, 21 tables) |
+| Auth | Custom Resend OTP service + HS256 JWT (jose) at `auth.agents.dcp.sa` |
 | WhatsApp | Kapso Platform API (multi-tenant) |
 | AI (customer-facing) | MiniMax M2.7 (230B params MoE) |
 | AI (internal agents) | OpenRouter free models (Qwen, Nemotron) |
@@ -95,7 +97,7 @@ project-agent/
 │   ├── shared-types/         # TypeScript types
 │   ├── provisioning-sdk/     # Kapso, Docker, n8n, DNS automation
 │   ├── calendar-adapter/     # 5-provider calendar connector
-│   └── supabase/             # SQL migrations (009 core + 010-013 in backend/prompt-builder/migrations)
+│   └── supabase/             # Historical SQL migrations (001-013) — adapted copies live in infrastructure/agents-platform/migrations/out/
 ├── agent-templates/          # n8n workflow templates (5 agents + shared)
 ├── infrastructure/           # Docker Compose, provisioning scripts
 └── docs/                     # Architecture, operations, cost overview
@@ -117,10 +119,11 @@ pnpm --filter @project-agent/website dev
 ## Environment Variables
 
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+# Database + Auth (self-hosted)
+DATABASE_URL=                 # postgres://agents_app:...@76.13.179.86:5432/agents?sslmode=require
+AUTH_API_URL=                 # https://auth.agents.dcp.sa
+JWT_SECRET=                   # HS256 secret shared with auth service
+RESEND_API_KEY=               # Used by auth service for OTP delivery
 
 # AI
 MINIMAX_API_KEY=              # MiniMax M2.7 for customer-facing agents
@@ -147,7 +150,7 @@ GOOGLE_CALENDAR_CLIENT_SECRET=
 
 ## Database
 
-21 tables across two migration folders. See spec §19 for the full reconciliation.
+21 tables across two migration folders. See spec §19 for the full reconciliation. Production runs the adapted copies in `infrastructure/agents-platform/migrations/out/`.
 
 **Core (`packages/supabase/migrations/` 001-009):**
 
@@ -171,7 +174,7 @@ GOOGLE_CALENDAR_CLIENT_SECRET=
 **Rami CEO chat (`backend/prompt-builder/migrations/` 011):**
 `ceo_chat_sessions`, `ceo_chat_messages`, `ceo_chat_rate_limit`.
 
-All tables use JWT-based RLS: `auth.jwt() -> 'user_metadata' ->> 'client_id'`
+Tenant scoping is now enforced in application code via `getServerSession().clientId` (see `apps/client-dashboard/src/lib/server-queries.ts`). JWT shape preserves the legacy contract: `user_metadata.client_id` survives in the JWT payload so downstream Python services (`asyncpg` via `supa.py`) read it the same way they used to read `auth.jwt()`.
 
 ## Infrastructure
 
@@ -180,7 +183,8 @@ All tables use JWT-based RLS: `auth.jwt() -> 'user_metadata' ->> 'client_id'`
 | Marketing site | Vercel (`marketing-website`) | agents.dcp.sa |
 | Client dashboard | Vercel (`project-agent`, basePath `/app`) | agents.dcp.sa/app |
 | Prompt-builder API + n8n + Mem0 + Graphiti | Hostinger VPS (76.13.179.86) | n8n.dcp.sa |
-| Database | Supabase (Tokyo) | sybzqktipimbmujtowoz.supabase.co |
+| Auth service (Resend OTP + JWT) | Hostinger VPS (76.13.179.86:8201) | auth.agents.dcp.sa |
+| Database | Hostinger VPS (Postgres 17 + pgvector, `/opt/agents-platform`) | 76.13.179.86:5432 |
 
 ## Economics
 

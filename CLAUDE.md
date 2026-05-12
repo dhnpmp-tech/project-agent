@@ -62,7 +62,10 @@ Two onboarding paths (see spec §1):
 |-------|-----------|
 | Frontend (dashboard) | Next.js 15 + React 19 + Tailwind CSS 3.4 |
 | Frontend (website) | Next.js 15 + Framer Motion + dark theme |
-| Database | Supabase (PostgreSQL 17 + Auth + RLS + pgvector) |
+| Database | Self-hosted PostgreSQL 17 + pgvector on VPS (`/opt/agents-platform`) |
+| Auth | Custom Resend OTP magic-link service + HS256 JWT (jose) at `auth.agents.dcp.sa` |
+| Postgres client (Node) | `postgres` (porsager/postgres-js) with SSL |
+| Postgres client (Python) | `asyncpg` with JSONB type codecs |
 | WhatsApp API | Kapso (kapso.ai) — multi-tenant platform API |
 | AI (customer agents) | Claude Sonnet 4.6 (responses) + Claude Haiku 4.5 (classification) |
 | AI (owner brain + Rami) | MiniMax M2.7 (230B MoE, native on api.minimax.io) |
@@ -83,9 +86,9 @@ Two onboarding paths (see spec §1):
 Customer WhatsApp ←→ AI Agent ←→ Owner WhatsApp
   (public number)     (brain)    (private number)
                         ↕
-                    Dashboard (Vercel)
+                    Dashboard (Vercel) ── auth.agents.dcp.sa (Resend OTP + JWT)
                         ↕
-                    Supabase (21 tables)
+                    Postgres 17 + pgvector on VPS (21 tables, isolated Docker)
 ```
 
 Each client gets TWO WhatsApp numbers via Kapso Platform API:
@@ -99,9 +102,15 @@ Agent answers next time automatically. Never asks the same question twice.
 
 ### Customer Memory (SuperMemory-style)
 - Redis: short-term conversation context (24h TTL)
-- Supabase customer_memory: long-term profile (preferences, events, sentiment)
-- Supabase conversation_summaries: AI-generated conversation index
+- Postgres customer_memory: long-term profile (preferences, events, sentiment)
+- Postgres conversation_summaries: AI-generated conversation index
 - Kapso: raw message history (auto-backed up)
+
+### Inference routing
+All LLM calls go through `backend/prompt-builder/inference.py::chat(role, messages)`.
+The router maps 14 agent roles → providers (DCP gateway, Anthropic via OpenRouter, MiniMax, OpenRouter direct).
+Output is sanitized: `<think>…</think>` blocks stripped, CJK/Cyrillic reasoning leaks filtered, bold markdown normalized.
+This is the demand-bringer hook for DCP: every role rerouted to `api.dcp.sa` becomes paid inference.
 
 ## Deployments
 
@@ -112,11 +121,17 @@ Agent answers next time automatically. Never asks the same question twice.
 | Dashboard direct (origin) | https://project-agent-dc11.vercel.app | rewrite target — do not link directly |
 | GitHub | github.com/dhnpmp-tech/project-agent | monorepo root |
 
-## Supabase
+## Database (Postgres on VPS)
 
-- Project: Project Agents (MICRO plan)
-- URL: https://sybzqktipimbmujtowoz.supabase.co
-- Region: Northeast Asia (Tokyo)
+- Host: VPS 76.13.179.86 (Docker compose stack at `/opt/agents-platform/`)
+- Image: `pgvector/pgvector:pg17`
+- App role: `agents_app` (SCRAM-SHA-256, SSL required)
+- Migrations: `infrastructure/agents-platform/migrations/out/*.sql` (14 files, adapted from Supabase originals — RLS replaced with app-layer `client_id` scoping in `server-queries.ts`)
+- Auth service: Express + jose + Resend at `auth.agents.dcp.sa` (port 8201 behind Traefik)
+- JWT shape: `{sub, email, client_id, role}` — `user_metadata.client_id` preserves the legacy Supabase contract for downstream code
+
+### Historical note
+Until 2026-05-10 the platform ran on hosted Supabase (`sybzqktipimbmujtowoz.supabase.co`). After the project was abandoned upstream we cut over to self-hosted Postgres + custom OTP. Migration log: `docs/migrations/2026-05-10-supabase-to-postgres.md`.
 
 ### Tables (21 — see spec §19 for full reconciliation across migrations 001-013)
 
@@ -193,7 +208,8 @@ Using Kapso Platform API for multi-tenant WhatsApp:
 - TypeScript strict mode, ESNext modules
 - Tailwind CSS with brand color: brand-600 (blue #2563eb)
 - Use pnpm, not npm
-- Supabase cookie typing: always type cookiesToSet parameter explicitly
+- Server-side data access: use `src/lib/server-queries.ts` helpers (auto-scoped to `session.clientId`); never write raw SQL in route handlers
+- Auth: read session via `getServerSession()` from `src/lib/session.ts` (JWT cookie via jose)
 - Run `npx vitest run` in packages/provisioning-sdk for tests
 - Build with `npx turbo run build`
 - Dashboard pages are server components (async), client components use "use client"
