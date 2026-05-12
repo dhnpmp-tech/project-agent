@@ -12,6 +12,7 @@ const SUB_NAV_KEYS = [
   "home",
   "pricing",
   "process",
+  "rami",
   "dash",
   "privacy",
   "book-audit",
@@ -31,6 +32,7 @@ function SubChrome({
     { href: "/", label: lang === "ar" ? "الخدمات" : "Services", key: "home" },
     { href: "/pricing", label: lang === "ar" ? "الأسعار" : "Pricing", key: "pricing" },
     { href: "/demo", label: lang === "ar" ? "العملية" : "Process", key: "process" },
+    { href: "/rami", label: lang === "ar" ? "رامي" : "Rami", key: "rami" },
     { href: "/app", label: lang === "ar" ? "اللوحة" : "Dashboard", key: "dash" },
   ];
   return (
