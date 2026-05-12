@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase-client";
 import { StepCompanyProfile, type CompanyProfileData } from "@/components/onboarding/step-company-profile";
 import { StepWebsiteCrawl, type CrawlData } from "@/components/onboarding/step-website-crawl";
 import { StepKnowledgeReview, type KnowledgeOverrides } from "@/components/onboarding/step-knowledge-review";
@@ -129,59 +128,7 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setError("You must be signed in to complete onboarding.");
-        setLoading(false);
-        return;
-      }
-
-      const slug = slugify(companyData.companyName);
-
-      // Generate client UUID so we can use it immediately without needing
-      // a SELECT (RLS blocks SELECT until client_id is in user metadata)
-      const clientId = crypto.randomUUID();
-
-      // 1. Create client record
-      const { error: clientError } = await supabase
-        .from("clients")
-        .insert({
-          id: clientId,
-          slug,
-          company_name: companyData.companyName,
-          company_name_ar: companyData.companyNameAr || null,
-          contact_name: companyData.contactName,
-          contact_email: companyData.contactEmail,
-          contact_phone: companyData.contactPhone || null,
-          country: companyData.country,
-          plan: companyData.plan,
-          metadata: { business_description: companyData.businessDescription },
-        });
-
-      if (clientError) {
-        if (clientError.code === "23505") {
-          setError("A company with this name already exists.");
-        } else {
-          setError(clientError.message || "Unknown error");
-        }
-        setLoading(false);
-        return;
-      }
-
-      // 1b. Set client_id in user metadata so RLS policies work going forward
-      await supabase.auth.updateUser({
-        data: { client_id: clientId },
-      });
-
-      // 1c. Force session refresh so the JWT cookie includes the new client_id
-      // Without this, the dashboard's server-side queries will fail RLS checks
-      await supabase.auth.refreshSession();
-
-      // 2. Build merged knowledge from crawl + overrides
+      // Merge crawl results + manual overrides
       const finalDesc =
         knowledgeOverrides.businessDescription ||
         crawlData?.businessDescription ||
@@ -197,117 +144,127 @@ export default function OnboardingPage() {
           ? parseFaqText(knowledgeOverrides.faqText)
           : crawlData?.faq || [];
 
-      // 3. Save to business_knowledge table
-      const { error: knowledgeError } = await supabase
-        .from("business_knowledge")
-        .insert({
-          client_id: clientId,
-          website_url: websiteUrl || null,
-          business_description: finalDesc,
-          brand_voice: knowledgeOverrides.brandVoice || crawlData?.brandVoice || null,
-          business_hours:
-            knowledgeOverrides.businessHours || crawlData?.businessHours || null,
-          industry_keywords: crawlData?.industryKeywords || [],
-          contact_info: {
-            phone: knowledgeOverrides.contactPhone || crawlData?.contactInfo?.phone,
-            email: knowledgeOverrides.contactEmail || crawlData?.contactInfo?.email,
-            address: knowledgeOverrides.contactAddress || crawlData?.contactInfo?.address,
-          },
-          services: finalServices,
-          faq: finalFaq,
-          team_members: (crawlData?.teamMembers || []).map((m) => {
-            const parts = m.split(" - ");
-            return { name: parts[0], role: parts[1] || "" };
-          }),
-          social_profiles: crawlData?.socialProfiles || {},
-          review_sources: crawlData?.reviewSources || [],
-          icp_criteria: knowledgeOverrides.icpNotes
-            ? { notes: knowledgeOverrides.icpNotes }
-            : {},
-          company_culture: knowledgeOverrides.companyCulture || null,
-          job_listings: (crawlData?.jobListings || []).map((j) => ({ title: j })),
-          crawl_data: {
-            ...(crawlData
-              ? {
-                  pages_scanned: crawlData.pagesScanned,
-                  last_crawled_at: new Date().toISOString(),
-                }
-              : {}),
-            // Industry-specific config
-            industry: industryConfig.industry,
-            owner_whatsapp: industryConfig.ownerWhatsAppNumber || null,
-            owner_name: industryConfig.ownerName || null,
-            notify_on_booking: industryConfig.notifyOnBooking,
-            notify_on_complaint: industryConfig.notifyOnComplaint,
-            notify_on_high_value_lead: industryConfig.notifyOnHighValueLead,
-            google_business_url: industryConfig.googleBusinessUrl || null,
-            // Restaurant-specific
-            ...(industryConfig.industry === "restaurant" && {
-              menu_pdf_url: industryConfig.menuPdfUrl || null,
-              sevenrooms_api_key: industryConfig.sevenRoomsApiKey || null,
-              sevenrooms_venue_id: industryConfig.sevenRoomsVenueId || null,
-              cuisine_type: industryConfig.cuisineType || null,
-              seating_capacity: industryConfig.seatingCapacity || null,
-            }),
-            // Real estate-specific
-            ...(industryConfig.industry === "real_estate" && {
-              property_types: industryConfig.propertyTypes,
-              service_areas: industryConfig.serviceAreas,
-              budget_ranges: industryConfig.budgetRanges,
-              listings_source: industryConfig.listingsSource || null,
-              listings_api_url: industryConfig.listingsApiUrl || null,
-            }),
-            // Healthcare/Beauty-specific
-            ...((industryConfig.industry === "healthcare" || industryConfig.industry === "beauty") && {
-              service_list: industryConfig.services,
-              appointment_duration: industryConfig.appointmentDuration,
-            }),
-          },
+      // Industry-conditional config gets folded into crawl_data jsonb
+      const industryExtras: Record<string, unknown> = {
+        industry: industryConfig.industry,
+        owner_whatsapp: industryConfig.ownerWhatsAppNumber || null,
+        owner_name: industryConfig.ownerName || null,
+        notify_on_booking: industryConfig.notifyOnBooking,
+        notify_on_complaint: industryConfig.notifyOnComplaint,
+        notify_on_high_value_lead: industryConfig.notifyOnHighValueLead,
+        google_business_url: industryConfig.googleBusinessUrl || null,
+      };
+      if (industryConfig.industry === "restaurant") {
+        Object.assign(industryExtras, {
+          menu_pdf_url: industryConfig.menuPdfUrl || null,
+          sevenrooms_api_key: industryConfig.sevenRoomsApiKey || null,
+          sevenrooms_venue_id: industryConfig.sevenRoomsVenueId || null,
+          cuisine_type: industryConfig.cuisineType || null,
+          seating_capacity: industryConfig.seatingCapacity || null,
         });
-
-      if (knowledgeError) {
-        console.error("Knowledge save error:", knowledgeError);
-        // Non-blocking — proceed even if knowledge save fails
+      } else if (industryConfig.industry === "real_estate") {
+        Object.assign(industryExtras, {
+          property_types: industryConfig.propertyTypes,
+          service_areas: industryConfig.serviceAreas,
+          budget_ranges: industryConfig.budgetRanges,
+          listings_source: industryConfig.listingsSource || null,
+          listings_api_url: industryConfig.listingsApiUrl || null,
+        });
+      } else if (
+        industryConfig.industry === "healthcare" ||
+        industryConfig.industry === "beauty"
+      ) {
+        Object.assign(industryExtras, {
+          service_list: industryConfig.services,
+          appointment_duration: industryConfig.appointmentDuration,
+        });
       }
 
-      // 4. Create agent deployments with knowledge context
-      const agentRows = selectedAgents.map((agentType) => ({
-        client_id: clientId,
-        agent_type: agentType,
-        status: "pending" as const,
-        config: {
-          companyName: companyData.companyName,
-          companyNameAr: companyData.companyNameAr,
-          businessDescription: finalDesc,
+      const payload = {
+        companyName: companyData.companyName,
+        companyNameAr: companyData.companyNameAr,
+        contactName: companyData.contactName,
+        contactEmail: companyData.contactEmail,
+        contactPhone: companyData.contactPhone,
+        country: companyData.country,
+        plan: companyData.plan,
+        businessDescription: finalDesc,
+        websiteUrl: websiteUrl || null,
+        selectedAgents,
+        knowledge: {
           brandVoice: knowledgeOverrides.brandVoice || crawlData?.brandVoice,
           businessHours:
             knowledgeOverrides.businessHours || crawlData?.businessHours,
-          knowledgeBaseContent: finalFaq
-            .map((f) => `Q: ${f.question}\nA: ${f.answer}`)
-            .join("\n\n"),
           services: finalServices,
+          faq: finalFaq,
+          contactInfo: {
+            phone:
+              knowledgeOverrides.contactPhone || crawlData?.contactInfo?.phone,
+            email:
+              knowledgeOverrides.contactEmail || crawlData?.contactInfo?.email,
+            address:
+              knowledgeOverrides.contactAddress ||
+              crawlData?.contactInfo?.address,
+          },
+          companyCulture: knowledgeOverrides.companyCulture,
+          icpNotes: knowledgeOverrides.icpNotes,
+          industryKeywords: crawlData?.industryKeywords || [],
+          teamMembers: (crawlData?.teamMembers || []).map((m) => {
+            const parts = m.split(" - ");
+            return { name: parts[0], role: parts[1] || "" };
+          }),
+          socialProfiles: crawlData?.socialProfiles || {},
+          reviewSources: crawlData?.reviewSources || [],
+          jobListings: (crawlData?.jobListings || []).map((j) => ({ title: j })),
+          crawlData: crawlData
+            ? {
+                pages_scanned: crawlData.pagesScanned,
+                last_crawled_at: new Date().toISOString(),
+              }
+            : {},
         },
-      }));
+        industryConfig: industryExtras,
+        agentConfigs: selectedAgents.reduce<Record<string, Record<string, unknown>>>(
+          (acc, agentType) => {
+            acc[agentType] = {
+              companyName: companyData.companyName,
+              companyNameAr: companyData.companyNameAr,
+              businessDescription: finalDesc,
+              brandVoice:
+                knowledgeOverrides.brandVoice || crawlData?.brandVoice,
+              businessHours:
+                knowledgeOverrides.businessHours || crawlData?.businessHours,
+              knowledgeBaseContent: finalFaq
+                .map((f) => `Q: ${f.question}\nA: ${f.answer}`)
+                .join("\n\n"),
+              services: finalServices,
+            };
+            return acc;
+          },
+          {}
+        ),
+      };
 
-      const { error: agentsError } = await supabase
-        .from("agent_deployments")
-        .insert(agentRows);
+      const resp = await fetch(apiUrl("/api/onboarding/submit"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = await resp.json().catch(() => ({}));
 
-      if (agentsError) {
-        setError(agentsError.message || "Failed to create agent deployments");
+      if (!resp.ok) {
+        if (body.error === "company_already_exists") {
+          setError("A company with this name already exists.");
+        } else {
+          setError(body.detail || body.error || "Onboarding failed. Try again.");
+        }
         setLoading(false);
         return;
       }
 
-      // 5. Trigger auto-provisioning (non-blocking)
-      fetch(apiUrl("/api/provisioning/trigger"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId: clientId }),
-      }).catch(() => {}); // Non-blocking — don't fail onboarding if this errors
-
-      window.location.href = apiUrl("/dashboard");
-    } catch {
+      window.location.href = apiUrl(body.redirect || "/dashboard");
+    } catch (e) {
+      console.error("[onboarding] launch error", e);
       setError("An unexpected error occurred. Please try again.");
       setLoading(false);
     }
