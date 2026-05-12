@@ -224,6 +224,9 @@ export interface DayOnePackage {
   // Null when audit hasn't been run yet (older tenants, prompt-builder down,
   // crawl missing) — the card hides itself gracefully.
   gbp_audit?: GbpAuditSummary | null;
+  // FAQ gaps: top 5 customer questions the tenant's site doesn't answer.
+  // Same gracefully-hide-when-empty pattern as gbp_audit.
+  faq_gaps?: FaqGap[];
 }
 
 export interface GbpAuditSummary {
@@ -233,6 +236,11 @@ export interface GbpAuditSummary {
   composio_connected: boolean;
   top_wins: { field: string; recommendation: string }[]; // up to 3 highest-priority gaps
   audited_at: string;
+}
+
+export interface FaqGap {
+  question: string;
+  draft_answer: string;
 }
 
 export async function getDayOnePackage(): Promise<DayOnePackage | null> {

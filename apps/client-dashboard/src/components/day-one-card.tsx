@@ -2,7 +2,7 @@
 // of the tenant's life — the "holy shit, it's already working" moment.
 // Server Component — receives the package as a prop from the dashboard.
 
-import type { DayOnePackage, GbpAuditSummary } from "@/lib/server-queries";
+import type { DayOnePackage, GbpAuditSummary, FaqGap } from "@/lib/server-queries";
 
 interface Props {
   pkg: DayOnePackage | null;
@@ -90,9 +90,120 @@ export function DayOneCard({ pkg }: Props) {
           subtitle='Customer asked: "Is the restaurant open tonight? My wife and I want to celebrate our anniversary."'
         />
         {pkg.gbp_audit && <GbpAuditBlock audit={pkg.gbp_audit} />}
+        {pkg.faq_gaps && pkg.faq_gaps.length > 0 && (
+          <FaqGapsBlock gaps={pkg.faq_gaps} />
+        )}
         <SocialBlock posts={pkg.social_posts} />
       </div>
     </section>
+  );
+}
+
+function FaqGapsBlock({ gaps }: { gaps: FaqGap[] }) {
+  return (
+    <article
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 6,
+        padding: 20,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        gridColumn: "1 / -1",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        § F · the gaps
+      </span>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, serif",
+          fontWeight: 400,
+          fontSize: 20,
+          lineHeight: 1.15,
+          color: "var(--paper-ink, #1d1c18)",
+          margin: 0,
+        }}
+      >
+        Five customer questions your site doesn&apos;t answer yet
+      </h3>
+      <p
+        style={{
+          fontSize: 12,
+          color: "var(--paper-mut, #837c69)",
+          fontStyle: "italic",
+          margin: 0,
+          maxWidth: 720,
+        }}
+      >
+        Your AI agent drafted answers based on your brand voice. Approve them to
+        teach the agent — or push back if the question is irrelevant.
+      </p>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 12,
+          marginTop: 4,
+        }}
+      >
+        {gaps.map((g, i) => (
+          <div
+            key={i}
+            style={{
+              background: "var(--paper, #f6f3eb)",
+              border: "1px solid var(--paper-line, #d8d2bf)",
+              borderRadius: 4,
+              padding: 14,
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                color: "var(--paper-mut, #837c69)",
+              }}
+            >
+              Gap {i + 1}
+            </span>
+            <p
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                lineHeight: 1.4,
+                color: "var(--paper-ink, #1d1c18)",
+                margin: 0,
+              }}
+            >
+              {g.question}
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: "var(--paper-ink, #1d1c18)",
+                margin: 0,
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {g.draft_answer}
+            </p>
+          </div>
+        ))}
+      </div>
+    </article>
   );
 }
 

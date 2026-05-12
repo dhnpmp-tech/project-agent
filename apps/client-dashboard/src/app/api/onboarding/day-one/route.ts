@@ -49,6 +49,11 @@ interface GbpAuditSummary {
   audited_at: string;
 }
 
+interface FaqGap {
+  question: string;
+  draft_answer: string;
+}
+
 interface DayOnePackage {
   generated_at: string;
   insight: string;
@@ -56,6 +61,7 @@ interface DayOnePackage {
   sample_customer_reply: string;
   customer_welcome: string;
   gbp_audit: GbpAuditSummary | null;
+  faq_gaps: FaqGap[];
 }
 
 const PROMPT_BUILDER_URL =
@@ -181,10 +187,15 @@ export async function POST(req: NextRequest) {
   const kb = kbRows[0] ?? null;
   const context = brandContext(company, kb);
 
-  // Five tasks in parallel — four LLM drafts plus a GBP audit fetch.
+  // Six tasks in parallel — five LLM drafts plus a GBP audit fetch.
   // Audit is independent (no LLM call inside, just KB read + scoring), so
   // it can race alongside the inference calls without slowing them down.
-  const [insight, postsRaw, reply, welcome, gbp_audit] = await Promise.all([
+  const existingFaqStr =
+    kb?.faq?.length
+      ? kb.faq.slice(0, 20).map((f) => f.question).join("\n- ")
+      : "(no FAQ extracted from your website)";
+
+  const [insight, postsRaw, reply, welcome, gbp_audit, faqGapsRaw] = await Promise.all([
     inferenceChat(
       "rami_research",
       `You are an analyst looking at this UAE/Saudi SMB for the first time.
@@ -222,7 +233,62 @@ ${context}
 Write ONE opening message — warm, welcoming, lands the brand voice immediately, ends with a soft question that invites them to keep talking. 2–3 sentences. No emoji explosions. Output the message only.`,
     ),
     fetchGbpAudit(clientId),
+    inferenceChat(
+      "rami_research",
+      `You are auditing the customer-question coverage of a ${company.country === "AE" ? "UAE" : "Saudi"} SMB.
+
+${context}
+
+Existing FAQ topics covered on their website:
+- ${existingFaqStr}
+
+Your task: identify FIVE realistic customer questions this business almost-certainly receives over WhatsApp that are NOT yet covered in the FAQ above. Focus on the actual buying questions (booking, hours, parking, prices, allergies/halal, delivery, kids welcome, group bookings, payment methods, location/directions, dress code) — not marketing puff.
+
+For each gap, draft a short on-brand answer (1–3 sentences) the AI agent can use immediately. If you genuinely cannot infer a good answer from the context, make the answer a question back to the owner like: "(Owner: please confirm — do you accept Tabby?)"
+
+Output as STRICT JSON only — no preamble, no markdown fence:
+[{"question":"...","draft_answer":"..."}, ...]
+
+Exactly five objects. Each "question" max 120 chars, each "draft_answer" max 280 chars.`,
+    ),
   ]);
+
+  // Parse the FAQ gap response. Be defensive — the model may wrap in ```json
+  // fences, may include trailing prose, may produce malformed JSON. We strip
+  // fences, find the first '[' to last ']' span, and JSON.parse. On any
+  // failure we fall through to an empty list so the card just hides.
+  let faq_gaps: FaqGap[] = [];
+  if (faqGapsRaw) {
+    const cleaned = faqGapsRaw
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+    const start = cleaned.indexOf("[");
+    const end = cleaned.lastIndexOf("]");
+    if (start >= 0 && end > start) {
+      try {
+        const parsed = JSON.parse(cleaned.slice(start, end + 1));
+        if (Array.isArray(parsed)) {
+          faq_gaps = parsed
+            .filter(
+              (g): g is FaqGap =>
+                g &&
+                typeof g.question === "string" &&
+                typeof g.draft_answer === "string" &&
+                g.question.trim().length > 5 &&
+                g.draft_answer.trim().length > 5,
+            )
+            .slice(0, 5)
+            .map((g) => ({
+              question: g.question.trim().slice(0, 200),
+              draft_answer: g.draft_answer.trim().slice(0, 400),
+            }));
+        }
+      } catch {
+        // JSON parse failed — leave faq_gaps empty so the card hides.
+      }
+    }
+  }
 
   const social_posts: string[] = postsRaw
     .split(/\n*---\n*/)
@@ -237,6 +303,7 @@ Write ONE opening message — warm, welcoming, lands the brand voice immediately
     sample_customer_reply: reply.trim(),
     customer_welcome: welcome.trim(),
     gbp_audit,
+    faq_gaps,
   };
 
   // Persist into business_knowledge.crawl_data.day_one so the dashboard
