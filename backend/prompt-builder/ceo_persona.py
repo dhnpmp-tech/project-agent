@@ -13,11 +13,15 @@ This module imports from existing VPS modules:
 import os
 import re
 import json
+import logging
 import httpx
 import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 import subprocess
+import inference
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+
+log = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
@@ -264,55 +268,52 @@ async def _supabase_delete(table: str, eq: Optional[dict] = None, lt: Optional[d
 # ── LLM ───────────────────────────────────────────────
 
 async def _llm_generate(prompt: str, system: str = None, temperature: float = 0.8, max_tokens: int = 500) -> str:
-    """Generate text via MiniMax M2.7 (primary) or OpenRouter (fallback)."""
+    """
+    Generate Rami's voice via the central inference router.
+
+    Routes through ROUTING["rami_draft"] (currently MiniMax M2.7). M2.7 is
+    a reasoning model so the router adds reasoning budget to max_tokens
+    when calling minimax. To swap models for Rami, edit inference.ROUTING —
+    no code change here.
+
+    Falls back to OpenRouter if the routed provider fails.
+    """
     sys_prompt = system or build_system_prompt()
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content": prompt},
+    ]
 
-    # Try MiniMax first (M2.7 is a reasoning model — needs ~3500 tokens for internal reasoning, then content)
-    if _MINIMAX_KEY:
-        try:
-            mm_budget = max(max_tokens + 4000, 4500)
-            async with supa.client(timeout=120) as client:
-                resp = await client.post(
-                    "https://api.minimax.io/v1/text/chatcompletion_v2",
-                    json={
-                        "model": "MiniMax-M2.7",
-                        "messages": [
-                            {"role": "system", "content": sys_prompt},
-                            {"role": "user", "content": prompt},
-                        ],
-                        "temperature": temperature,
-                        "max_tokens": mm_budget,
-                    },
-                    headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
-                )
-                if resp.status_code == 200:
-                    content = resp.json()["choices"][0]["message"].get("content", "")
-                    if content and content.strip():
-                        return content
-                    # Empty content (reasoning ate the budget) — fall through to OpenRouter
-        except Exception:
-            pass
+    try:
+        # M2.7 needs ~4000 tokens of internal reasoning budget. The router
+        # honors the override.
+        budget = max(max_tokens + 4000, 4500)
+        text = await inference.chat(
+            "rami_draft",
+            messages,
+            max_tokens=budget,
+            temperature=temperature,
+        )
+        if text and text.strip():
+            return text
+    except Exception as e:
+        log.warning("[rami] primary inference failed: %s", e)
 
-    # Fallback: OpenRouter (Claude Sonnet 4.6)
-    if _OPENROUTER_KEY:
-        async with supa.client(timeout=60) as client:
-            resp = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                json={
-                    "model": "anthropic/claude-sonnet-4",
-                    "messages": [
-                        {"role": "system", "content": sys_prompt},
-                        {"role": "user", "content": prompt},
-                    ],
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                },
-                headers={"Authorization": f"Bearer {_OPENROUTER_KEY}", "Content-Type": "application/json"},
-            )
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
+    # Fallback: OpenRouter (Claude Sonnet via OpenRouter for backstop)
+    try:
+        text = await inference.chat(
+            "rami_draft",
+            messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            overrides={"provider": "openrouter", "model": "anthropic/claude-sonnet-4"},
+        )
+        if text and text.strip():
+            return text
+    except Exception as e:
+        log.warning("[rami] fallback inference failed: %s", e)
 
-    return "[LLM unavailable — no API key configured]"
+    return "[LLM unavailable — check inference router and API keys]"
 
 
 # ── WhatsApp (Kapso) ──────────────────────────────────

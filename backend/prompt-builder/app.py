@@ -3678,6 +3678,25 @@ def health():
 
 
 # ═══════════════════════════════════════════════════════
+# INFERENCE ROUTING — visibility into role → model decisions
+# ═══════════════════════════════════════════════════════
+
+import inference as _inference_module
+
+
+@app.get("/inference/routing")
+def inference_routing():
+    """Return the current role → provider/model mapping. Read-only."""
+    return {
+        "providers": [
+            {"name": p.name, "base_url": p.base_url, "key_env": p.api_key_env}
+            for p in _inference_module.PROVIDERS.values()
+        ],
+        "routes": _inference_module.routing_table(),
+    }
+
+
+# ═══════════════════════════════════════════════════════
 # QUALITY EVALUATION — DeepEval-powered AI response scoring
 # ═══════════════════════════════════════════════════════
 
