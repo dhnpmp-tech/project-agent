@@ -20,6 +20,7 @@ from typing import Optional, Callable
 
 import httpx
 import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
+import inference  # central role-to-model router
 
 logger = logging.getLogger("prompt_evolution")
 
@@ -122,31 +123,33 @@ async def _llm_call(
     temperature: float = 0.7,
     max_tokens: int = 4096,
 ) -> str:
-    """Call an LLM via OpenRouter."""
-    model = model or REFLECTION_MODEL
-
-    async with supa.client(timeout=120.0) as client:
-        resp = await client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-            },
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://kapso.ai",
-                "X-Title": "Kapso Prompt Evolution",
-            },
+    """
+    Reflection / GEPA generation via the central inference router under
+    role="gepa_evolve". The model arg is honored only when explicitly
+    passed (e.g. by GEPA's library); otherwise the router decides.
+    """
+    if model and model != REFLECTION_MODEL:
+        # Explicit model override (e.g. from the gepa library) — pass via
+        # inference overrides so the router still logs metrics.
+        return await inference.chat(
+            "gepa_evolve",
+            [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            max_tokens=max_tokens,
+            temperature=temperature,
+            overrides={"provider": "openrouter", "model": model},
         )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+    return await inference.chat(
+        "gepa_evolve",
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
 
 
 # ---------------------------------------------------------------------------
