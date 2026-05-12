@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { db } from "@/lib/db";
 
 /* ------------------------------------------------------------------ */
 /*  Firecrawl web search for context-aware answers                    */
@@ -117,43 +117,47 @@ export async function POST(request: Request) {
     );
   }
 
-  // --- Fetch business knowledge from Supabase ---
+  // --- Fetch business knowledge from Postgres ---
+  // Joins clients + business_knowledge by slug. We try saffron-kitchen first
+  // (post-migration seed), fall back to the legacy saffron-dubai slug.
   let businessKnowledge = "";
 
   try {
-    const supabase = createAdminClient();
-
-    // Look up client by slug, then fetch their knowledge base
-    const { data: client } = await supabase
-      .from("clients")
-      .select("id")
-      .eq("slug", "saffron-dubai")
-      .single();
-
-    if (client) {
-      const { data: kb } = await supabase
-        .from("business_knowledge")
-        .select("*")
-        .eq("client_id", client.id)
-        .single();
-
-      if (kb) {
-        const parts = [
-          kb.business_description && `Description: ${kb.business_description}`,
-          kb.business_hours && `Hours: ${kb.business_hours}`,
-          kb.services?.length && `Services: ${kb.services.join(", ")}`,
-          kb.faq?.length && `FAQ:\n${kb.faq.map((f: { question: string; answer: string }) => `Q: ${f.question}\nA: ${f.answer}`).join("\n\n")}`,
-          kb.contact_info && `Contact: ${JSON.stringify(kb.contact_info)}`,
-          kb.crawl_data?.menu_highlights && `Menu:\n${JSON.stringify(kb.crawl_data.menu_highlights)}`,
-          kb.crawl_data?.daily_specials && `Today's Specials:\n${JSON.stringify(kb.crawl_data.daily_specials)}`,
-          kb.crawl_data?.cuisine_type && `Cuisine: ${kb.crawl_data.cuisine_type}`,
-          kb.crawl_data?.seating_capacity && `Seating: ${kb.crawl_data.seating_capacity}`,
-        ].filter(Boolean);
-        businessKnowledge = parts.join("\n\n");
-      }
+    type KbRow = {
+      business_description: string | null;
+      business_hours: string | null;
+      services: string[] | null;
+      faq: { question: string; answer: string }[] | null;
+      contact_info: Record<string, unknown> | null;
+      crawl_data: Record<string, unknown> | null;
+    };
+    const rows = await db()<KbRow[]>`
+      SELECT bk.business_description, bk.business_hours, bk.services,
+             bk.faq, bk.contact_info, bk.crawl_data
+      FROM business_knowledge bk
+      JOIN clients c ON c.id = bk.client_id
+      WHERE c.slug IN ('saffron-kitchen', 'saffron-dubai')
+      ORDER BY c.created_at DESC
+      LIMIT 1
+    `;
+    const kb = rows[0];
+    if (kb) {
+      const crawl = (kb.crawl_data ?? {}) as Record<string, unknown>;
+      const parts = [
+        kb.business_description && `Description: ${kb.business_description}`,
+        kb.business_hours && `Hours: ${kb.business_hours}`,
+        kb.services?.length && `Services: ${kb.services.join(", ")}`,
+        kb.faq?.length && `FAQ:\n${kb.faq.map((f) => `Q: ${f.question}\nA: ${f.answer}`).join("\n\n")}`,
+        kb.contact_info && `Contact: ${JSON.stringify(kb.contact_info)}`,
+        crawl.menu_highlights && `Menu:\n${JSON.stringify(crawl.menu_highlights)}`,
+        crawl.daily_specials && `Today's Specials:\n${JSON.stringify(crawl.daily_specials)}`,
+        crawl.cuisine_type && `Cuisine: ${crawl.cuisine_type}`,
+        crawl.seating_capacity && `Seating: ${crawl.seating_capacity}`,
+      ].filter(Boolean);
+      businessKnowledge = parts.join("\n\n");
     }
   } catch (err) {
-    console.error("[demo/chat] Supabase fetch error:", err);
+    console.error("[demo/chat] Postgres fetch error:", err);
   }
 
   // --- Build fallback context if Supabase data is missing ---
