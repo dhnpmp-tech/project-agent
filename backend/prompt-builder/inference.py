@@ -128,10 +128,12 @@ PROVIDERS: dict[str, Provider] = {
 #  - Vault research / batch jobs: open-source via DCP (cost optimization)
 
 ROUTING: dict[str, dict[str, Any]] = {
-    # Customer-facing WhatsApp responses
+    # Customer-facing WhatsApp responses. Anthropic ideal but until
+    # ANTHROPIC_API_KEY lands on prompt-builder, route via openrouter
+    # (same Claude Sonnet, OpenRouter handles the auth side).
     "customer_response_en": {
-        "provider": "anthropic",
-        "model": "claude-sonnet-4-6",
+        "provider": "openrouter",
+        "model": "anthropic/claude-sonnet-4",
         "max_tokens": 600,
         "temperature": 0.7,
     },
@@ -141,23 +143,23 @@ ROUTING: dict[str, dict[str, Any]] = {
         "max_tokens": 600,
         "temperature": 0.7,
     },
-    # Intent + booking-stage classifiers
+    # Intent + booking-stage classifiers — route via openrouter for now
     "intent_classification": {
-        "provider": "anthropic",
-        "model": "claude-haiku-4-5",
+        "provider": "openrouter",
+        "model": "anthropic/claude-3-5-haiku",
         "max_tokens": 100,
         "temperature": 0.0,
     },
     "booking_extraction": {
-        "provider": "anthropic",
-        "model": "claude-haiku-4-5",
+        "provider": "openrouter",
+        "model": "anthropic/claude-3-5-haiku",
         "max_tokens": 200,
         "temperature": 0.0,
     },
     # Vision (receipt OCR, photo categorization)
     "receipt_ocr": {
-        "provider": "anthropic",
-        "model": "claude-sonnet-4-6",
+        "provider": "openrouter",
+        "model": "anthropic/claude-sonnet-4",
         "max_tokens": 800,
         "temperature": 0.0,
     },
@@ -175,10 +177,10 @@ ROUTING: dict[str, dict[str, Any]] = {
         "max_tokens": 800,
         "temperature": 0.8,
     },
-    # Rami's research / reflection loop — runs on cheap open-source.
+    # Rami's research / reflection loop — open-source on DCP when served.
     "rami_research": {
-        "provider": "dcp",
-        "model": "qwen/qwen3-30b-a3b-gptq-int4",
+        "provider": "openrouter",
+        "model": "qwen/qwen-2.5-72b-instruct",
         "max_tokens": 1500,
         "temperature": 0.5,
     },
@@ -198,22 +200,22 @@ ROUTING: dict[str, dict[str, Any]] = {
     },
     # Karpathy loop — distilling rules from many conversations
     "karpathy_distill": {
-        "provider": "dcp",
-        "model": "qwen/qwen3-30b-a3b-gptq-int4",
+        "provider": "openrouter",
+        "model": "qwen/qwen-2.5-72b-instruct",
         "max_tokens": 2000,
         "temperature": 0.3,
     },
     # GEPA prompt evolution
     "gepa_evolve": {
-        "provider": "anthropic",
-        "model": "claude-sonnet-4-6",
+        "provider": "openrouter",
+        "model": "anthropic/claude-sonnet-4",
         "max_tokens": 2000,
         "temperature": 0.5,
     },
     # Quality eval
     "quality_eval": {
-        "provider": "anthropic",
-        "model": "claude-haiku-4-5",
+        "provider": "openrouter",
+        "model": "anthropic/claude-3-5-haiku",
         "max_tokens": 400,
         "temperature": 0.0,
     },
