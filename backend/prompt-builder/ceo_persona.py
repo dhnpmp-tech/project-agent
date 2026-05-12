@@ -267,6 +267,26 @@ async def _supabase_delete(table: str, eq: Optional[dict] = None, lt: Optional[d
 
 # ── LLM ───────────────────────────────────────────────
 
+def _clean_llm_output(raw: str) -> str:
+    """
+    Strip MiniMax M2.7 reasoning artifacts: <think>...</think> blocks,
+    stray CJK/Cyrillic characters, bold markdown. Same approach as
+    sales_rep._clean_minimax. Used by every Rami output so reasoning
+    doesn't leak into drafts.
+    """
+    if not raw:
+        return ""
+    content = re.sub(r"<think>[\s\S]*?</think>\s*", "", raw).strip()
+    if not content and "<think>" in raw:
+        # Whole output was inside think tags — recover the body
+        content = re.sub(r"</?think>", "", raw).strip()
+    # MiniMax sometimes leaks Chinese/Cyrillic tokens mid-output
+    content = re.sub(r"[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\u0400-\u04ff]+", "", content)
+    content = content.replace("**", "")
+    content = re.sub(r"\s{2,}", " ", content).strip()
+    return content
+
+
 async def _llm_generate(prompt: str, system: str = None, temperature: float = 0.8, max_tokens: int = 500) -> str:
     """
     Generate Rami's voice via the central inference router.
@@ -294,8 +314,9 @@ async def _llm_generate(prompt: str, system: str = None, temperature: float = 0.
             max_tokens=budget,
             temperature=temperature,
         )
-        if text and text.strip():
-            return text
+        cleaned = _clean_llm_output(text)
+        if cleaned:
+            return cleaned
     except Exception as e:
         log.warning("[rami] primary inference failed: %s", e)
 
@@ -308,8 +329,9 @@ async def _llm_generate(prompt: str, system: str = None, temperature: float = 0.
             temperature=temperature,
             overrides={"provider": "openrouter", "model": "anthropic/claude-sonnet-4"},
         )
-        if text and text.strip():
-            return text
+        cleaned = _clean_llm_output(text)
+        if cleaned:
+            return cleaned
     except Exception as e:
         log.warning("[rami] fallback inference failed: %s", e)
 
@@ -860,18 +882,29 @@ Draft a tweet about the most interesting finding. Make it thought-leadership qua
 
 Write ONLY the tweet text (under 280 chars). No hashtags.
 """
-        tweet = await _llm_generate(prompt, max_tokens=100, temperature=0.9)
+        tweet = await _llm_generate(prompt, max_tokens=400, temperature=0.9)
         tweet = (tweet or "").strip().strip('"')
 
-        if not tweet or len(tweet) > 280:
-            await log_activity("karpathy", "cron_skipped", f"LLM produced unusable tweet ({len(tweet)} chars)", {"preview": tweet[:200]})
-            return {"status": "tweet_invalid", "length": len(tweet)}
+        if not tweet:
+            await log_activity("karpathy", "cron_skipped", "LLM produced empty tweet", {})
+            return {"status": "tweet_invalid", "length": 0}
 
-        # create_draft has its own short-content guard, but we already validated length
+        # If the LLM ignored the 280-char limit, fall back to a thread. The
+        # X API supports threads (twitter_client.split_into_thread) so we
+        # don't lose Rami's longer thoughts to silent skips.
+        from twitter_client import split_into_thread
+        as_thread = split_into_thread(tweet)
+        if len(as_thread) > 1:
+            content = "\n\n".join(as_thread)
+            reasoning = f"Post-Karpathy insight — auto-threaded ({len(as_thread)} parts, {len(tweet)} total chars)"
+        else:
+            content = tweet
+            reasoning = "Post-Karpathy insight — based on real data from tonight's loop"
+
         draft = await create_draft(
             channel="x",
-            content=tweet,
-            reasoning="Post-Karpathy insight — based on real data from tonight's loop",
+            content=content,
+            reasoning=reasoning,
             trigger_source="karpathy_cron",
         )
         return draft
