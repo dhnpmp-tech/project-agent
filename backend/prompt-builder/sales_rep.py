@@ -17,6 +17,7 @@ import json
 import re
 import httpx
 import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
+import inference  # central role-to-model router
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -307,34 +308,25 @@ def _clean_minimax(raw: str) -> str:
 
 
 async def _minimax_generate(system_prompt: str, user_prompt: str, max_tokens: int = 500) -> str:
-    """Call MiniMax M2.7 and return cleaned text. Returns empty string on failure."""
-    if not _MINIMAX_KEY:
-        return ""
+    """
+    Sales-rep text generation. Routes through the central inference
+    router under the "sales_outbound" role — MiniMax M2.7 by default but
+    swappable per-role from inference.ROUTING without touching call
+    sites. inference.chat() handles think-tag / CJK / bold cleanup
+    globally so callers see publishable text.
+    """
     try:
-        async with supa.client(timeout=60) as http:
-            r = await http.post(
-                "https://api.minimax.io/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {_MINIMAX_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "MiniMax-M2.7",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "max_tokens": max_tokens,
-                },
-            )
-            data = r.json()
-            if data.get("choices"):
-                raw = data["choices"][0].get("message", {}).get("content", "")
-                return _clean_minimax(raw)
-            print(f"[sales_rep] MiniMax no choices: {str(data)[:200]}")
+        return await inference.chat(
+            "sales_outbound",
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=max_tokens,
+        )
     except Exception as e:
-        print(f"[sales_rep] MiniMax error: {e}")
-    return ""
+        print(f"[sales_rep] inference error: {e}")
+        return ""
 
 
 async def _supa_insert(table: str, row: dict) -> Optional[dict]:

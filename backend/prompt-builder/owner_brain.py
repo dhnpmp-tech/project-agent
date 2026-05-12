@@ -14,6 +14,7 @@ import json
 import re
 import httpx
 import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
+import inference  # central role-to-model router
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 
@@ -208,9 +209,6 @@ async def draft_review_response(
 ) -> dict:
     """Draft a response to a Google/TripAdvisor review for owner approval."""
 
-    if not _MINIMAX_KEY:
-        return {"error": "AI key not configured"}
-
     # Get business name
     try:
         async with supa.client(timeout=10) as http:
@@ -248,45 +246,26 @@ Rules:
 - Mention something specific from their review (not generic).
 - {"End with an invitation to return." if rating >= 3 else "End by offering to discuss privately."}
 - Do NOT use corporate-speak or marketing language.
-- Do NOT use <think> tags. Output ONLY the reply text."""
+- Output ONLY the reply text."""
 
+    # Routes through the central inference router. Reasoning leaks (think
+    # tags, CJK artifacts) are stripped inside inference.chat() — no need
+    # to re-implement the post-processing here.
     try:
-        async with supa.client(timeout=60) as http:
-            r = await http.post(
-                "https://api.minimax.io/v1/chat/completions",
-                headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "MiniMax-M2.7",
-                    "messages": [
-                        {"role": "system", "content": prompt},
-                        {"role": "user", "content": "Write the review response now."},
-                    ],
-                    "max_tokens": 300,
-                },
-            )
-            raw = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            # Strip think tags
-            content = re.sub(r"<think>[\s\S]*?</think>\s*", "", raw).strip()
-            # If entire output was thinking (no content outside tags), extract from inside
-            if not content:
-                content = re.sub(r"</?think>", "", raw).strip()
-            # CJK cleanup
-            content = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\u0400-\u04ff]+', '', content).strip()
-            # If MiniMax leaked its reasoning chain, extract the last quoted text as the actual reply
-            if len(content) > 500 or "Let me" in content or "I need to" in content or "Rating:" in content:
-                # Find the last substantial quoted block
-                quoted = re.findall(r'"([^"]{20,})"', content)
-                if quoted:
-                    content = quoted[-1]
-                else:
-                    # Take the last paragraph that looks like a reply
-                    paragraphs = [p.strip() for p in content.split("\n\n") if len(p.strip()) > 30]
-                    if paragraphs:
-                        # Pick the one that doesn't start with analysis words
-                        for p in reversed(paragraphs):
-                            if not any(p.lower().startswith(w) for w in ["the user", "let me", "i need", "rating", "- "]):
-                                content = p
-                                break
+        content = await inference.chat(
+            "owner_brain",
+            [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": "Write the review response now."},
+            ],
+            max_tokens=300,
+        )
+        # Backstop heuristic: if reasoning-leak words slipped past the
+        # cleaner (rare for short outputs), pull the last quoted reply.
+        if len(content) > 500 or "Let me" in content or "I need to" in content or "Rating:" in content:
+            quoted = re.findall(r'"([^"]{20,})"', content)
+            if quoted:
+                content = quoted[-1]
     except Exception as e:
         return {"error": str(e)}
 
@@ -1087,19 +1066,14 @@ async def process_owner_command(client_id: str, command: str) -> str:
                 return f"✅ تم نشر ردك المعدل"
             return f"✅ Your edited response posted"
 
-    # Use MiniMax to interpret the command
-    if not _MINIMAX_KEY:
-        return "Command processing requires AI. API key not configured."
-
+    # Interpret the command via the inference router. Goes to MiniMax M2.7
+    # by default for the "owner_brain" role; flipping to Claude Haiku for
+    # cost in the future is a one-line config change in inference.ROUTING.
     try:
-        async with supa.client(timeout=60) as http:
-            r = await http.post(
-                "https://api.minimax.io/v1/chat/completions",
-                headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "MiniMax-M2.7",
-                    "messages": [
-                        {"role": "system", "content": f"""You are a business management assistant. The owner sent a command to update their business. Interpret the command and output ONLY a JSON object.
+        content = await inference.chat(
+            "owner_brain",
+            [
+                {"role": "system", "content": f"""You are a business management assistant. The owner sent a command to update their business. Interpret the command and output ONLY a JSON object.
 
 Commands can be:
 - Update price: {{"action": "update_price", "item": "item name", "new_price": "price"}}
@@ -1109,23 +1083,17 @@ Commands can be:
 - Update info: {{"action": "update_info", "field": "field name", "value": "new value"}}
 - Unknown: {{"action": "unknown", "message": "what you understood"}}
 
-Do NOT use <think> tags. Output ONLY the JSON."""},
-                        {"role": "user", "content": command},
-                    ],
-                    "max_tokens": 200,
-                },
-            )
-            content = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            content = re.sub(r"<think>[\s\S]*?</think>\s*", "", content).strip()
-            if not content and "<think>" in r.json().get("choices", [{}])[0].get("message", {}).get("content", ""):
-                content = re.sub(r"</?think>", "", r.json()["choices"][0]["message"]["content"]).strip()
+Output ONLY the JSON."""},
+                {"role": "user", "content": command},
+            ],
+            max_tokens=200,
+        )
 
-            json_match = re.search(r'\{[\s\S]*\}', content)
-            if json_match:
-                parsed = json.loads(json_match.group())
-            else:
-                return f"Could not understand: {command}" if lang == "en" else f"ما فهمت الأمر: {command}"
-
+        json_match = re.search(r'\{[\s\S]*\}', content)
+        if json_match:
+            parsed = json.loads(json_match.group())
+        else:
+            return f"Could not understand: {command}" if lang == "en" else f"ما فهمت الأمر: {command}"
     except Exception as e:
         return f"Error: {e}"
 

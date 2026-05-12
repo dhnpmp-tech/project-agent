@@ -21,6 +21,7 @@ import json
 import re
 import httpx
 import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
+import inference  # central role-to-model router
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -64,29 +65,23 @@ async def _minimax_chat(
     max_tokens: int = 2000,
     temperature: float = 0.8,
 ) -> str:
-    """Call MiniMax M2.7 chat completion. Returns cleaned text."""
-    if not _MINIMAX_KEY:
-        return "[AI key not configured — set MINIMAX_API_KEY]"
+    """
+    Content drafting via the central inference router. Default route is
+    "content_draft" → MiniMax M2.7 (cheap, fluent, large context). To
+    flip the whole content engine to a different model, change one line
+    in inference.ROUTING — no call-site edits needed.
+    Reasoning + bold artifacts are stripped inside inference.chat().
+    """
     try:
-        async with supa.client(timeout=90) as http:
-            r = await http.post(
-                "https://api.minimax.io/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {_MINIMAX_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "MiniMax-M2.7",
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": user},
-                    ],
-                    "max_tokens": max_tokens,
-                    "temperature": temperature,
-                },
-            )
-            raw = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            return _clean_ai_output(raw)
+        return await inference.chat(
+            "content_draft",
+            [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
     except Exception as e:
         return f"[AI error: {e}]"
 
