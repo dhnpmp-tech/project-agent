@@ -16,6 +16,7 @@ import json
 import re
 import httpx
 import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
+import inference  # central role-to-model router
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -547,25 +548,18 @@ async def generate_improvement_suggestions(client_id: str, analysis: dict, kb: d
     data_summary = json.dumps(analysis, ensure_ascii=False, indent=2)
 
     try:
-        async with supa.client(timeout=90) as http:
-            r = await http.post(
-                "https://api.minimax.io/v1/chat/completions",
-                headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "MiniMax-M2.7",
-                    "messages": [
-                        {"role": "system", "content": f"You are an AI performance analyst. Analyze booking/order data and suggest specific improvements to the AI agent's behavior. {prompt_lang}. Be specific and actionable. Focus on: conversion rate, drop-offs, missing data collection, and customer experience."},
-                        {"role": "user", "content": f"Here is today's performance data:\n{data_summary}\n\nBased on this data:\n1. What is working well?\n2. What needs improvement?\n3. Suggest 3 specific changes to the AI's conversation style or flow that would improve results.\n4. Are there any patterns the AI should learn from?"},
-                    ],
-                    "max_tokens": 800,
-                },
-            )
-            content = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            content = re.sub(r"<think>[\s\S]*?</think>\s*", "", content).strip()
-            if not content and "<think>" in r.json().get("choices", [{}])[0].get("message", {}).get("content", ""):
-                content = re.sub(r"</?think>", "", r.json()["choices"][0]["message"]["content"]).strip()
-            content = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\u0400-\u04ff]+', '', content)
-            return content or "Analysis completed but no suggestions generated."
+        # Routes through inference.chat with role="karpathy_distill"
+        # (currently Qwen 30B via openrouter — cheap for batch analysis
+        # work). Reasoning/CJK cleanup is global in inference.chat().
+        content = await inference.chat(
+            "karpathy_distill",
+            [
+                {"role": "system", "content": f"You are an AI performance analyst. Analyze booking/order data and suggest specific improvements to the AI agent's behavior. {prompt_lang}. Be specific and actionable. Focus on: conversion rate, drop-offs, missing data collection, and customer experience."},
+                {"role": "user", "content": f"Here is today's performance data:\n{data_summary}\n\nBased on this data:\n1. What is working well?\n2. What needs improvement?\n3. Suggest 3 specific changes to the AI's conversation style or flow that would improve results.\n4. Are there any patterns the AI should learn from?"},
+            ],
+            max_tokens=800,
+        )
+        return content or "Analysis completed but no suggestions generated."
     except Exception as e:
         return f"Analysis failed: {e}"
 

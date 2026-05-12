@@ -17,6 +17,7 @@ import json
 import asyncio
 import httpx
 import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
+import inference  # central role-to-model router
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -377,28 +378,21 @@ Respond ONLY with valid JSON, no markdown:
 {{"faithfulness": 0.0, "hallucination_free": 0.0, "relevancy": 0.0, "persona_consistency": 0.0, "issues": ["issue1"], "notes": "brief explanation"}}"""
 
     try:
-        async with supa.client(timeout=30) as http:
-            resp = await http.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {_OPENROUTER_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": _EVAL_MODEL,
-                    "messages": [{"role": "user", "content": eval_prompt}],
-                    "temperature": 0.1,
-                    "max_tokens": 300,
-                },
-            )
-            data = resp.json()
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            # Parse JSON from response
-            content = content.strip()
-            if content.startswith("```"):
-                content = re.sub(r'^```(?:json)?\s*', '', content)
-                content = re.sub(r'\s*```$', '', content)
-            return json.loads(content)
+        # Routes through inference.chat with role="quality_eval" so the
+        # eval model is one config edit away from change (currently
+        # Claude Haiku via openrouter). Cheap + fast was the right
+        # default for this scoring pass.
+        content = await inference.chat(
+            "quality_eval",
+            [{"role": "user", "content": eval_prompt}],
+            max_tokens=300,
+            temperature=0.1,
+        )
+        content = content.strip()
+        if content.startswith("```"):
+            content = re.sub(r'^```(?:json)?\s*', '', content)
+            content = re.sub(r'\s*```$', '', content)
+        return json.loads(content)
     except Exception as e:
         print(f"[quality] LLM eval failed: {e}")
         return None
