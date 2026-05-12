@@ -99,6 +99,7 @@ from ceo_persona import (
     approve_draft, reject_draft, generate_pushback,
     get_agent_status, log_activity, process_founder_message,
     cron_morning_brief, cron_post_karpathy, cron_github_digest, cron_market_intel,
+    cron_auto_approve_stale_drafts, get_recent_public_activity,
 )
 from twitter_client import post_tweet, search_mentions, search_prospects
 from ceo_chat import router as ceo_chat_router
@@ -3552,6 +3553,22 @@ async def ceo_cron_github():
 @app.post("/ceo/cron/market-intel")
 async def ceo_cron_intel():
     return await cron_market_intel()
+
+
+@app.post("/ceo/cron/auto-approve")
+async def ceo_cron_auto_approve():
+    """Sweep stale drafts and approve them. Called every 30 min by VPS cron."""
+    return await cron_auto_approve_stale_drafts()
+
+
+@app.get("/ceo/public-feed")
+async def ceo_public_feed(limit: int = 20):
+    """
+    Public read-only feed of Rami's recent activity for the marketing-site
+    /rami page. Returns published tweets + currently-pending drafts.
+    Distinct from /ceo/activity (above) which exposes internal activity_log.
+    """
+    return {"activity": await get_recent_public_activity(limit)}
 
 # ─── No-Show Recovery ────────────────────────────────────────────────────
 

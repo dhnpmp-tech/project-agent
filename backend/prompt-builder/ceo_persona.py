@@ -667,6 +667,82 @@ async def get_pending_drafts() -> list:
     return await _supabase_query("ceo_drafts", "select=*&status=eq.pending_approval&order=created_at.desc")
 
 
+# ── Autonomous mode ───────────────────────────────────────────────
+#
+# Drafts are reviewed by the founder before publish, but a stale-drafts
+# sweep auto-approves anything that's been sitting too long. The
+# threshold is generous (4h default) — gives the founder a real window
+# to reject without making the agent feel babysat. Override via the
+# RAMI_AUTO_APPROVE_MINUTES env var.
+
+_AUTO_APPROVE_MIN = int(os.environ.get("RAMI_AUTO_APPROVE_MINUTES", "240"))
+_AUTO_APPROVE_DISABLED = os.environ.get("RAMI_AUTO_APPROVE_DISABLED", "").lower() in ("1", "true", "yes")
+
+
+async def cron_auto_approve_stale_drafts() -> dict:
+    """
+    Sweep drafts older than RAMI_AUTO_APPROVE_MINUTES (default 240 = 4h)
+    and approve them. Safe to call frequently — only approves drafts
+    still in pending_approval, never replays. Logs every action.
+    """
+    if _AUTO_APPROVE_DISABLED:
+        return {"status": "disabled", "approved": 0}
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=_AUTO_APPROVE_MIN)).isoformat()
+    try:
+        drafts = await _supabase_query(
+            "ceo_drafts",
+            f"select=*&status=eq.pending_approval&created_at=lt.{cutoff}&order=created_at.asc",
+        )
+    except Exception as e:
+        return {"status": "query_failed", "error": str(e)[:200]}
+
+    approved: list[str] = []
+    failed: list[dict] = []
+    for d in drafts:
+        try:
+            result = await approve_draft(d["id"])
+            if isinstance(result, dict) and result.get("error"):
+                failed.append({"id": d["id"], "error": result["error"][:200]})
+            else:
+                approved.append(d["id"])
+        except Exception as e:
+            failed.append({"id": d["id"], "error": f"{type(e).__name__}: {str(e)[:200]}"})
+
+    if approved or failed:
+        await log_activity(
+            "ceo",
+            "auto_approve_sweep",
+            f"{len(approved)} approved, {len(failed)} failed, cutoff={cutoff}",
+            {"approved_ids": approved, "failed": failed},
+        )
+
+    return {
+        "status": "ok",
+        "cutoff_minutes": _AUTO_APPROVE_MIN,
+        "approved_count": len(approved),
+        "failed_count": len(failed),
+        "approved_ids": approved,
+        "failed": failed,
+    }
+
+
+async def get_recent_public_activity(limit: int = 20) -> list:
+    """
+    Public timeline of what Rami has been up to — published tweets
+    plus current pending drafts and any rejected pieces (for transparency).
+    Used by the public /rami page on the marketing site.
+    """
+    try:
+        rows = await _supabase_query(
+            "ceo_drafts",
+            f"select=id,channel,content,reasoning,status,trigger_source,created_at,published_at,x_post_id&status=in.(published,pending_approval)&order=created_at.desc&limit={limit}",
+        )
+        return rows
+    except Exception as e:
+        return [{"error": str(e)[:200]}]
+
+
 async def get_agent_status() -> dict:
     """Get status of all client agents (Rami as boss/architect)."""
     try:
