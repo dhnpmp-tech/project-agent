@@ -3696,6 +3696,26 @@ def inference_routing():
     }
 
 
+@app.get("/clients/active")
+async def clients_active():
+    """
+    List active client_ids — used by the cron scripts that fan out work
+    per tenant (karpathy loop, daily brief, etc.). Replaces the old
+    'curl Supabase REST' pattern in cron_nightly.sh and cron_daily.sh.
+    """
+    try:
+        async with supa.client(timeout=10) as http:
+            r = await http.get(
+                f"{_SUPA_URL}/rest/v1/clients?status=eq.active&select=id,slug,company_name,country",
+                headers={"apikey": _SUPA_KEY, "Authorization": f"Bearer {_SUPA_KEY}"},
+            )
+            rows = r.json() if r.status_code == 200 else []
+        return {"clients": rows if isinstance(rows, list) else []}
+    except Exception as e:
+        _logger.error(f"[clients/active] {e}")
+        return {"clients": []}
+
+
 # ═══════════════════════════════════════════════════════
 # QUALITY EVALUATION — DeepEval-powered AI response scoring
 # ═══════════════════════════════════════════════════════
