@@ -211,6 +211,34 @@ export async function listActiveBookings(): Promise<BookingRow[]> {
   }
 }
 
+// ---------- Day-1 deliverables --------------------------------------------
+
+export interface DayOnePackage {
+  generated_at: string;
+  insight: string;
+  social_posts: string[];
+  sample_customer_reply: string;
+  customer_welcome: string;
+}
+
+export async function getDayOnePackage(): Promise<DayOnePackage | null> {
+  const session = await getServerSession();
+  if (!session?.clientId) return null;
+  try {
+    const rows = await db()<{ day_one: DayOnePackage | null }[]>`
+      SELECT crawl_data->'day_one' AS day_one
+      FROM business_knowledge
+      WHERE client_id = ${session.clientId}
+      LIMIT 1
+    `;
+    const pkg = rows[0]?.day_one ?? null;
+    return pkg && typeof pkg === "object" && "generated_at" in pkg ? pkg : null;
+  } catch (e) {
+    console.error("[server-queries] getDayOnePackage", e);
+    return null;
+  }
+}
+
 // ---------- Kapso integration config --------------------------------------
 
 export interface KapsoConfig {

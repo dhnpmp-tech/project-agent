@@ -199,7 +199,9 @@ export async function POST(req: NextRequest) {
     .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
     .sign(key);
 
-  // 6. Trigger auto-provisioning, best-effort, fire-and-forget
+  // 6. Trigger auto-provisioning (best-effort) AND day-1 deliverables
+  //    generation (best-effort). Day-1 deliverables run on the dashboard
+  //    project itself so the route can use the JWT we just issued.
   const promptBuilderUrl =
     process.env.PROMPT_BUILDER_URL || "https://api.dcp.sa";
   fetch(`${promptBuilderUrl}/provisioning/trigger`, {
@@ -207,7 +209,22 @@ export async function POST(req: NextRequest) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ clientId }),
   }).catch(() => {
-    // intentional
+    // intentional — provisioning is a follow-up concern
+  });
+
+  // Kick off day-1 deliverables generation. Fire-and-forget — the new
+  // tenant lands on /dashboard and sees the package render as soon as
+  // it lands (typically 5–30s after onboarding).
+  const selfOrigin = req.nextUrl.origin;
+  fetch(`${selfOrigin}/api/onboarding/day-one`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: `${SESSION_COOKIE}=${accessToken}`,
+    },
+    body: JSON.stringify({ clientId }),
+  }).catch(() => {
+    // intentional — day-1 can be re-triggered manually from dashboard
   });
 
   const res = NextResponse.json({

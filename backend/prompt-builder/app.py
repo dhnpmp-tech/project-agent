@@ -3713,6 +3713,34 @@ def inference_routing():
     }
 
 
+class _InferenceChatRequest(BaseModel):
+    role: str
+    messages: list[dict[str, Any]]
+    max_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+
+
+@app.post("/inference/chat")
+async def inference_chat(req: _InferenceChatRequest):
+    """
+    Thin HTTP wrapper around inference.chat(). Lets Vercel-hosted route
+    handlers (e.g. /api/onboarding/day-one) drive role-based inference
+    without holding their own API keys.
+    """
+    try:
+        text = await _inference_module.chat(
+            req.role,
+            req.messages,
+            max_tokens=req.max_tokens,
+            temperature=req.temperature,
+        )
+        return {"text": text, "role": req.role}
+    except _inference_module.InferenceError as e:
+        return {"error": str(e)[:300], "role": req.role}
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {str(e)[:300]}", "role": req.role}
+
+
 @app.get("/clients/active")
 async def clients_active():
     """

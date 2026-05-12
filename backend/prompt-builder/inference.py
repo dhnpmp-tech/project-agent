@@ -33,6 +33,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
@@ -40,6 +41,30 @@ from typing import Any, Iterable, Mapping
 import httpx
 
 log = logging.getLogger(__name__)
+
+
+# Reasoning models (MiniMax M2.7, some Qwen variants, DeepSeek-R1) leak
+# <think>…</think> blocks into their output. Strip globally so callers
+# never see reasoning artifacts.
+_THINK_RE = re.compile(r"<think>[\s\S]*?</think>\s*", re.IGNORECASE)
+_NAKED_THINK_RE = re.compile(r"</?think>", re.IGNORECASE)
+# Some MoE models occasionally leak CJK / Cyrillic tokens mid-output.
+_LEAK_CHARS_RE = re.compile(
+    r"[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\u0400-\u04ff]+"
+)
+
+
+def _clean_output(text: str) -> str:
+    """Strip reasoning-model artifacts. Idempotent."""
+    if not text:
+        return ""
+    cleaned = _THINK_RE.sub("", text).strip()
+    if not cleaned and "<think>" in text.lower():
+        cleaned = _NAKED_THINK_RE.sub("", text).strip()
+    cleaned = _LEAK_CHARS_RE.sub("", cleaned)
+    cleaned = cleaned.replace("**", "")
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    return cleaned
 
 
 # ---- Provider definitions -------------------------------------------------
@@ -292,7 +317,7 @@ async def chat(
         usage.get("prompt_tokens"), usage.get("completion_tokens"),
         True, None,
     )
-    return text
+    return _clean_output(text)
 
 
 # ---- Adapters -------------------------------------------------------------

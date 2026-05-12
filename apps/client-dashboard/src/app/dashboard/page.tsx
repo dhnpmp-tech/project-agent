@@ -4,11 +4,13 @@
 
 import Link from "next/link";
 import { fetchDashboardData } from "@/lib/dashboard-queries";
+import { getDayOnePackage } from "@/lib/server-queries";
 import { AgentStatusCard } from "@/components/agent-status-card";
 import { ActivityFeed } from "@/components/activity-feed";
 import { SessionRefresh } from "@/components/session-refresh";
 import { NeuralBrain } from "@/components/neural-brain";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { DayOneCard } from "@/components/day-one-card";
 
 const PAPER_MUT = "var(--paper-mut)";
 const PAPER_INK = "var(--paper-ink)";
@@ -46,7 +48,12 @@ function Sparkline({ values, color = "var(--paper-teal)" }: { values: number[]; 
 
 export default async function DashboardPage() {
   // Single round-trip: client + stats + brain + agents + activities.
-  const data = await fetchDashboardData();
+  // Day-1 package fetched alongside — renders a welcome card for the
+  // first 7 days a tenant exists, then dismissible.
+  const [data, dayOne] = await Promise.all([
+    fetchDashboardData(),
+    getDayOnePackage(),
+  ]);
   const agents = data.agents;
   const activities = data.activities;
   const hasData = !!data.client;
@@ -63,6 +70,8 @@ export default async function DashboardPage() {
       status={data.client?.status ?? null}
     >
       <SessionRefresh hasData={hasData} />
+
+      {dayOne && <DayOneCard pkg={dayOne} />}
 
       {/* Daily pulse — 4 real stats */}
       <section className="dcp-paper-section">
