@@ -211,6 +211,61 @@ export async function listActiveBookings(): Promise<BookingRow[]> {
   }
 }
 
+// ---------- Kapso integration config --------------------------------------
+
+export interface KapsoConfig {
+  apiKey: string | null;
+  phoneNumberId: string | null;
+}
+
+export async function getKapsoConfig(): Promise<KapsoConfig> {
+  const session = await getServerSession();
+  if (!session?.clientId) return { apiKey: null, phoneNumberId: null };
+  try {
+    const rows = await db()<{ crawl_data: Record<string, unknown> | null }[]>`
+      SELECT crawl_data FROM business_knowledge
+      WHERE client_id = ${session.clientId}
+      LIMIT 1
+    `;
+    const crawl = (rows[0]?.crawl_data ?? {}) as Record<string, unknown>;
+    return {
+      apiKey: (crawl.kapso_api_key as string) ?? null,
+      phoneNumberId: (crawl.kapso_phone_number_id as string) ?? null,
+    };
+  } catch (e) {
+    console.error("[server-queries] getKapsoConfig", e);
+    return { apiKey: null, phoneNumberId: null };
+  }
+}
+
+/**
+ * Update the Kapso config in business_knowledge.crawl_data.
+ * Merges with existing crawl_data so we don't blow away other fields.
+ */
+export async function setKapsoConfig(
+  apiKey: string | null,
+  phoneNumberId: string | null,
+): Promise<boolean> {
+  const session = await getServerSession();
+  if (!session?.clientId) return false;
+  try {
+    await db()`
+      UPDATE business_knowledge
+      SET crawl_data = COALESCE(crawl_data, '{}'::jsonb)
+                       || jsonb_build_object(
+                            'kapso_api_key', ${apiKey},
+                            'kapso_phone_number_id', ${phoneNumberId}
+                          ),
+          updated_at = NOW()
+      WHERE client_id = ${session.clientId}
+    `;
+    return true;
+  } catch (e) {
+    console.error("[server-queries] setKapsoConfig", e);
+    return false;
+  }
+}
+
 // ---------- Owner hub aggregates ------------------------------------------
 
 export interface OwnerHubData {
