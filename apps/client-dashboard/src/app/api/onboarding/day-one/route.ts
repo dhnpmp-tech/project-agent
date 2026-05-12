@@ -40,12 +40,22 @@ interface CompanyRow {
   country: "AE" | "SA";
 }
 
+interface GbpAuditSummary {
+  score: number;
+  max_score: number;
+  grade: "A" | "B" | "C" | "D";
+  composio_connected: boolean;
+  top_wins: { field: string; recommendation: string }[];
+  audited_at: string;
+}
+
 interface DayOnePackage {
   generated_at: string;
   insight: string;
   social_posts: string[];
   sample_customer_reply: string;
   customer_welcome: string;
+  gbp_audit: GbpAuditSummary | null;
 }
 
 const PROMPT_BUILDER_URL =
@@ -72,6 +82,48 @@ async function inferenceChat(role: string, prompt: string): Promise<string> {
   } catch (e) {
     console.error(`[day-one] inference role=${role} failed:`, e);
     return "";
+  }
+}
+
+// Fetch GBP audit from prompt-builder. Best-effort — if the audit endpoint
+// fails or the tenant has no crawl data, we return null and the day-one
+// card just hides this section. We summarize the audit aggressively (top 3
+// wins only) because the on-dashboard card is a teaser, not the full report.
+async function fetchGbpAudit(clientId: string): Promise<GbpAuditSummary | null> {
+  try {
+    const res = await fetch(
+      `${PROMPT_BUILDER_URL.replace(/\/$/, "")}/gbp/audit/${encodeURIComponent(clientId)}`,
+      { method: "GET" },
+    );
+    if (!res.ok) {
+      console.warn(`[day-one] gbp audit HTTP ${res.status}`);
+      return null;
+    }
+    const data = await res.json();
+    if (typeof data?.score !== "number") return null;
+    const recs = Array.isArray(data.recommendations_en) ? data.recommendations_en : [];
+    const top_wins = recs
+      .slice(0, 3)
+      .map((r: { field: string; recommendation: string }) => ({
+        field: String(r.field || ""),
+        recommendation: String(r.recommendation || ""),
+      }));
+    const grade: GbpAuditSummary["grade"] = ["A", "B", "C", "D"].includes(data.grade)
+      ? data.grade
+      : "D";
+    return {
+      score: Math.round(data.score),
+      max_score: typeof data.max_score === "number" ? data.max_score : 100,
+      grade,
+      composio_connected: Boolean(data.composio_connected),
+      top_wins,
+      audited_at: typeof data.audited_at === "string"
+        ? data.audited_at
+        : new Date().toISOString(),
+    };
+  } catch (e) {
+    console.warn("[day-one] gbp audit fetch failed:", e);
+    return null;
   }
 }
 
@@ -129,8 +181,10 @@ export async function POST(req: NextRequest) {
   const kb = kbRows[0] ?? null;
   const context = brandContext(company, kb);
 
-  // Four prompts run in parallel — different roles, different providers
-  const [insight, postsRaw, reply, welcome] = await Promise.all([
+  // Five tasks in parallel — four LLM drafts plus a GBP audit fetch.
+  // Audit is independent (no LLM call inside, just KB read + scoring), so
+  // it can race alongside the inference calls without slowing them down.
+  const [insight, postsRaw, reply, welcome, gbp_audit] = await Promise.all([
     inferenceChat(
       "rami_research",
       `You are an analyst looking at this UAE/Saudi SMB for the first time.
@@ -167,6 +221,7 @@ ${context}
 
 Write ONE opening message — warm, welcoming, lands the brand voice immediately, ends with a soft question that invites them to keep talking. 2–3 sentences. No emoji explosions. Output the message only.`,
     ),
+    fetchGbpAudit(clientId),
   ]);
 
   const social_posts: string[] = postsRaw
@@ -181,6 +236,7 @@ Write ONE opening message — warm, welcoming, lands the brand voice immediately
     social_posts,
     sample_customer_reply: reply.trim(),
     customer_welcome: welcome.trim(),
+    gbp_audit,
   };
 
   // Persist into business_knowledge.crawl_data.day_one so the dashboard

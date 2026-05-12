@@ -219,6 +219,20 @@ export interface DayOnePackage {
   social_posts: string[];
   sample_customer_reply: string;
   customer_welcome: string;
+  // GBP audit one-pager: the "we already scored your Google profile" moment.
+  // Populated by the prompt-builder /gbp/audit endpoint at onboarding time.
+  // Null when audit hasn't been run yet (older tenants, prompt-builder down,
+  // crawl missing) — the card hides itself gracefully.
+  gbp_audit?: GbpAuditSummary | null;
+}
+
+export interface GbpAuditSummary {
+  score: number;          // 0–100
+  max_score: number;      // always 100 today, kept for symmetry
+  grade: "A" | "B" | "C" | "D";
+  composio_connected: boolean;
+  top_wins: { field: string; recommendation: string }[]; // up to 3 highest-priority gaps
+  audited_at: string;
 }
 
 export async function getDayOnePackage(): Promise<DayOnePackage | null> {
