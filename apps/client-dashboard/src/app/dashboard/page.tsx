@@ -4,13 +4,11 @@
 
 import Link from "next/link";
 import { fetchDashboardData } from "@/lib/dashboard-queries";
-import { createServerSupabase } from "@/lib/supabase-server";
 import { AgentStatusCard } from "@/components/agent-status-card";
 import { ActivityFeed } from "@/components/activity-feed";
 import { SessionRefresh } from "@/components/session-refresh";
 import { NeuralBrain } from "@/components/neural-brain";
 import { DashboardShell } from "@/components/dashboard-shell";
-import type { AgentDeployment, ActivityLog } from "@project-agent/shared-types";
 
 const PAPER_MUT = "var(--paper-mut)";
 const PAPER_INK = "var(--paper-ink)";
@@ -47,24 +45,10 @@ function Sparkline({ values, color = "var(--paper-teal)" }: { values: number[]; 
 }
 
 export default async function DashboardPage() {
-  const supabase = await createServerSupabase();
-
-  // Real data: client/stats/brain in one round trip; agents + activities alongside.
-  const [data, agentsRes, activitiesRes] = await Promise.all([
-    fetchDashboardData(),
-    supabase
-      .from("agent_deployments")
-      .select("*")
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("activity_logs")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(10),
-  ]);
-
-  const agents = (agentsRes.data as AgentDeployment[] | null) || [];
-  const activities = (activitiesRes.data as ActivityLog[] | null) || [];
+  // Single round-trip: client + stats + brain + agents + activities.
+  const data = await fetchDashboardData();
+  const agents = data.agents;
+  const activities = data.activities;
   const hasData = !!data.client;
 
   // Sparkline placeholders — replace with real time-series as those tables land.

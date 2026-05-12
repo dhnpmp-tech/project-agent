@@ -21,6 +21,9 @@ services:
       - agents-postgres-data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
       - ./postgres/backups:/backups
+      - ./postgres/ssl/server.crt:/etc/postgresql/server.crt:ro
+      - ./postgres/ssl/server.key:/etc/postgresql/server.key:ro
+      - ./postgres/conf/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U agents_admin -d agents"]
@@ -28,11 +31,24 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-    # Internal-only: no host port exposed. Other containers reach this
-    # via the agents-net network. Host processes (prompt-builder on the
-    # VPS host) reach it via 127.0.0.1 if we add a port mapping later.
+    # Public on 5432 for Vercel-hosted dashboard (Phase 3b). SSL forced via
+    # pg_hba.conf (hostnossl … reject). 127.0.0.1:5433 kept for the host-
+    # process prompt-builder which reaches Postgres without going through
+    # SSL/the public path.
     ports:
-      - "127.0.0.1:5433:5432"
+      # Public on 5433 (5432 is taken by the host's system postgres which is
+      # loopback-only). The serverless dashboard uses sslmode=require.
+      - "0.0.0.0:5433:5432"
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/etc/postgresql/server.crt
+      - -c
+      - ssl_key_file=/etc/postgresql/server.key
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
     networks:
       - agents-net
 

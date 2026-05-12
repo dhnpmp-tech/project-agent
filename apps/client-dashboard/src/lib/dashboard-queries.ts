@@ -1,10 +1,12 @@
 // Real-data fetcher for the /dashboard page.
-// All queries hit Supabase server-side and are filtered by RLS to the
-// signed-in client's own data. Each count is wrapped in safeCount so a
-// missing table or transient error degrades the stat to 0 instead of
-// crashing the page.
+// All queries go directly to Postgres via postgres-js over SSL.
+// Filtered explicitly by client_id from the signed-in user's JWT.
+// Each query is wrapped so a transient DB error degrades to a safe
+// default instead of crashing the page.
 
-import { createServerSupabase } from "./supabase-server";
+import { sql } from "./db";
+import { getServerSession } from "./session";
+import type { AgentDeployment, ActivityLog } from "@project-agent/shared-types";
 
 export interface DashboardClient {
   company_name: string | null;
@@ -28,99 +30,139 @@ export interface DashboardData {
   client: DashboardClient | null;
   stats: DashboardStats;
   brain: DashboardBrain;
+  agents: AgentDeployment[];
+  activities: ActivityLog[];
 }
 
-type CountResult = { count: number | null; error: unknown };
+const EMPTY_DATA: DashboardData = {
+  client: null,
+  stats: {
+    openConversations: 0,
+    todayBookings: 0,
+    ownerQueue: 0,
+    avgSentiment: null,
+  },
+  brain: { totalCustomers: 0, totalFacts: 0 },
+  agents: [],
+  activities: [],
+};
 
-async function safeCount(p: PromiseLike<CountResult>): Promise<number> {
+async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   try {
-    const { count, error } = await p;
-    if (error) return 0;
-    return count ?? 0;
-  } catch {
-    return 0;
+    return await p;
+  } catch (e) {
+    console.error("[dashboard-queries]", e);
+    return fallback;
   }
 }
 
+async function countQuery(query: Promise<{ count: string }[]>): Promise<number> {
+  const fallback = [{ count: "0" }];
+  const rows = await safe(query, fallback);
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function fetchDashboardData(): Promise<DashboardData> {
-  const supabase = await createServerSupabase();
+  const session = await getServerSession();
+  if (!session?.clientId) {
+    return EMPTY_DATA;
+  }
+  const cid = session.clientId;
 
   const today = new Date().toISOString().slice(0, 10);
   const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  // Run all reads in parallel. RLS filters each one to the caller's client_id.
   const [
-    clientRes,
+    clientRows,
     openConversations,
     todayBookings,
     ownerQueue,
-    sentimentRes,
+    sentimentRows,
     totalCustomers,
     totalFacts,
+    agents,
+    activities,
   ] = await Promise.all([
-    supabase
-      .from("clients")
-      .select("company_name, plan, status")
-      .maybeSingle(),
-    safeCount(
-      supabase
-        .from("conversation_summaries")
-        .select("id", { count: "exact", head: true })
-        .gte("started_at", last24h)
-        .is("ended_at", null),
+    safe(
+      sql<DashboardClient[]>`
+        SELECT company_name, plan, status
+        FROM clients
+        WHERE id = ${cid}
+        LIMIT 1
+      `,
+      [] as DashboardClient[]
     ),
-    safeCount(
-      supabase
-        .from("active_bookings")
-        .select("id", { count: "exact", head: true })
-        .eq("booking_date", today)
-        .neq("status", "cancelled"),
+    countQuery(sql<{ count: string }[]>`
+      SELECT COUNT(*)::text AS count
+      FROM conversation_summaries
+      WHERE client_id = ${cid}
+        AND started_at >= ${last24h}
+        AND ended_at IS NULL
+    `),
+    countQuery(sql<{ count: string }[]>`
+      SELECT COUNT(*)::text AS count
+      FROM active_bookings
+      WHERE client_id = ${cid}
+        AND booking_date = ${today}
+        AND status <> 'cancelled'
+    `),
+    countQuery(sql<{ count: string }[]>`
+      SELECT COUNT(*)::text AS count
+      FROM scheduled_actions
+      WHERE client_id = ${cid}
+        AND status = 'pending'
+    `),
+    safe(
+      sql<{ avg_sentiment: number | null }[]>`
+        SELECT avg_sentiment
+        FROM customer_memory
+        WHERE client_id = ${cid}
+          AND avg_sentiment IS NOT NULL
+      `,
+      [] as { avg_sentiment: number | null }[]
     ),
-    safeCount(
-      supabase
-        .from("scheduled_actions")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pending"),
+    countQuery(sql<{ count: string }[]>`
+      SELECT COUNT(*)::text AS count
+      FROM customer_memory
+      WHERE client_id = ${cid}
+    `),
+    countQuery(sql<{ count: string }[]>`
+      SELECT COUNT(*)::text AS count
+      FROM vault_notes
+      WHERE client_id = ${cid}
+    `),
+    safe(
+      sql<AgentDeployment[]>`
+        SELECT * FROM agent_deployments
+        WHERE client_id = ${cid}
+        ORDER BY created_at DESC
+      `,
+      [] as AgentDeployment[]
     ),
-    supabase
-      .from("customer_memory")
-      .select("avg_sentiment")
-      .not("avg_sentiment", "is", null),
-    safeCount(
-      supabase
-        .from("customer_memory")
-        .select("id", { count: "exact", head: true }),
-    ),
-    safeCount(
-      supabase
-        .from("vault_notes")
-        .select("id", { count: "exact", head: true }),
+    safe(
+      sql<ActivityLog[]>`
+        SELECT * FROM activity_logs
+        WHERE client_id = ${cid}
+        ORDER BY created_at DESC
+        LIMIT 10
+      `,
+      [] as ActivityLog[]
     ),
   ]);
 
-  // Average the per-customer avg_sentiment values into a single dashboard stat.
-  let avgSentiment: number | null = null;
-  if (!sentimentRes.error) {
-    const rows = (sentimentRes.data as { avg_sentiment: number | null }[] | null) ?? [];
-    const valid = rows
-      .map((r) => r.avg_sentiment)
-      .filter((v): v is number => typeof v === "number");
-    if (valid.length > 0) {
-      avgSentiment = valid.reduce((a, b) => a + b, 0) / valid.length;
-    }
-  }
+  const valid = sentimentRows
+    .map((r) => r.avg_sentiment)
+    .filter((v): v is number => typeof v === "number");
+  const avgSentiment =
+    valid.length > 0
+      ? valid.reduce((a, b) => a + b, 0) / valid.length
+      : null;
 
   return {
-    client: clientRes.data ?? null,
-    stats: {
-      openConversations,
-      todayBookings,
-      ownerQueue,
-      avgSentiment,
-    },
-    brain: {
-      totalCustomers,
-      totalFacts,
-    },
+    client: clientRows[0] ?? null,
+    stats: { openConversations, todayBookings, ownerQueue, avgSentiment },
+    brain: { totalCustomers, totalFacts },
+    agents,
+    activities,
   };
 }
