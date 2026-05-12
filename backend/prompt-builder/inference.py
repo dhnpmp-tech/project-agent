@@ -112,7 +112,7 @@ ROUTING: dict[str, dict[str, Any]] = {
     },
     "customer_response_ar": {
         "provider": "dcp",
-        "model": "ALLaM-AI/ALLaM-7B-Instruct-preview",
+        "model": "allam-7b:latest",
         "max_tokens": 600,
         "temperature": 0.7,
     },
@@ -153,7 +153,7 @@ ROUTING: dict[str, dict[str, Any]] = {
     # Rami's research / reflection loop — runs on cheap open-source.
     "rami_research": {
         "provider": "dcp",
-        "model": "qwen3.6-35b",
+        "model": "qwen/qwen3-30b-a3b-gptq-int4",
         "max_tokens": 1500,
         "temperature": 0.5,
     },
@@ -174,7 +174,7 @@ ROUTING: dict[str, dict[str, Any]] = {
     # Karpathy loop — distilling rules from many conversations
     "karpathy_distill": {
         "provider": "dcp",
-        "model": "qwen3.6-35b",
+        "model": "qwen/qwen3-30b-a3b-gptq-int4",
         "max_tokens": 2000,
         "temperature": 0.3,
     },
