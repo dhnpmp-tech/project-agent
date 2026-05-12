@@ -1,16 +1,10 @@
 import Link from "next/link";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { listActivity } from "@/lib/server-queries";
 import { ActivityFeed } from "@/components/activity-feed";
 import type { ActivityLog } from "@project-agent/shared-types";
 
 export default async function ActivityPage() {
-  const supabase = await createServerSupabase();
-
-  const { data: activities } = await supabase
-    .from("activity_logs")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const activities = await listActivity(50);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -24,7 +18,7 @@ export default async function ActivityPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
-        <ActivityFeed activities={(activities as ActivityLog[]) || []} />
+        <ActivityFeed activities={activities as unknown as ActivityLog[]} />
       </main>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase-client";
+import { apiUrl } from "@/lib/api-url";
 
 /* ------------------------------------------------------------------ */
 /*  API base + helpers                                                 */
@@ -300,13 +300,12 @@ export default function SalesRepPage() {
   const [digest, setDigest] = useState<DigestResponse | null>(null);
   const [events, setEvents] = useState<SalesEvent[]>([]);
 
-  // Resolve client_id from Supabase session
+  // Resolve client_id from the JWT session via /api/auth/me
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getSession().then(({ data }) => {
-      const uid = data.session?.user?.id ?? null;
-      setClientId(uid);
-    });
+    fetch(apiUrl("/api/auth/me"), { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setClientId(data?.user?.client_id ?? null))
+      .catch(() => setClientId(null));
   }, []);
 
   // Fetch all sales data once we have client_id

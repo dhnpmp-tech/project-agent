@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { db } from "@/lib/db";
+import { getClient } from "@/lib/server-queries";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://n8n.srv1328172.hstgr.cloud";
@@ -53,21 +54,15 @@ interface LearnedRule {
 /* ─────────────────────────────────────────────────────────────────────── */
 
 export default async function OwnerHubPage() {
-  const supabase = await createServerSupabase();
-
-  const { data: client } = await supabase
-    .from("clients")
-    .select("id, company_name")
-    .single();
-
+  const client = await getClient();
   const clientId = client?.id ?? null;
 
   const [pulse, noShow, deposits, expenses, kb] = await Promise.all([
     fetchPulse(clientId),
-    fetchNoShowLog(supabase, clientId),
-    fetchDeposits(supabase, clientId),
-    fetchExpenses(supabase, clientId),
-    fetchKnowledge(supabase, clientId),
+    fetchNoShowLog(clientId),
+    fetchDeposits(clientId),
+    fetchExpenses(clientId),
+    fetchKnowledge(clientId),
   ]);
 
   const learnedRules = (kb?.learned_rules ?? []) as LearnedRule[];
@@ -427,66 +422,68 @@ async function fetchPulse(clientId: string | null): Promise<DailyPulseData | nul
   }
 }
 
-async function fetchNoShowLog(
-  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
-  clientId: string | null,
-): Promise<NoShowEntry[]> {
+async function fetchNoShowLog(clientId: string | null): Promise<NoShowEntry[]> {
   if (!clientId) return [];
   const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
-  const { data } = await supabase
-    .from("no_show_log")
-    .select("outcome, reason, recovered_revenue_minor, created_at")
-    .eq("client_id", clientId)
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(200);
-  return (data as NoShowEntry[]) ?? [];
+  try {
+    return await db()<NoShowEntry[]>`
+      SELECT outcome, reason, recovered_revenue_minor, created_at
+      FROM no_show_log
+      WHERE client_id = ${clientId} AND created_at >= ${since}
+      ORDER BY created_at DESC
+      LIMIT 200
+    `;
+  } catch {
+    return [];
+  }
 }
 
-async function fetchDeposits(
-  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
-  clientId: string | null,
-): Promise<DepositEntry[]> {
+async function fetchDeposits(clientId: string | null): Promise<DepositEntry[]> {
   if (!clientId) return [];
   const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
-  const { data } = await supabase
-    .from("deposit_requests")
-    .select("status, amount_minor, currency, requested_at")
-    .eq("client_id", clientId)
-    .gte("requested_at", since)
-    .order("requested_at", { ascending: false })
-    .limit(100);
-  return (data as DepositEntry[]) ?? [];
+  try {
+    return await db()<DepositEntry[]>`
+      SELECT status, amount_minor, currency, requested_at
+      FROM deposit_requests
+      WHERE client_id = ${clientId} AND requested_at >= ${since}
+      ORDER BY requested_at DESC
+      LIMIT 100
+    `;
+  } catch {
+    return [];
+  }
 }
 
-async function fetchExpenses(
-  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
-  clientId: string | null,
-): Promise<ExpenseEntry[]> {
+async function fetchExpenses(clientId: string | null): Promise<ExpenseEntry[]> {
   if (!clientId) return [];
-  const { data } = await supabase
-    .from("expenses")
-    .select(
-      "vendor, category, amount_minor, currency, vat_minor, status, receipt_date, created_at",
-    )
-    .eq("client_id", clientId)
-    .order("created_at", { ascending: false })
-    .limit(10);
-  return (data as ExpenseEntry[]) ?? [];
+  try {
+    return await db()<ExpenseEntry[]>`
+      SELECT vendor, category, amount_minor, currency, vat_minor, status,
+             receipt_date, created_at
+      FROM expenses
+      WHERE client_id = ${clientId}
+      ORDER BY created_at DESC
+      LIMIT 10
+    `;
+  } catch {
+    return [];
+  }
 }
 
 async function fetchKnowledge(
-  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
   clientId: string | null,
 ): Promise<{ learned_rules?: LearnedRule[] } | null> {
   if (!clientId) return null;
-  const { data } = await supabase
-    .from("business_knowledge")
-    .select("crawl_data")
-    .eq("client_id", clientId)
-    .single();
-  const crawl = (data?.crawl_data ?? {}) as { learned_rules?: LearnedRule[] };
-  return crawl;
+  try {
+    const rows = await db()<{ crawl_data: { learned_rules?: LearnedRule[] } | null }[]>`
+      SELECT crawl_data FROM business_knowledge
+      WHERE client_id = ${clientId}
+      LIMIT 1
+    `;
+    return rows[0]?.crawl_data ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────── */

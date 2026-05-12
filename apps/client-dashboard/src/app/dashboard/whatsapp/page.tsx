@@ -1,14 +1,9 @@
 import Link from "next/link";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { getClient } from "@/lib/server-queries";
 import { WhatsAppInbox } from "@/components/whatsapp-inbox";
 
 export default async function WhatsAppPage() {
-  const supabase = await createServerSupabase();
-
-  const { data: client } = await supabase
-    .from("clients")
-    .select("company_name")
-    .single();
+  const client = await getClient();
 
   return (
     <div className="min-h-screen bg-gray-50">

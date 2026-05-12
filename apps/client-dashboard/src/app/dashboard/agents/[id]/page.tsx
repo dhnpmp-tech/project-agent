@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { getAgent } from "@/lib/server-queries";
+import { db } from "@/lib/db";
+import { getServerSession } from "@/lib/session";
 import { AGENT_DISPLAY_NAMES, type AgentDeployment, type ActivityLog } from "@project-agent/shared-types";
 import { notFound } from "next/navigation";
 import { AgentConfigEditor } from "@/components/agent-config-editor";
@@ -18,27 +20,27 @@ export default async function AgentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createServerSupabase();
-
-  const { data: agent } = await supabase
-    .from("agent_deployments")
-    .select("*")
-    .eq("id", id)
-    .single();
-
+  const agent = await getAgent(id);
   if (!agent) notFound();
 
-  const typedAgent = agent as AgentDeployment;
+  const typedAgent = agent as unknown as AgentDeployment;
   const displayName = AGENT_DISPLAY_NAMES[typedAgent.agent_type] || typedAgent.agent_type;
   const colorClass = statusColors[typedAgent.status] || statusColors.pending;
 
-  // Fetch recent activity for this agent
-  const { data: activities } = await supabase
-    .from("activity_logs")
-    .select("*")
-    .eq("agent_deployment_id", id)
-    .order("created_at", { ascending: false })
-    .limit(20);
+  const session = await getServerSession();
+  let activities: ActivityLog[] = [];
+  if (session?.clientId) {
+    try {
+      activities = await db()<ActivityLog[]>`
+        SELECT * FROM activity_logs
+        WHERE agent_deployment_id = ${id} AND client_id = ${session.clientId}
+        ORDER BY created_at DESC
+        LIMIT 20
+      `;
+    } catch {
+      // degrade to empty
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -118,11 +120,11 @@ export default async function AgentDetailPage({
         {/* Recent activity */}
         <section className="rounded-lg border border-gray-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-3">
-            Recent Activity ({(activities as ActivityLog[] | null)?.length || 0})
+            Recent Activity ({activities.length})
           </h2>
-          {(activities as ActivityLog[] | null)?.length ? (
+          {activities.length ? (
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {(activities as ActivityLog[]).map((a) => (
+              {activities.map((a) => (
                 <div key={a.id} className="flex items-start gap-3 rounded-md bg-gray-50 p-3 text-sm">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-800">
