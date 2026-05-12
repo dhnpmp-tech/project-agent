@@ -4,7 +4,7 @@
 // Each query is wrapped so a transient DB error degrades to a safe
 // default instead of crashing the page.
 
-import { sql } from "./db";
+import { db } from "./db";
 import { getServerSession } from "./session";
 import type { AgentDeployment, ActivityLog } from "@project-agent/shared-types";
 
@@ -84,7 +84,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     activities,
   ] = await Promise.all([
     safe(
-      sql<DashboardClient[]>`
+      db()<DashboardClient[]>`
         SELECT company_name, plan, status
         FROM clients
         WHERE id = ${cid}
@@ -92,28 +92,28 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       `,
       [] as DashboardClient[]
     ),
-    countQuery(sql<{ count: string }[]>`
+    countQuery(db()<{ count: string }[]>`
       SELECT COUNT(*)::text AS count
       FROM conversation_summaries
       WHERE client_id = ${cid}
         AND started_at >= ${last24h}
         AND ended_at IS NULL
     `),
-    countQuery(sql<{ count: string }[]>`
+    countQuery(db()<{ count: string }[]>`
       SELECT COUNT(*)::text AS count
       FROM active_bookings
       WHERE client_id = ${cid}
         AND booking_date = ${today}
         AND status <> 'cancelled'
     `),
-    countQuery(sql<{ count: string }[]>`
+    countQuery(db()<{ count: string }[]>`
       SELECT COUNT(*)::text AS count
       FROM scheduled_actions
       WHERE client_id = ${cid}
         AND status = 'pending'
     `),
     safe(
-      sql<{ avg_sentiment: number | null }[]>`
+      db()<{ avg_sentiment: number | null }[]>`
         SELECT avg_sentiment
         FROM customer_memory
         WHERE client_id = ${cid}
@@ -121,18 +121,18 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       `,
       [] as { avg_sentiment: number | null }[]
     ),
-    countQuery(sql<{ count: string }[]>`
+    countQuery(db()<{ count: string }[]>`
       SELECT COUNT(*)::text AS count
       FROM customer_memory
       WHERE client_id = ${cid}
     `),
-    countQuery(sql<{ count: string }[]>`
+    countQuery(db()<{ count: string }[]>`
       SELECT COUNT(*)::text AS count
       FROM vault_notes
       WHERE client_id = ${cid}
     `),
     safe(
-      sql<AgentDeployment[]>`
+      db()<AgentDeployment[]>`
         SELECT * FROM agent_deployments
         WHERE client_id = ${cid}
         ORDER BY created_at DESC
@@ -140,7 +140,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       [] as AgentDeployment[]
     ),
     safe(
-      sql<ActivityLog[]>`
+      db()<ActivityLog[]>`
         SELECT * FROM activity_logs
         WHERE client_id = ${cid}
         ORDER BY created_at DESC

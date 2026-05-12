@@ -3,7 +3,27 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "dist/**"]
+      "outputs": [".next/**", "dist/**"],
+      "env": [
+        "NODE_ENV",
+        "NEXT_PUBLIC_BASE_PATH",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "DATABASE_URL",
+        "JWT_SECRET",
+        "AUTH_API_URL",
+        "RESEND_API_KEY",
+        "KAPSO_PLATFORM_API_KEY",
+        "MINIMAX_API_KEY",
+        "FIRECRAWL_API_KEY",
+        "MEM0_API_KEY",
+        "MEM0_URL",
+        "ADMIN_EMAILS",
+        "GOOGLE_CALENDAR_CLIENT_ID",
+        "GOOGLE_CALENDAR_CLIENT_SECRET",
+        "PUBLIC_WEBSITE_URL"
+      ]
     },
     "dev": {
       "cache": false,
