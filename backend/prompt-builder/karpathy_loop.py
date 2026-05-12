@@ -602,16 +602,13 @@ async def generate_prompt_patch(client_id: str, analysis: dict, kb: dict) -> dic
     data_summary = json.dumps(analysis, ensure_ascii=False)
 
     try:
-        async with supa.client(timeout=90) as http:
-            r = await http.post(
-                "https://api.minimax.io/v1/chat/completions",
-                headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "MiniMax-M2.7",
-                    "messages": [
-                        {"role": "system", "content": f"""You are an AI prompt engineer. Based on performance data, generate SPECIFIC conversation rules to improve booking/order completion.
-
-IMPORTANT: Do NOT use <think> tags. Output ONLY a JSON object. Nothing else.
+        # Routes through karpathy_distill role (Qwen 30B via openrouter
+        # for batch rule generation). inference.chat() strips reasoning
+        # artifacts globally.
+        content = await inference.chat(
+            "karpathy_distill",
+            [
+                {"role": "system", "content": f"""You are an AI prompt engineer. Based on performance data, generate SPECIFIC conversation rules to improve booking/order completion.
 
 EXISTING RULES (do NOT repeat these or generate contradictions):
 {existing_rules_text or "(none yet)"}
@@ -624,18 +621,13 @@ Rules must be behavioral instructions like:
 - "If party size is missing after 2 messages, ask directly"
 - "Confirm booking details after collecting 3 required fields"
 
-NOT data summaries. NOT analysis. NOT duplicates of existing rules. Just NEW rules. Max 3.
+NOT data summaries. NOT analysis. NOT duplicates of existing rules. Just NEW rules. Max 3. Output ONLY the JSON object.
 {"Rules in Arabic." if lang == "ar" else "Rules in English."}"""},
-                        {"role": "user", "content": f"Performance data:\n{data_summary}\n\nSample transcripts:\n{chr(10).join(analysis.get('sample_transcripts', [])[:3])}\n\nDrop-off points:\n{chr(10).join(analysis.get('conversation_patterns', {}).get('drop_off_points', []))}\n\nCustomer questions:\n{chr(10).join(analysis.get('conversation_patterns', {}).get('customer_questions', []))}\n\nWhat specific NEW rules should be added?"},
-                    ],
-                    "max_tokens": 500,
-                },
-            )
-            raw = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            content = re.sub(r"<think>[\s\S]*?</think>\s*", "", raw).strip()
-            if not content and "<think>" in raw:
-                content = re.sub(r"</?think>", "", raw).strip()
-            content = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\u0400-\u04ff]+', '', content)
+                {"role": "user", "content": f"Performance data:\n{data_summary}\n\nSample transcripts:\n{chr(10).join(analysis.get('sample_transcripts', [])[:3])}\n\nDrop-off points:\n{chr(10).join(analysis.get('conversation_patterns', {}).get('drop_off_points', []))}\n\nCustomer questions:\n{chr(10).join(analysis.get('conversation_patterns', {}).get('customer_questions', []))}\n\nWhat specific NEW rules should be added?"},
+            ],
+            max_tokens=500,
+        )
+        if True:
             print(f"[karpathy] Patch content: {content[:100]}")
 
             json_match = re.search(r'\{[\s\S]*\}', content)
@@ -976,18 +968,13 @@ async def extract_customer_insights(client_id: str, days: int = 7) -> dict:
     all_transcripts = "\n---\n".join(transcripts[:10])
 
     try:
-        async with supa.client(timeout=90) as http:
-            r = await http.post(
-                "https://api.minimax.io/v1/chat/completions",
-                headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "MiniMax-M2.7",
-                    "messages": [
-                        {"role": "system", "content": """You are a customer research analyst. Analyze conversation transcripts and extract insights using a 5-part framework.
+        # Customer-research analysis via karpathy_distill role.
+        content = await inference.chat(
+            "karpathy_distill",
+            [
+                {"role": "system", "content": """You are a customer research analyst. Analyze conversation transcripts and extract insights using a 5-part framework.
 
-IMPORTANT: Do NOT use <think> tags. Output ONLY valid JSON. Nothing else.
-
-Output format:
+Output ONLY valid JSON in this format:
 {"jtbd": ["job 1", "job 2"], "pain_points": ["pain 1", "pain 2"], "triggers": ["trigger 1"], "outcomes": ["outcome 1"], "language": ["exact phrase 1", "exact phrase 2"]}
 
 - jtbd: What functional/emotional outcomes customers are seeking (Jobs to Be Done)
@@ -997,16 +984,11 @@ Output format:
 - language: Exact words and phrases customers use (for marketing copy)
 
 Be specific. Use the customer's actual words where possible. Max 5 items per category."""},
-                        {"role": "user", "content": f"Analyze these {convo_count} conversations:\n\n{all_transcripts}"},
-                    ],
-                    "max_tokens": 800,
-                },
-            )
-            raw = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            content = re.sub(r"<think>[\s\S]*?</think>\s*", "", raw).strip()
-            if not content and "<think>" in raw:
-                content = re.sub(r"</?think>", "", raw).strip()
-            content = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\u0400-\u04ff]+', '', content)
+                {"role": "user", "content": f"Analyze these {convo_count} conversations:\n\n{all_transcripts}"},
+            ],
+            max_tokens=800,
+        )
+        if True:
 
             json_match = re.search(r'\{[\s\S]*\}', content)
             if json_match:
@@ -1082,16 +1064,13 @@ async def generate_rules_with_inversion(client_id: str, analysis: dict) -> list:
     data_summary = json.dumps(analysis, ensure_ascii=False)
 
     try:
-        async with supa.client(timeout=90) as http:
-            r = await http.post(
-                "https://api.minimax.io/v1/chat/completions",
-                headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "MiniMax-M2.7",
-                    "messages": [
-                        {"role": "system", "content": """You are a customer experience strategist using INVERSION thinking.
+        # Inversion-thinking rule generator via karpathy_distill.
+        content = await inference.chat(
+            "karpathy_distill",
+            [
+                {"role": "system", "content": """You are a customer experience strategist using INVERSION thinking.
 
-IMPORTANT: Do NOT use <think> tags. Output ONLY a JSON array. Nothing else.
+Output ONLY a JSON array. Nothing else.
 
 Step 1: Think about what would GUARANTEE a terrible customer experience for this business.
 Step 2: Invert each terrible practice into a specific preventive rule.
@@ -1104,16 +1083,11 @@ Output format:
 [{"terrible": "what would go wrong", "rule": "the preventive behavioral rule"}]
 
 Max 3 rules. Rules must be actionable behavioral instructions (20-120 chars)."""},
-                        {"role": "user", "content": f"Business performance data:\n{data_summary}\n\nWhat would guarantee terrible customer experiences here? Invert each into a preventive rule."},
-                    ],
-                    "max_tokens": 600,
-                },
-            )
-            raw = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            content = re.sub(r"<think>[\s\S]*?</think>\s*", "", raw).strip()
-            if not content and "<think>" in raw:
-                content = re.sub(r"</?think>", "", raw).strip()
-            content = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\u0400-\u04ff]+', '', content)
+                {"role": "user", "content": f"Business performance data:\n{data_summary}\n\nWhat would guarantee terrible customer experiences here? Invert each into a preventive rule."},
+            ],
+            max_tokens=600,
+        )
+        if True:
 
             json_match = re.search(r'\[[\s\S]*\]', content)
             if json_match:
@@ -1658,33 +1632,25 @@ async def apply_learnings_to_prompt(client_id: str) -> dict:
     if len(drop_offs) >= 2:
         has_dropoff_rule = any("drop" in r.get("rule", "").lower() or "lose" in r.get("rule", "").lower() for r in existing_rules)
         if not has_dropoff_rule:
-            # Use AI to summarize the pattern
-            if _MINIMAX_KEY:
-                try:
-                    trigger_list = "\n".join(f"- {d}" for d in drop_offs[:5])
-                    async with supa.client(timeout=90) as http:
-                        r = await http.post(
-                            "https://api.minimax.io/v1/chat/completions",
-                            headers={"Authorization": f"Bearer {_MINIMAX_KEY}", "Content-Type": "application/json"},
-                            json={
-                                "model": "MiniMax-M2.7",
-                                "messages": [
-                                    {"role": "system", "content": "You are a conversation designer. Given messages that caused customers to stop responding, write ONE short behavioral rule (20-100 chars) to prevent this. Output ONLY the rule text, nothing else. No <think> tags."},
-                                    {"role": "user", "content": f"Messages that caused drop-offs:\n{trigger_list}"},
-                                ],
-                                "max_tokens": 100,
-                            },
-                        )
-                        raw = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-                        rule_text = re.sub(r"<think>[\s\S]*?</think>\s*", "", raw).strip()
-                        rule_text = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\u0400-\u04ff]+', '', rule_text).strip()
-                        if rule_text and 20 <= len(rule_text) <= 120:
-                            conflicts = detect_conflicts(rule_text, existing_rules)
-                            if not any(c["conflict_type"] == "duplicate" for c in conflicts):
-                                new_rules.append(_make_rule(rule_text, "Derived from drop-off pattern analysis", metrics))
-                                result["details"].append(f"Added anti-dropoff rule from {len(drop_offs)} triggers")
-                except Exception as e:
-                    print(f"[karpathy] Drop-off rule generation failed: {e}")
+            # Drop-off rule generator via karpathy_distill
+            try:
+                trigger_list = "\n".join(f"- {d}" for d in drop_offs[:5])
+                rule_text = await inference.chat(
+                    "karpathy_distill",
+                    [
+                        {"role": "system", "content": "You are a conversation designer. Given messages that caused customers to stop responding, write ONE short behavioral rule (20-100 chars) to prevent this. Output ONLY the rule text, nothing else."},
+                        {"role": "user", "content": f"Messages that caused drop-offs:\n{trigger_list}"},
+                    ],
+                    max_tokens=100,
+                )
+                rule_text = rule_text.strip()
+                if rule_text and 20 <= len(rule_text) <= 120:
+                    conflicts = detect_conflicts(rule_text, existing_rules)
+                    if not any(c["conflict_type"] == "duplicate" for c in conflicts):
+                        new_rules.append(_make_rule(rule_text, "Derived from drop-off pattern analysis", metrics))
+                        result["details"].append(f"Added anti-dropoff rule from {len(drop_offs)} triggers")
+            except Exception as e:
+                print(f"[karpathy] Drop-off rule generation failed: {e}")
 
     # 3. Peak hours → store as scheduling recommendation
     peak_hours = learnings.get("conversation_patterns", {}).get("peak_hours", {})
