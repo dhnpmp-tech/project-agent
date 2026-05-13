@@ -141,7 +141,7 @@ interface AgentScore {
   percentile_blurb: string;  // "you beat 73% of similar businesses" — encouraging or honest
 }
 
-interface GbpData {
+interface GbpOutlet {
   place_id: string;
   name: string | null;
   address: string | null;
@@ -151,11 +151,25 @@ interface GbpData {
   rating: number | null;
   user_ratings_total: number | null;
   price_level: number | null;
-  hours: string[];          // weekday_text from Places
+  hours: string[];
   photos_count: number;
   business_status: string | null;
   lat: number | null;
   lng: number | null;
+}
+
+interface GbpAggregate {
+  outlet_count: number;
+  total_reviews: number;
+  weighted_avg_rating: number | null;
+  total_photos: number;
+}
+
+interface GbpData extends GbpOutlet {
+  // Backward-compat: top-level fields mirror the primary (most-reviewed)
+  // outlet. New callers should prefer `outlets` + `aggregate`.
+  outlets?: GbpOutlet[];
+  aggregate?: GbpAggregate;
 }
 
 interface Competitor {
@@ -711,6 +725,7 @@ function computeAgentScore(
   reviews: ReviewMining | null,
   seoFindings: SeoFinding[],
   faqGaps: FaqGap[],
+  gbp: GbpData | null = null,
 ): AgentScore {
   // DISCOVERY: directory presence ratio + GBP signal
   let discovery = 30; // baseline
@@ -731,15 +746,24 @@ function computeAgentScore(
   const faqFloor = (crawl.faq?.length ?? 0) >= 5 ? 80 : (crawl.faq?.length ?? 0) >= 2 ? 60 : 30;
   const content = Math.round((seoScore * 0.6) + (faqFloor * 0.4));
 
-  // REVIEWS: avg rating + volume + sentiment balance
-  let reviewsScore = 50; // baseline (unknown)
-  if (reviews?.sentiment && reviews.sentiment.total > 0) {
+  // REVIEWS: prefer the GBP AGGREGATE (every outlet's reviews summed)
+  // over the mined sample (which only saw a few reviews per scraped
+  // platform page). For Arabian Tea House: GBP aggregate = 45,761 across
+  // 5 outlets; mined = ~2,000. Use the bigger truth where available.
+  let reviewsScore = 50;
+  const gbpAgg = gbp?.aggregate;
+  const aggCount = gbpAgg?.total_reviews ?? 0;
+  const aggAvg = gbpAgg?.weighted_avg_rating ?? null;
+  if (aggCount > 0 && aggAvg != null) {
+    const ratingScore = Math.max(0, Math.min(100, (aggAvg - 2) * 33.33));
+    const volumeScore = Math.min(100, Math.log10(aggCount + 1) * 33);
+    reviewsScore = Math.round(ratingScore * 0.6 + volumeScore * 0.4);
+  } else if (reviews?.sentiment && reviews.sentiment.total > 0) {
     const avg = reviews.avg_rating ?? 0;
     const total = reviews.sentiment.total;
     const fiveRatio = (reviews.sentiment.five || 0) / total;
-    // 50% from rating, 30% from volume (log-scaled), 20% from 5-star ratio
-    const ratingScore = Math.max(0, Math.min(100, (avg - 2) * 33.33)); // 5★=100, 2★=0
-    const volumeScore = Math.min(100, Math.log10(total + 1) * 50); // 100 reviews→100, 10→50
+    const ratingScore = Math.max(0, Math.min(100, (avg - 2) * 33.33));
+    const volumeScore = Math.min(100, Math.log10(total + 1) * 50);
     reviewsScore = Math.round(ratingScore * 0.5 + volumeScore * 0.3 + fiveRatio * 100 * 0.2);
   }
 
@@ -799,6 +823,7 @@ function computeBadges(
   crawl: CrawlResult,
   directory: DirectoryStrategy | null,
   reviews: ReviewMining | null,
+  gbp: GbpData | null = null,
 ): Badge[] {
   const badges: Badge[] = [];
   const corpus = (crawl.pagesText || "").toLowerCase();
@@ -817,12 +842,30 @@ function computeBadges(
     }
   }
 
-  // 5-star champion
-  if (reviews?.avg_rating && reviews.avg_rating >= 4.5 && reviews.sentiment.total >= 50) {
+  // 5-star champion — prefer GBP aggregate when available
+  const aggAvg = gbp?.aggregate?.weighted_avg_rating;
+  const aggTotal = gbp?.aggregate?.total_reviews;
+  if (aggAvg != null && aggAvg >= 4.5 && (aggTotal ?? 0) >= 100) {
+    badges.push({
+      emoji: "⭐",
+      label: `${aggAvg.toFixed(2)}★ champion`,
+      detail: `${aggAvg.toFixed(2)} avg across ${aggTotal!.toLocaleString()} Google reviews — exceptional.`,
+    });
+  } else if (reviews?.avg_rating && reviews.avg_rating >= 4.5 && reviews.sentiment.total >= 50) {
     badges.push({
       emoji: "⭐",
       label: `${reviews.avg_rating.toFixed(1)}★ champion`,
       detail: `${reviews.avg_rating.toFixed(1)} avg across ${reviews.sentiment.total.toLocaleString()} reviews — exceptional.`,
+    });
+  }
+
+  // Multi-outlet brand badge
+  const outletCount = gbp?.aggregate?.outlet_count ?? 0;
+  if (outletCount >= 2) {
+    badges.push({
+      emoji: "🏬",
+      label: `${outletCount} outlets`,
+      detail: `${outletCount} locations verified on Google Maps — established brand footprint.`,
     });
   }
 
@@ -855,12 +898,13 @@ function computeBadges(
     });
   }
 
-  // Review volume
-  if (reviews?.sentiment?.total && reviews.sentiment.total >= 500) {
+  // Review volume — prefer aggregate
+  const voiceCount = aggTotal ?? reviews?.sentiment?.total ?? 0;
+  if (voiceCount >= 500) {
     badges.push({
       emoji: "🗣️",
-      label: `${reviews.sentiment.total.toLocaleString()}+ voices`,
-      detail: `${reviews.sentiment.total.toLocaleString()} customers have written about you publicly — that's a moat.`,
+      label: `${voiceCount.toLocaleString()}+ voices`,
+      detail: `${voiceCount.toLocaleString()} customers have written about you publicly — that's a moat.`,
     });
   }
 
@@ -1386,8 +1430,9 @@ Output STRICT JSON only:
     reviews,
     seo_findings,
     faq_gaps,
+    gbp,
   );
-  const badges = computeBadges(businessName, crawl, directoryStrategy, reviews);
+  const badges = computeBadges(businessName, crawl, directoryStrategy, reviews, gbp);
 
   const pkg: TeardownPackage = {
     business_name: businessName,

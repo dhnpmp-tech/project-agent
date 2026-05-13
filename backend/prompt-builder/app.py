@@ -5010,10 +5010,18 @@ class _PlacesNearbyRequest(BaseModel):
 
 @app.post("/web/places-lookup")
 async def web_places_lookup(req: _PlacesLookupRequest):
-    """Find a business on Google Places. Returns the canonical Place
-    record: place_id, rating, user_ratings_total, hours, formatted
-    address, photos count, top reviews. This is the authoritative GBP
-    signal — replaces the Firecrawl Maps detection workaround.
+    """Find a business on Google Places. Uses Text Search (not Find
+    Place From Text) so we surface ALL outlets for multi-location
+    brands like Arabian Tea House (4 outlets) or Operation Falafel (8+).
+
+    Returns:
+    - primary: the flagship outlet (highest user_ratings_total)
+    - outlets: array of every outlet matched (up to 8)
+    - aggregate: total_reviews + weighted_avg_rating + outlet_count
+
+    The top-level fields (rating, user_ratings_total, place_id, etc.)
+    still mirror `primary` so older callers that read .rating directly
+    keep working.
     """
     if not _GOOGLE_PLACES_API_KEY:
         return {"error": "no_key", "skipped_reason": "GOOGLE_PLACES_API_KEY not set"}
@@ -5022,86 +5030,140 @@ async def web_places_lookup(req: _PlacesLookupRequest):
     if req.location_hint:
         query_parts.append(req.location_hint)
     elif req.country == "AE":
-        query_parts.append("Dubai UAE")
+        query_parts.append("UAE")
     elif req.country == "SA":
-        query_parts.append("Riyadh Saudi Arabia")
+        query_parts.append("Saudi Arabia")
     query = " ".join(query_parts)
 
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            # Find Place From Text — cheaper than Text Search
-            find = await client.get(
-                "https://maps.googleapis.com/maps/api/place/findplacefromtext/json",
+        async with httpx.AsyncClient(timeout=25) as client:
+            # Text Search returns up to 20 candidates. For multi-outlet
+            # brands the top hits are usually all the outlets in order
+            # of relevance + review volume.
+            ts = await client.get(
+                "https://maps.googleapis.com/maps/api/place/textsearch/json",
                 params={
-                    "input": query,
-                    "inputtype": "textquery",
-                    "fields": "place_id,name,formatted_address,rating,user_ratings_total,types,geometry",
+                    "query": query,
                     "key": _GOOGLE_PLACES_API_KEY,
                 },
             )
-            if find.status_code != 200:
-                return {"error": f"find_http_{find.status_code}"}
-            find_data = find.json()
-            candidates = find_data.get("candidates") or []
-            if not candidates:
+            if ts.status_code != 200:
+                return {"error": f"textsearch_http_{ts.status_code}"}
+            ts_data = ts.json()
+            results = ts_data.get("results") or []
+            if not results:
                 return {"error": "no_match", "query": query}
-            top = candidates[0]
-            place_id = top.get("place_id")
-            if not place_id:
-                return {"error": "no_place_id"}
 
-            # Place Details for richer fields (hours, reviews, photos)
-            details = await client.get(
-                "https://maps.googleapis.com/maps/api/place/details/json",
-                params={
-                    "place_id": place_id,
-                    "fields": (
-                        "place_id,name,formatted_address,rating,user_ratings_total,"
-                        "opening_hours,current_opening_hours,price_level,types,"
-                        "formatted_phone_number,international_phone_number,website,"
-                        "url,photos,reviews,geometry,business_status"
-                    ),
-                    "key": _GOOGLE_PLACES_API_KEY,
-                },
+            # Filter to outlets that look like the same brand.
+            # Matching rule: name must contain at least the first 5
+            # characters of the queried business name (case-insensitive).
+            # Cuts cross-brand pollution (Bhavna Restaurant for "Arabian"
+            # search wouldn't pass; "Arabian Tea House Sharjah" would).
+            brand_seed = (req.business_name or "")[:5].lower().strip()
+            outlet_candidates = [
+                r for r in results
+                if brand_seed and brand_seed in (r.get("name") or "").lower()
+            ][:8]
+            if not outlet_candidates:
+                # Fall back to top result only if filter rejected everything
+                outlet_candidates = [results[0]]
+
+            # Sort by review volume desc — primary = most reviews.
+            outlet_candidates.sort(
+                key=lambda r: r.get("user_ratings_total") or 0,
+                reverse=True,
             )
-            if details.status_code != 200:
-                return {"error": f"details_http_{details.status_code}", "place_id": place_id}
-            d = (details.json() or {}).get("result") or {}
+
+            # Pull Place Details for each outlet IN PARALLEL — keeps
+            # total latency around one Places API round-trip even when
+            # the brand has 8 outlets.
+            async def _detail(place_id: str) -> dict:
+                r = await client.get(
+                    "https://maps.googleapis.com/maps/api/place/details/json",
+                    params={
+                        "place_id": place_id,
+                        "fields": (
+                            "place_id,name,formatted_address,rating,user_ratings_total,"
+                            "opening_hours,current_opening_hours,price_level,types,"
+                            "formatted_phone_number,international_phone_number,website,"
+                            "url,photos,reviews,geometry,business_status"
+                        ),
+                        "key": _GOOGLE_PLACES_API_KEY,
+                    },
+                )
+                if r.status_code != 200:
+                    return {"_error": f"details_http_{r.status_code}"}
+                return (r.json() or {}).get("result") or {}
+
+            ids = [c.get("place_id") for c in outlet_candidates if c.get("place_id")]
+            details_list = await asyncio.gather(*[_detail(pid) for pid in ids])
     except Exception as e:
-        return {"error": f"places_failed: {type(e).__name__}"}
+        return {"error": f"places_failed: {type(e).__name__}: {str(e)[:120]}"}
 
-    # Reviews: keep up to 5 with text + rating + author + time
-    reviews_out = []
-    for r in (d.get("reviews") or [])[:5]:
-        reviews_out.append({
-            "rating": r.get("rating"),
-            "text": (r.get("text") or "")[:1000],
-            "author": r.get("author_name"),
-            "time": r.get("relative_time_description"),
-            "lang": r.get("language"),
-        })
+    def _outlet_from_details(d: dict) -> Optional[dict]:
+        if not d or d.get("_error") or not d.get("place_id"):
+            return None
+        geom = (d.get("geometry") or {}).get("location") or {}
+        return {
+            "place_id": d.get("place_id"),
+            "name": d.get("name"),
+            "address": d.get("formatted_address"),
+            "phone": d.get("formatted_phone_number") or d.get("international_phone_number"),
+            "website": d.get("website"),
+            "maps_url": d.get("url"),
+            "rating": d.get("rating"),
+            "user_ratings_total": d.get("user_ratings_total"),
+            "price_level": d.get("price_level"),
+            "types": d.get("types") or [],
+            "hours": (d.get("opening_hours") or {}).get("weekday_text") or [],
+            "photos_count": len(d.get("photos") or []),
+            "reviews": [
+                {
+                    "rating": r.get("rating"),
+                    "text": (r.get("text") or "")[:1000],
+                    "author": r.get("author_name"),
+                    "time": r.get("relative_time_description"),
+                    "lang": r.get("language"),
+                }
+                for r in (d.get("reviews") or [])[:5]
+            ],
+            "lat": geom.get("lat"),
+            "lng": geom.get("lng"),
+            "business_status": d.get("business_status"),
+        }
 
-    photos_count = len(d.get("photos") or [])
-    hours_open = (d.get("opening_hours") or {}).get("weekday_text") or []
+    outlets = [o for o in (_outlet_from_details(d) for d in details_list) if o]
+    if not outlets:
+        return {"error": "no_outlet_details"}
 
-    geom = (d.get("geometry") or {}).get("location") or {}
+    # Primary = the outlet with the most reviews (already first after
+    # the sort above).
+    primary = outlets[0]
+
+    # Aggregate across ALL outlets.
+    total_reviews = sum((o.get("user_ratings_total") or 0) for o in outlets)
+    if total_reviews > 0:
+        # Weighted average rating = Σ(rating × count) / Σ(count)
+        weighted_sum = sum(
+            (o.get("rating") or 0) * (o.get("user_ratings_total") or 0)
+            for o in outlets
+        )
+        weighted_avg = round(weighted_sum / total_reviews, 2)
+    else:
+        weighted_avg = None
+
+    aggregate = {
+        "outlet_count": len(outlets),
+        "total_reviews": total_reviews,
+        "weighted_avg_rating": weighted_avg,
+        "total_photos": sum((o.get("photos_count") or 0) for o in outlets),
+    }
+
+    # Top-level fields mirror primary for backward compatibility.
     return {
-        "place_id": d.get("place_id"),
-        "name": d.get("name"),
-        "address": d.get("formatted_address"),
-        "phone": d.get("formatted_phone_number") or d.get("international_phone_number"),
-        "website": d.get("website"),
-        "maps_url": d.get("url"),
-        "rating": d.get("rating"),
-        "user_ratings_total": d.get("user_ratings_total"),
-        "price_level": d.get("price_level"),
-        "types": d.get("types") or [],
-        "hours": hours_open,
-        "photos_count": photos_count,
-        "reviews": reviews_out,
-        "lat": geom.get("lat"),
-        "lng": geom.get("lng"),
-        "business_status": d.get("business_status"),
+        **primary,
+        "outlets": outlets,
+        "aggregate": aggregate,
     }
 
 

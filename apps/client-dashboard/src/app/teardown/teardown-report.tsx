@@ -101,7 +101,7 @@ export interface AgentScore {
   percentile_blurb: string;
 }
 
-export interface GbpData {
+export interface GbpOutlet {
   place_id: string;
   name: string | null;
   address: string | null;
@@ -116,6 +116,18 @@ export interface GbpData {
   business_status: string | null;
   lat: number | null;
   lng: number | null;
+}
+
+export interface GbpAggregate {
+  outlet_count: number;
+  total_reviews: number;
+  weighted_avg_rating: number | null;
+  total_photos: number;
+}
+
+export interface GbpData extends GbpOutlet {
+  outlets?: GbpOutlet[];
+  aggregate?: GbpAggregate;
 }
 
 export interface Competitor {
@@ -1058,7 +1070,10 @@ function ScoreBreakdownBars({ breakdown }: { breakdown: ScoreBreakdown }) {
 }
 
 function GbpPanel({ gbp }: { gbp: GbpData }) {
-  const open = (gbp.business_status || "").toUpperCase() === "OPERATIONAL";
+  const outlets = gbp.outlets && gbp.outlets.length > 1 ? gbp.outlets : null;
+  const agg = gbp.aggregate;
+  const isMulti = !!(outlets && agg && agg.outlet_count > 1);
+
   return (
     <section
       style={{
@@ -1079,22 +1094,8 @@ function GbpPanel({ gbp }: { gbp: GbpData }) {
             color: "var(--paper-mut, #837c69)",
           }}
         >
-          § google business profile — live data
+          § google business profile — {isMulti ? `${agg!.outlet_count} outlets aggregated` : "live data"}
         </span>
-        {open && (
-          <span
-            style={{
-              fontFamily: "var(--mono, ui-monospace)",
-              fontSize: 10,
-              padding: "2px 8px",
-              background: "#dfeede",
-              color: "#1e6d3d",
-              borderRadius: 4,
-            }}
-          >
-            operational
-          </span>
-        )}
       </div>
       <h3
         style={{
@@ -1105,9 +1106,12 @@ function GbpPanel({ gbp }: { gbp: GbpData }) {
           lineHeight: 1.15,
         }}
       >
-        {gbp.name || "Your Google listing"}
+        {isMulti
+          ? `${agg!.outlet_count} locations · ${agg!.total_reviews.toLocaleString()} total reviews`
+          : gbp.name || "Your Google listing"}
       </h3>
 
+      {/* Aggregate stat row */}
       <div
         style={{
           display: "grid",
@@ -1115,13 +1119,123 @@ function GbpPanel({ gbp }: { gbp: GbpData }) {
           gap: 12,
         }}
       >
-        <StatTile label="Rating" value={gbp.rating != null ? `${gbp.rating.toFixed(1)} ★` : "—"} />
-        <StatTile label="Reviews" value={gbp.user_ratings_total != null ? gbp.user_ratings_total.toLocaleString() : "—"} />
-        <StatTile label="Photos" value={gbp.photos_count != null ? String(gbp.photos_count) : "—"} />
-        <StatTile label="Price level" value={gbp.price_level != null ? "$".repeat(Math.max(1, gbp.price_level)) : "—"} />
+        <StatTile
+          label={isMulti ? "Weighted ★" : "Rating"}
+          value={
+            isMulti && agg!.weighted_avg_rating != null
+              ? `${agg!.weighted_avg_rating.toFixed(2)} ★`
+              : gbp.rating != null
+                ? `${gbp.rating.toFixed(1)} ★`
+                : "—"
+          }
+        />
+        <StatTile
+          label={isMulti ? "Total reviews" : "Reviews"}
+          value={
+            isMulti
+              ? agg!.total_reviews.toLocaleString()
+              : gbp.user_ratings_total != null
+                ? gbp.user_ratings_total.toLocaleString()
+                : "—"
+          }
+        />
+        <StatTile
+          label={isMulti ? "Total photos" : "Photos"}
+          value={
+            isMulti
+              ? agg!.total_photos.toLocaleString()
+              : gbp.photos_count != null
+                ? String(gbp.photos_count)
+                : "—"
+          }
+        />
+        <StatTile
+          label="Outlets"
+          value={isMulti ? agg!.outlet_count.toString() : "1"}
+        />
       </div>
 
-      {gbp.hours && gbp.hours.length > 0 && (
+      {/* Per-outlet breakdown when multi-location */}
+      {isMulti && outlets && (
+        <div style={{ marginTop: 18 }}>
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "var(--paper-mut, #837c69)",
+            }}
+          >
+            outlet-by-outlet
+          </span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            {outlets.map((o, i) => (
+              <a
+                key={o.place_id || i}
+                href={o.maps_url || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto",
+                  gap: 14,
+                  padding: 12,
+                  background: i === 0 ? "#eef5e9" : "var(--paper, #f6f3eb)",
+                  border: `1px solid ${i === 0 ? "#bdd7af" : "var(--paper-line, #d8d2bf)"}`,
+                  borderRadius: 6,
+                  textDecoration: "none",
+                  color: "inherit",
+                }}
+              >
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
+                    {o.name?.replace(/^Arabian Tea House[^,]*?(?:Restaurant\s*&?\s*Cafe?)?\s*-?\s*/i, "") || o.name}
+                    {i === 0 && (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          fontFamily: "var(--mono, ui-monospace)",
+                          fontSize: 9,
+                          padding: "1px 6px",
+                          background: "#1e6d3d",
+                          color: "#fbfaf4",
+                          borderRadius: 3,
+                          letterSpacing: "0.04em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        flagship
+                      </span>
+                    )}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      fontFamily: "var(--mono, ui-monospace)",
+                      color: "var(--paper-mut, #837c69)",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {o.address}
+                  </p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "#1e6d3d" }}>
+                    {o.rating != null ? `${o.rating.toFixed(1)}★` : "—"}
+                  </span>
+                  <span style={{ fontSize: 11, color: "var(--paper-mut, #837c69)" }}>
+                    {(o.user_ratings_total || 0).toLocaleString()} reviews
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Flagship hours/contact for the single-outlet case */}
+      {!isMulti && gbp.hours && gbp.hours.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <span
             style={{
@@ -1142,7 +1256,6 @@ function GbpPanel({ gbp }: { gbp: GbpData }) {
               marginTop: 6,
               fontFamily: "var(--mono, ui-monospace)",
               fontSize: 11.5,
-              color: "var(--paper-ink, #1d1c18)",
             }}
           >
             {gbp.hours.map((h, i) => (
@@ -1152,34 +1265,36 @@ function GbpPanel({ gbp }: { gbp: GbpData }) {
         </div>
       )}
 
-      <div style={{ marginTop: 14, display: "flex", gap: 12, flexWrap: "wrap" }}>
-        {gbp.maps_url && (
-          <a
-            href={gbp.maps_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              fontFamily: "var(--mono, ui-monospace)",
-              fontSize: 11,
-              color: "#2d8e7d",
-              textDecoration: "underline",
-            }}
-          >
-            view on Maps →
-          </a>
-        )}
-        {gbp.address && (
-          <span
-            style={{
-              fontFamily: "var(--mono, ui-monospace)",
-              fontSize: 11,
-              color: "var(--paper-mut, #837c69)",
-            }}
-          >
-            {gbp.address}
-          </span>
-        )}
-      </div>
+      {!isMulti && (
+        <div style={{ marginTop: 14, display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {gbp.maps_url && (
+            <a
+              href={gbp.maps_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontFamily: "var(--mono, ui-monospace)",
+                fontSize: 11,
+                color: "#2d8e7d",
+                textDecoration: "underline",
+              }}
+            >
+              view on Maps →
+            </a>
+          )}
+          {gbp.address && (
+            <span
+              style={{
+                fontFamily: "var(--mono, ui-monospace)",
+                fontSize: 11,
+                color: "var(--paper-mut, #837c69)",
+              }}
+            >
+              {gbp.address}
+            </span>
+          )}
+        </div>
+      )}
     </section>
   );
 }
