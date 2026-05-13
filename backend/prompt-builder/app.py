@@ -3926,6 +3926,45 @@ async def _fetch_via_firecrawl(url: str) -> Optional[str]:
         return None
 
 
+async def _fetch_via_cloak(url: str) -> Optional[str]:
+    """Final-stage fallback. CloakBrowser-driven Chromium with 49
+    source-level stealth patches — passes Cloudflare Turnstile,
+    FingerprintJS, BrowserScan. Used after both curl AND Firecrawl
+    have failed; the slowest of the three (~3-6s per page) but the
+    only one that reliably reaches heavily-protected sites.
+
+    Returns the rendered HTML or None on any failure. Caller treats
+    None as "site unreachable, skip this path".
+    """
+    try:
+        # Import lazily — keeps cold-start fast on the common path.
+        from cloakbrowser import launch_async
+    except ImportError:
+        return None
+    try:
+        browser = await launch_async(headless=True)
+    except Exception:
+        return None
+    try:
+        page = await browser.new_page()
+        try:
+            await page.goto(url, wait_until="domcontentloaded", timeout=15000)
+        except Exception:
+            return None
+        try:
+            html = await page.content()
+            if not html or len(html) < 200:
+                return None
+            return html[:50_000]
+        except Exception:
+            return None
+    finally:
+        try:
+            await browser.close()
+        except Exception:
+            pass
+
+
 async def _fetch_screenshot_via_firecrawl(url: str) -> Optional[str]:
     """Capture a screenshot of the URL via Firecrawl. Returns the URL to
     the hosted screenshot or None on failure. Firecrawl returns a public
@@ -3963,20 +4002,29 @@ async def _fetch_screenshot_via_firecrawl(url: str) -> Optional[str]:
 
 
 async def _fetch_page(_client: Any, url: str) -> Optional[str]:
-    """Two-stage fetch: Firecrawl first if a key is set (handles JS,
-    Cloudflare, anti-bot, gives cleaner content), curl fallback for
-    speed + cost when Firecrawl isn't configured or rate-limits us.
+    """Three-stage fetch ladder, ordered by speed + cost:
 
-    Firecrawl as primary is the right call once a key lands — it
-    delivers cleaner main-content extraction (drops navs/ads/footers)
-    which directly improves downstream LLM quality. Curl stays as the
-    fallback so the system degrades gracefully if Firecrawl is down.
+    1. Firecrawl /v1/scrape — cleanest main-content extraction. Fast,
+       cheap on credits, handles JS-rendered pages. ~80% hit rate.
+    2. curl subprocess — battle-tested TLS + redirect handling. Fast
+       and free. Picks up most static sites Firecrawl misses.
+    3. CloakBrowser — stealth Chromium with 49 source-level fingerprint
+       patches. Passes Cloudflare Turnstile / FingerprintJS / BrowserScan.
+       Slowest (~3-6s) but reaches Cloudflare-protected + advanced
+       anti-bot sites the others can't touch.
+
+    Each stage tries once per URL. The whole ladder runs in parallel
+    across the 16 path candidates inside web_crawl, so total crawl
+    time is bounded by the slowest single-page resolution.
     """
     if _FIRECRAWL_API_KEY:
         html = await _fetch_via_firecrawl(url)
         if html:
             return html
-    return await _fetch_via_curl(url)
+    html = await _fetch_via_curl(url)
+    if html:
+        return html
+    return await _fetch_via_cloak(url)
 
 
 @app.post("/web/crawl")
