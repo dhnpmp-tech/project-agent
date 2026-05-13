@@ -11,6 +11,10 @@ interface CrawlResult {
   teamMembers: string[];
   socialProfiles: Record<string, string>;
   reviewSources: { platform: string; url: string }[];
+  // Testimonials/reviews actually embedded on the website (about page,
+  // homepage testimonial sections, etc.). These are real customer quotes
+  // we can mine on day-one without needing GBP integration.
+  testimonials: { quote: string; author?: string }[];
   brandVoice: string;
   industryKeywords: string[];
   jobListings: string[];
@@ -184,6 +188,7 @@ Extract and return this JSON structure:
   "businessHours": "operating hours if found, or empty string",
   "contactInfo": {"phone": "...", "email": "...", "address": "..."},
   "teamMembers": ["Name - Role", ...] (if team page found),
+  "testimonials": [{"quote": "...", "author": "..."}, ...] (up to 10 customer testimonials/reviews actually embedded on the site — about page, homepage, dedicated reviews page. Each "quote" max 320 chars. "author" optional. ONLY include real quotes from the content, do NOT fabricate.),
   "brandVoice": "Brief description of the brand's tone/voice based on the copy style (e.g. professional, friendly, technical, luxurious)",
   "industryKeywords": ["top 10-15 keywords relevant to this business and industry"],
   "jobListings": ["Job Title 1", "Job Title 2", ...] (if careers page found)
@@ -270,6 +275,18 @@ export async function POST(request: NextRequest) {
       teamMembers: llmData.teamMembers || [],
       socialProfiles,
       reviewSources,
+      testimonials: Array.isArray(llmData.testimonials)
+        ? llmData.testimonials
+            .filter(
+              (t): t is { quote: string; author?: string } =>
+                !!t && typeof t.quote === "string" && t.quote.trim().length > 20,
+            )
+            .map((t) => ({
+              quote: t.quote.trim().slice(0, 400),
+              author: t.author?.toString().trim().slice(0, 80),
+            }))
+            .slice(0, 10)
+        : [],
       brandVoice: llmData.brandVoice || "",
       industryKeywords: llmData.industryKeywords || [],
       jobListings: llmData.jobListings || [],

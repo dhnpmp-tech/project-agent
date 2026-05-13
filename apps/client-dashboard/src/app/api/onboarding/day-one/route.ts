@@ -31,7 +31,9 @@ interface KnowledgeRow {
   services: string[] | null;
   faq: { question: string; answer: string }[] | null;
   contact_info: Record<string, unknown> | null;
-  crawl_data: Record<string, unknown> | null;
+  crawl_data: (Record<string, unknown> & {
+    testimonials?: { quote: string; author?: string }[];
+  }) | null;
 }
 
 interface CompanyRow {
@@ -90,6 +92,21 @@ interface IcpLead {
   first_message: string;
 }
 
+interface ReviewMining {
+  // How many testimonials/reviews the analysis was based on. Lets the
+  // card show "based on N reviews from your site" honestly.
+  source_count: number;
+  // One-paragraph distilled "what your customers love" — direct quote
+  // fragments preferred over paraphrasing.
+  top_praise: string;
+  // One-paragraph distilled "what's coming up as friction" — even if
+  // the testimonials are 100% positive, this surfaces what's MISSING.
+  top_concern: string;
+  // Three reusable response templates the agent can fire when similar
+  // praise or concerns come in via WhatsApp.
+  response_templates: { trigger: string; template: string }[];
+}
+
 interface DayOnePackage {
   generated_at: string;
   insight: string;
@@ -101,6 +118,7 @@ interface DayOnePackage {
   demo_transcript: DemoTranscript | null;
   owner_brief: OwnerBriefPreview | null;
   icp_leads: IcpLead[];
+  review_mining: ReviewMining | null;
 }
 
 const PROMPT_BUILDER_URL =
@@ -249,6 +267,14 @@ export async function POST(req: NextRequest) {
       ? kb.faq.slice(0, 20).map((f) => f.question).join("\n- ")
       : "(no FAQ extracted from your website)";
 
+  // If the website crawl picked up testimonials, the review-mining task
+  // gets real source material. Otherwise we skip it (no fabrication —
+  // the card hides). Hold the list in scope so we can pass it into the
+  // prompt and report source_count from the same value.
+  const testimonialsFromCrawl = Array.isArray(kb?.crawl_data?.testimonials)
+    ? kb.crawl_data!.testimonials!.slice(0, 10)
+    : [];
+
   const [
     insight,
     postsRaw,
@@ -259,6 +285,7 @@ export async function POST(req: NextRequest) {
     transcriptRaw,
     ownerBriefRaw,
     icpLeadsRaw,
+    reviewMiningRaw,
   ] = await Promise.all([
     inferenceChat(
       "rami_research",
@@ -388,6 +415,32 @@ Output STRICT JSON only — no preamble, no markdown fence:
   ... 3 objects total
 ]`,
     ),
+    testimonialsFromCrawl.length > 0
+      ? inferenceChat(
+          "quality_eval",
+          `You are mining customer testimonials/reviews to surface what matters about a UAE/Saudi SMB.
+
+${context}
+
+Real customer testimonials pulled from this business's website (verbatim, do not invent more):
+${testimonialsFromCrawl.map((t, i) => `${i + 1}. "${t.quote}"${t.author ? ` — ${t.author}` : ""}`).join("\n")}
+
+Your task:
+1. Distill what customers consistently LOVE about this business (top_praise) — one paragraph, lean on direct quote fragments where possible.
+2. Distill what's missing or could be friction (top_concern) — one paragraph. Even if reviews are 100% positive, find what's NOT being said (e.g. "no one mentions price" might suggest pricing is a concern). Be honest.
+3. Draft THREE reusable WhatsApp response templates the AI agent can use when a similar piece of feedback comes in over chat.
+
+Output STRICT JSON only — no preamble, no markdown fence:
+{
+  "top_praise": "one paragraph (max 400 chars)",
+  "top_concern": "one paragraph (max 400 chars)",
+  "response_templates": [
+    {"trigger": "short phrase describing when to use this — max 80 chars", "template": "the actual message text — max 280 chars"},
+    ... 3 objects total
+  ]
+}`,
+        )
+      : Promise.resolve(""),
   ]);
 
   // Parse the FAQ gap response. Be defensive — the model may wrap in ```json
@@ -567,6 +620,53 @@ Output STRICT JSON only — no preamble, no markdown fence:
     }
   }
 
+  // Parse review-mining JSON. Same defensive pattern as the others.
+  let review_mining: ReviewMining | null = null;
+  if (reviewMiningRaw && testimonialsFromCrawl.length > 0) {
+    const cleaned = reviewMiningRaw
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        const parsed = JSON.parse(cleaned.slice(start, end + 1));
+        if (
+          parsed &&
+          typeof parsed.top_praise === "string" &&
+          typeof parsed.top_concern === "string" &&
+          Array.isArray(parsed.response_templates)
+        ) {
+          const templates: { trigger: string; template: string }[] =
+            parsed.response_templates
+              .filter(
+                (t: unknown): t is { trigger: string; template: string } =>
+                  !!t &&
+                  typeof t === "object" &&
+                  typeof (t as { trigger: unknown }).trigger === "string" &&
+                  typeof (t as { template: unknown }).template === "string",
+              )
+              .map((t: { trigger: string; template: string }) => ({
+                trigger: t.trigger.trim().slice(0, 100),
+                template: t.template.trim().slice(0, 320),
+              }))
+              .slice(0, 3);
+          if (templates.length >= 2) {
+            review_mining = {
+              source_count: testimonialsFromCrawl.length,
+              top_praise: parsed.top_praise.trim().slice(0, 500),
+              top_concern: parsed.top_concern.trim().slice(0, 500),
+              response_templates: templates,
+            };
+          }
+        }
+      } catch {
+        // Card hides on bad data.
+      }
+    }
+  }
+
   const pkg: DayOnePackage = {
     generated_at: new Date().toISOString(),
     insight: insight.trim(),
@@ -578,6 +678,7 @@ Output STRICT JSON only — no preamble, no markdown fence:
     demo_transcript,
     owner_brief,
     icp_leads,
+    review_mining,
   };
 
   // Persist into business_knowledge.crawl_data.day_one so the dashboard

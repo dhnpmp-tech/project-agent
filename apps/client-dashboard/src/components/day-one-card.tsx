@@ -9,6 +9,7 @@ import type {
   DemoTranscript,
   OwnerBriefPreview,
   IcpLead,
+  ReviewMining,
 } from "@/lib/server-queries";
 import { FaqGapApproveButton } from "./faq-gap-approve-button";
 
@@ -110,9 +111,192 @@ export function DayOneCard({ pkg }: Props) {
         {pkg.icp_leads && pkg.icp_leads.length > 0 && (
           <IcpLeadsBlock leads={pkg.icp_leads} />
         )}
+        {pkg.review_mining && (
+          <ReviewMiningBlock mining={pkg.review_mining} />
+        )}
         <SocialBlock posts={pkg.social_posts} />
       </div>
     </section>
+  );
+}
+
+function ReviewMiningBlock({ mining }: { mining: ReviewMining }) {
+  return (
+    <article
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 6,
+        padding: 20,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        gridColumn: "1 / -1",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "var(--paper-mut, #837c69)",
+          }}
+        >
+          § J · the voice of the customer
+        </span>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            color: "var(--paper-mut, #837c69)",
+          }}
+        >
+          · based on {mining.source_count} testimonial{mining.source_count === 1 ? "" : "s"} from your site
+        </span>
+      </div>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, serif",
+          fontWeight: 400,
+          fontSize: 20,
+          lineHeight: 1.15,
+          color: "var(--paper-ink, #1d1c18)",
+          margin: 0,
+        }}
+      >
+        What your existing customers are telling us
+      </h3>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 12,
+          marginTop: 4,
+        }}
+      >
+        <div
+          style={{
+            background: "#eef5e9",
+            border: "1px solid #bdd7af",
+            borderRadius: 4,
+            padding: 14,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#1e6d3d",
+            }}
+          >
+            what they love
+          </span>
+          <p
+            style={{
+              fontSize: 13,
+              lineHeight: 1.55,
+              color: "var(--paper-ink, #1d1c18)",
+              margin: "6px 0 0",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {mining.top_praise}
+          </p>
+        </div>
+        <div
+          style={{
+            background: "#fdf3e3",
+            border: "1px solid #e6c98b",
+            borderRadius: 4,
+            padding: 14,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#a07232",
+            }}
+          >
+            what to watch
+          </span>
+          <p
+            style={{
+              fontSize: 13,
+              lineHeight: 1.55,
+              color: "var(--paper-ink, #1d1c18)",
+              margin: "6px 0 0",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {mining.top_concern}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 8 }}>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 10,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "var(--paper-mut, #837c69)",
+          }}
+        >
+          reusable WhatsApp response templates
+        </span>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 10,
+            marginTop: 6,
+          }}
+        >
+          {mining.response_templates.map((tpl, i) => (
+            <div
+              key={i}
+              style={{
+                background: "var(--paper, #f6f3eb)",
+                border: "1px solid var(--paper-line, #d8d2bf)",
+                borderRadius: 4,
+                padding: 12,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  margin: 0,
+                  color: "var(--paper-ink, #1d1c18)",
+                }}
+              >
+                when: {tpl.trigger}
+              </p>
+              <p
+                style={{
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  color: "var(--paper-ink, #1d1c18)",
+                  margin: "4px 0 0",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {tpl.template}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
   );
 }
 

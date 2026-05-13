@@ -237,6 +237,9 @@ export interface DayOnePackage {
   // Three ICP-matched prospects the AI SDR would start working today,
   // each with a draft first outbound message.
   icp_leads?: IcpLead[];
+  // Distilled signal from any testimonials/reviews the website crawl
+  // picked up during onboarding. Null if no testimonials were found.
+  review_mining?: ReviewMining | null;
 }
 
 export interface GbpAuditSummary {
@@ -284,6 +287,18 @@ export interface IcpLead {
   name_and_location: string;
   why_it_matches: string;
   first_message: string;
+}
+
+export interface ReviewMiningTemplate {
+  trigger: string;
+  template: string;
+}
+
+export interface ReviewMining {
+  source_count: number;
+  top_praise: string;
+  top_concern: string;
+  response_templates: ReviewMiningTemplate[];
 }
 
 export async function getDayOnePackage(): Promise<DayOnePackage | null> {
