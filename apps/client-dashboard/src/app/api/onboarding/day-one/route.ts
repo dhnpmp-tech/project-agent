@@ -65,6 +65,19 @@ interface DemoTranscript {
   turns: DemoTranscriptTurn[];
 }
 
+interface OwnerBriefBullet {
+  emoji: string;           // 1-char emoji, e.g. "📊"
+  label: string;           // short label, e.g. "Bookings today"
+  detail: string;          // 1 line, e.g. "5 confirmed, 2 waitlist"
+}
+
+interface OwnerBriefPreview {
+  greeting: string;        // e.g. "Good morning Chef Sami — yesterday wrapped up strong."
+  bullets: OwnerBriefBullet[];   // 4–6 bullets
+  decision: string;        // the one question the AI is escalating: "Should I confirm Friday's 12-top for the Khalifa party?"
+  closer: string;          // signoff line: "Just say 'yes' or 'no' — I'll take it from there."
+}
+
 interface DayOnePackage {
   generated_at: string;
   insight: string;
@@ -74,6 +87,7 @@ interface DayOnePackage {
   gbp_audit: GbpAuditSummary | null;
   faq_gaps: FaqGap[];
   demo_transcript: DemoTranscript | null;
+  owner_brief: OwnerBriefPreview | null;
 }
 
 const PROMPT_BUILDER_URL =
@@ -215,6 +229,7 @@ export async function POST(req: NextRequest) {
     gbp_audit,
     faqGapsRaw,
     transcriptRaw,
+    ownerBriefRaw,
   ] = await Promise.all([
     inferenceChat(
       "rami_research",
@@ -296,6 +311,27 @@ Output as STRICT JSON only — no preamble, no markdown fence:
 }
 
 The turns array MUST alternate strictly starting with "customer". Each "text" max 240 chars.`,
+    ),
+    inferenceChat(
+      "owner_brain",
+      `You are the AI Chief of Staff for ${company.company_name}. Every morning at 9 AM you send the owner a WhatsApp brief: yesterday's recap, today's preview, and the ONE decision you need from them today.
+
+${context}
+
+Compose ONE sample morning brief that the owner will receive on a typical day. Use the brand voice (calm, direct, no fluff) and ${company.country === "AE" ? "UAE" : "Saudi"} context.
+
+Output STRICT JSON only — no preamble, no markdown fence:
+{
+  "greeting": "one-line opener that names the owner by role (Chef / Boss / Captain) and sets the tone — max 100 chars",
+  "bullets": [
+    {"emoji": "📊", "label": "short metric label", "detail": "one specific line — concrete numbers, names, or moments — max 90 chars"},
+    ... 4 to 6 bullets total covering bookings/customer mood/staff/inventory/marketing/owner-to-dos
+  ],
+  "decision": "the ONE concrete question I'm escalating to you today — must end with a question mark, max 140 chars",
+  "closer": "one-line signoff that invites a quick yes/no/edit response — max 80 chars"
+}
+
+The numbers can be plausible fictional ones for the demo (e.g. "5 confirmed, 2 waitlist") — they should look real, not placeholder.`,
     ),
   ]);
 
@@ -391,6 +427,55 @@ The turns array MUST alternate strictly starting with "customer". Each "text" ma
     }
   }
 
+  // Parse the owner brief. Same defensive pattern.
+  let owner_brief: OwnerBriefPreview | null = null;
+  if (ownerBriefRaw) {
+    const cleaned = ownerBriefRaw
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        const parsed = JSON.parse(cleaned.slice(start, end + 1));
+        if (
+          parsed &&
+          typeof parsed.greeting === "string" &&
+          Array.isArray(parsed.bullets) &&
+          typeof parsed.decision === "string" &&
+          typeof parsed.closer === "string"
+        ) {
+          const bullets: OwnerBriefBullet[] = parsed.bullets
+            .filter(
+              (b: unknown): b is OwnerBriefBullet =>
+                !!b &&
+                typeof b === "object" &&
+                typeof (b as OwnerBriefBullet).emoji === "string" &&
+                typeof (b as OwnerBriefBullet).label === "string" &&
+                typeof (b as OwnerBriefBullet).detail === "string",
+            )
+            .map((b: OwnerBriefBullet) => ({
+              emoji: b.emoji.trim().slice(0, 4) || "•",
+              label: b.label.trim().slice(0, 80),
+              detail: b.detail.trim().slice(0, 140),
+            }))
+            .slice(0, 6);
+          if (bullets.length >= 3) {
+            owner_brief = {
+              greeting: parsed.greeting.trim().slice(0, 200),
+              bullets,
+              decision: parsed.decision.trim().slice(0, 200),
+              closer: parsed.closer.trim().slice(0, 120),
+            };
+          }
+        }
+      } catch {
+        // Card hides on bad data.
+      }
+    }
+  }
+
   const pkg: DayOnePackage = {
     generated_at: new Date().toISOString(),
     insight: insight.trim(),
@@ -400,6 +485,7 @@ The turns array MUST alternate strictly starting with "customer". Each "text" ma
     gbp_audit,
     faq_gaps,
     demo_transcript,
+    owner_brief,
   };
 
   // Persist into business_knowledge.crawl_data.day_one so the dashboard

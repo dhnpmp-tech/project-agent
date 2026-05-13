@@ -230,6 +230,10 @@ export interface DayOnePackage {
   // Full simulated WhatsApp conversation showing what the agent will actually
   // do before any real customer arrives. Renders as a chat-bubble preview.
   demo_transcript?: DemoTranscript | null;
+  // Sample morning brief the owner will receive on the owner-channel
+  // WhatsApp. Demonstrates the AI Chief of Staff value before any data
+  // has accumulated.
+  owner_brief?: OwnerBriefPreview | null;
 }
 
 export interface GbpAuditSummary {
@@ -258,6 +262,19 @@ export interface DemoTranscript {
   scenario: string;
   resolution: string;
   turns: DemoTranscriptTurn[];
+}
+
+export interface OwnerBriefBullet {
+  emoji: string;
+  label: string;
+  detail: string;
+}
+
+export interface OwnerBriefPreview {
+  greeting: string;
+  bullets: OwnerBriefBullet[];
+  decision: string;
+  closer: string;
 }
 
 export async function getDayOnePackage(): Promise<DayOnePackage | null> {

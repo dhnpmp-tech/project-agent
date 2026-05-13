@@ -7,6 +7,7 @@ import type {
   GbpAuditSummary,
   FaqGap,
   DemoTranscript,
+  OwnerBriefPreview,
 } from "@/lib/server-queries";
 import { FaqGapApproveButton } from "./faq-gap-approve-button";
 
@@ -96,6 +97,9 @@ export function DayOneCard({ pkg }: Props) {
           subtitle='Customer asked: "Is the restaurant open tonight? My wife and I want to celebrate our anniversary."'
         />
         {pkg.gbp_audit && <GbpAuditBlock audit={pkg.gbp_audit} />}
+        {pkg.owner_brief && pkg.owner_brief.bullets.length >= 3 && (
+          <OwnerBriefBlock brief={pkg.owner_brief} />
+        )}
         {pkg.demo_transcript && pkg.demo_transcript.turns.length >= 4 && (
           <DemoTranscriptBlock transcript={pkg.demo_transcript} />
         )}
@@ -105,6 +109,139 @@ export function DayOneCard({ pkg }: Props) {
         <SocialBlock posts={pkg.social_posts} />
       </div>
     </section>
+  );
+}
+
+function OwnerBriefBlock({ brief }: { brief: OwnerBriefPreview }) {
+  return (
+    <article
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 6,
+        padding: 20,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        gridColumn: "1 / -1",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        § H · the morning brief
+      </span>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, serif",
+          fontWeight: 400,
+          fontSize: 20,
+          lineHeight: 1.15,
+          color: "var(--paper-ink, #1d1c18)",
+          margin: 0,
+        }}
+      >
+        Tomorrow's 9 AM brief on your owner channel
+      </h3>
+      <p
+        style={{
+          fontSize: 12,
+          color: "var(--paper-mut, #837c69)",
+          fontStyle: "italic",
+          margin: 0,
+        }}
+      >
+        Every morning your AI Chief of Staff sends one of these to your private
+        WhatsApp. Yesterday's recap, today's preview, the one decision you owe.
+      </p>
+
+      <div
+        style={{
+          marginTop: 6,
+          padding: 16,
+          borderRadius: 8,
+          background: "#ebebd9",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "92%",
+            padding: "12px 16px",
+            borderRadius: 12,
+            borderTopLeftRadius: 4,
+            background: "#ffffff",
+            border: "1px solid #e0e0d2",
+            fontSize: 13.5,
+            lineHeight: 1.55,
+            color: "var(--paper-ink, #1d1c18)",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 9,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "var(--paper-mut, #837c69)",
+              display: "block",
+              marginBottom: 6,
+            }}
+          >
+            agent · owner channel
+          </span>
+          <p style={{ fontWeight: 500, marginBottom: 8 }}>{brief.greeting}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {brief.bullets.map((b, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "baseline",
+                }}
+              >
+                <span style={{ fontSize: 15, lineHeight: 1.2 }}>{b.emoji}</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{b.label}</span>
+                  <span style={{ fontSize: 13, color: "var(--paper-mut, #514c40)" }}>
+                    {b.detail}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p
+            style={{
+              marginTop: 12,
+              paddingTop: 10,
+              borderTop: "1px solid #e0e0d2",
+              fontStyle: "italic",
+            }}
+          >
+            {brief.decision}
+          </p>
+          <p
+            style={{
+              marginTop: 6,
+              fontSize: 12.5,
+              color: "var(--paper-mut, #837c69)",
+            }}
+          >
+            {brief.closer}
+          </p>
+        </div>
+      </div>
+    </article>
   );
 }
 
