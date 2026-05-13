@@ -324,6 +324,7 @@ async def chat(
     max_tokens: int | None = None,
     temperature: float | None = None,
     overrides: Mapping[str, Any] | None = None,
+    json_mode: bool = False,
 ) -> str:
     """
     Run a chat-completion for the given role. Returns the assistant text.
@@ -331,6 +332,12 @@ async def chat(
     `overrides` lets a caller pin {"provider": "...", "model": "..."} to
     bypass routing for one-off experiments. Use sparingly — the whole
     point of this module is that call sites don't know about models.
+
+    `json_mode=True` asks the provider to constrain output to valid JSON
+    (where the provider supports it — MiniMax + OpenRouter expose this as
+    `response_format: {"type": "json_object"}`). Callers that need a
+    specific schema should still validate; this just guarantees the bytes
+    are JSON-parseable, not that they match a given shape.
     """
     cfg = dict(ROUTING.get(role) or {})
     if overrides:
@@ -379,6 +386,7 @@ async def chat(
             text, usage = await _openai_chat(
                 provider, model, api_key, messages,
                 final_max_tokens, final_temp,
+                json_mode=json_mode,
             )
         elif provider_name == "anthropic":
             text, usage = await _anthropic_chat(
@@ -406,15 +414,18 @@ async def chat(
 async def _openai_chat(
     provider: Provider, model: str, api_key: str,
     messages: list[dict[str, Any]], max_tokens: int, temperature: float,
+    *, json_mode: bool = False,
 ) -> tuple[str, dict[str, int | None]]:
     url = f"{provider.base_url}/chat/completions"
-    payload = {
+    payload: dict[str, Any] = {
         "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
     }
-    async with httpx.AsyncClient(timeout=60) as http:
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+    async with httpx.AsyncClient(timeout=180) as http:
         r = await http.post(
             url,
             headers={
@@ -461,7 +472,7 @@ async def _anthropic_chat(
     if system:
         payload["system"] = system
 
-    async with httpx.AsyncClient(timeout=60) as http:
+    async with httpx.AsyncClient(timeout=180) as http:
         r = await http.post(
             f"{provider.base_url}/messages",
             headers={

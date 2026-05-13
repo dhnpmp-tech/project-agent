@@ -3718,6 +3718,7 @@ class _InferenceChatRequest(BaseModel):
     messages: list[dict[str, Any]]
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
+    json_mode: Optional[bool] = False
 
 
 @app.post("/inference/chat")
@@ -3733,6 +3734,7 @@ async def inference_chat(req: _InferenceChatRequest):
             req.messages,
             max_tokens=req.max_tokens,
             temperature=req.temperature,
+            json_mode=bool(req.json_mode),
         )
         return {"text": text, "role": req.role}
     except _inference_module.InferenceError as e:

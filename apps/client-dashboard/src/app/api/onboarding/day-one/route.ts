@@ -131,18 +131,19 @@ const PROMPT_BUILDER_URL =
 async function inferenceChat(
   role: string,
   prompt: string,
-  opts: { maxTokens?: number } = {},
+  opts: { maxTokens?: number; jsonMode?: boolean } = {},
 ): Promise<string> {
   // Calls the prompt-builder's inference router by hitting a thin chat
   // endpoint. Returns the assistant reply text. `maxTokens` overrides the
-  // role default — JSON-output prompts often need more headroom than the
-  // role's default (which is sized for short chat replies).
+  // role default. `jsonMode` asks the provider to constrain output to
+  // valid JSON — useful for downstream JSON.parse safety.
   try {
     const body: Record<string, unknown> = {
       role,
       messages: [{ role: "user", content: prompt }],
     };
     if (opts.maxTokens) body.max_tokens = opts.maxTokens;
+    if (opts.jsonMode) body.json_mode = true;
     const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/inference/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -158,6 +159,56 @@ async function inferenceChat(
     console.error(`[day-one] inference role=${role} failed:`, e);
     return "";
   }
+}
+
+// Quick JSON-validity check on a model response. Tolerates ```json
+// fences and leading/trailing prose. Returns the JSON-only slice or
+// null if no parseable object/array is present.
+function jsonSliceOrNull(raw: string): string | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const objStart = cleaned.indexOf("{");
+  const arrStart = cleaned.indexOf("[");
+  let start = -1;
+  let end = -1;
+  if (objStart >= 0 && (arrStart < 0 || objStart < arrStart)) {
+    start = objStart;
+    end = cleaned.lastIndexOf("}");
+  } else if (arrStart >= 0) {
+    start = arrStart;
+    end = cleaned.lastIndexOf("]");
+  }
+  if (start < 0 || end <= start) return null;
+  const slice = cleaned.slice(start, end + 1);
+  try {
+    JSON.parse(slice);
+    return slice;
+  } catch {
+    return null;
+  }
+}
+
+// JSON-output helper. Asks the model in JSON mode (provider-side
+// constraint where supported), then validates the response parses as
+// JSON. If the first response doesn't parse, retries ONCE with the
+// broken output as explicit error context — re-prompts that show the
+// previous attempt back to the model land much more reliably than blind
+// retries. Returns the raw string of the successful (or retried)
+// response; downstream code keeps its existing per-schema validation.
+async function inferenceJsonChat(
+  role: string,
+  prompt: string,
+  opts: { maxTokens?: number } = {},
+): Promise<string> {
+  const callOpts = { ...opts, jsonMode: true };
+  const first = await inferenceChat(role, prompt, callOpts);
+  if (jsonSliceOrNull(first)) return first;
+
+  const retryPrompt =
+    `${prompt}\n\n---\n\nYour previous response could not be parsed as JSON. ` +
+    `Output ONLY the JSON. No preamble, no prose, no markdown fence. ` +
+    `Previous response was:\n${(first || "(empty)").slice(0, 800)}`;
+  return inferenceChat(role, retryPrompt, callOpts);
 }
 
 // Fetch GBP audit from prompt-builder. Best-effort — if the audit endpoint
@@ -336,7 +387,7 @@ ${context}
 Write ONE opening message — warm, welcoming, lands the brand voice immediately, ends with a soft question that invites them to keep talking. 2–3 sentences. No emoji explosions. Output the message only.`,
     ),
     fetchGbpAudit(clientId),
-    inferenceChat(
+    inferenceJsonChat(
       "rami_research",
       `You are auditing the customer-question coverage of a ${company.country === "AE" ? "UAE" : "Saudi"} SMB.
 
@@ -355,7 +406,7 @@ Output as STRICT JSON only — no preamble, no markdown fence:
 Exactly five objects. Each "question" max 120 chars, each "draft_answer" max 280 chars.`,
       { maxTokens: 1800 },
     ),
-    inferenceChat(
+    inferenceJsonChat(
       "customer_response_en",
       `You are simulating a complete realistic WhatsApp conversation between a new customer and Nadia, the AI concierge for ${company.company_name}. The owner wants to see what their AI will actually do before any real customer arrives.
 
@@ -382,7 +433,7 @@ Output as STRICT JSON only — no preamble, no markdown fence:
 The turns array MUST alternate strictly starting with "customer". Each "text" max 240 chars.`,
       { maxTokens: 2000 },
     ),
-    inferenceChat(
+    inferenceJsonChat(
       "owner_brain",
       `You are the AI Chief of Staff for ${company.company_name}. Every morning at 9 AM you send the owner a WhatsApp brief: yesterday's recap, today's preview, and the ONE decision you need from them today.
 
@@ -404,7 +455,7 @@ Output STRICT JSON only — no preamble, no markdown fence:
 The numbers can be plausible fictional ones for the demo (e.g. "5 confirmed, 2 waitlist") — they should look real, not placeholder.`,
       { maxTokens: 1500 },
     ),
-    inferenceChat(
+    inferenceJsonChat(
       "sales_outbound",
       `You are the AI SDR for ${company.company_name}. The owner just finished onboarding and you want to immediately surface THREE prospect businesses you'd start working today. Pick businesses that are:
 - A plausible adjacent customer for this business (B2B accounts or partnership opportunities — NOT random consumers)
@@ -432,7 +483,7 @@ Output STRICT JSON only — no preamble, no markdown fence:
       { maxTokens: 1800 },
     ),
     testimonialsFromCrawl.length > 0
-      ? inferenceChat(
+      ? inferenceJsonChat(
           "quality_eval",
           `You are mining customer testimonials/reviews to surface what matters about a UAE/Saudi SMB.
 
