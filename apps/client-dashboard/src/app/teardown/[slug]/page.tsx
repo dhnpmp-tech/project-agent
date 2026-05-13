@@ -171,12 +171,23 @@ export async function generateMetadata({ params }: PageParams) {
   const desc =
     row.package.insight?.slice(0, 160) ||
     `AI-generated analysis of ${row.business_name}.`;
+  // Dynamic OG image lives at /teardown/[slug]/og — Next renders a
+  // branded 1200x630 PNG per share. The marketing-host rewrite proxies
+  // /teardown/<slug>/og → DASHBOARD_HOST/app/teardown/<slug>/og.
+  const ogUrl = `https://agents.dcp.sa/teardown/${slug}/og`;
   return {
     title: `${row.business_name} · day-one teardown · agents.dcp.sa`,
     description: desc,
     openGraph: {
       title: `What an AI agent would do with ${row.business_name} on day one`,
       description: desc,
+      images: [{ url: ogUrl, width: 1200, height: 630, alt: `${row.business_name} day-one teardown` }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${row.business_name} · day-one teardown`,
+      description: desc,
+      images: [ogUrl],
     },
   };
 }

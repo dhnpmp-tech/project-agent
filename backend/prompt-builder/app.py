@@ -3965,6 +3965,31 @@ async def _fetch_via_cloak(url: str) -> Optional[str]:
             pass
 
 
+async def _fetch_raw_html_via_firecrawl(url: str) -> Optional[str]:
+    """Fetch the FULL raw HTML (with script tags intact) via Firecrawl
+    rawHtml format. Used specifically for Schema.org JSON-LD parsing —
+    the default `html` format strips scripts, which kills schema
+    detection. No-op without a Firecrawl key.
+    """
+    if not _FIRECRAWL_API_KEY:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=45) as client:
+            r = await client.post(
+                "https://api.firecrawl.dev/v1/scrape",
+                headers={
+                    "Authorization": f"Bearer {_FIRECRAWL_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={"url": url, "formats": ["rawHtml"], "onlyMainContent": False},
+            )
+            if r.status_code != 200:
+                return None
+            return ((r.json() or {}).get("data") or {}).get("rawHtml")
+    except Exception:
+        return None
+
+
 async def _fetch_screenshot_via_firecrawl(url: str) -> Optional[str]:
     """Capture a screenshot of the URL via Firecrawl. Returns the URL to
     the hosted screenshot or None on failure. Firecrawl returns a public
@@ -4150,6 +4175,14 @@ Only include real data. Empty arrays/strings where missing."""
     # the visual hero gracefully.
     screenshot_url = await _fetch_screenshot_via_firecrawl(base)
 
+    # Parse Schema.org JSON-LD blocks from the home page. Firecrawl's
+    # default `html` format strips <script> tags so the structured data
+    # is gone by the time we look. Fetch a targeted rawHtml pass just
+    # for schema detection — small extra Firecrawl spend, big payoff
+    # (fact-state schema presence vs LLM guessing).
+    raw_home = await _fetch_raw_html_via_firecrawl(base) or home_html
+    schema_types = _parse_schema_org_from_html(raw_home)
+
     return {
         "businessDescription": llm_data.get("businessDescription") or meta.get("og:description") or meta.get("description") or "",
         "services": llm_data.get("services") or [],
@@ -4166,7 +4199,71 @@ Only include real data. Empty arrays/strings where missing."""
         "pagesScanned": [f"{base}{p['path']}" for p in pages],
         "pagesText": pages_text,
         "screenshotUrl": screenshot_url,
+        "schemaTypes": schema_types,
     }
+
+
+def _parse_schema_org_from_html(html: str) -> list[str]:
+    """Find Schema.org JSON-LD entities on the page. Returns a deduped
+    list of @type strings (e.g. ["Restaurant", "LocalBusiness", "Menu"]).
+
+    We don't need the full entity tree — just which types are declared.
+    The teardown surfaces this as fact: "you have Restaurant + Menu
+    schema; you're missing FAQPage + Review schema, which is why your
+    snippets in Google look thin."
+    """
+    if not html:
+        return []
+    import re as _re
+    types: list[str] = []
+    seen: set[str] = set()
+    # All <script type="application/ld+json"> blocks
+    for m in _re.finditer(
+        r'<script[^>]*type=[\"\']application/ld\+json[\"\'][^>]*>([\s\S]*?)</script>',
+        html, _re.IGNORECASE,
+    ):
+        raw = m.group(1).strip()
+        if not raw:
+            continue
+        try:
+            parsed = json.loads(raw)
+        except Exception:
+            # Some sites have multiple objects in one script block — try
+            # to extract individual JSON objects with a regex sweep.
+            for obj_match in _re.finditer(r"\{[\s\S]*?\}", raw):
+                try:
+                    parsed = json.loads(obj_match.group(0))
+                except Exception:
+                    continue
+                _collect_schema_types(parsed, types, seen)
+            continue
+        _collect_schema_types(parsed, types, seen)
+    return types[:20]
+
+
+def _collect_schema_types(entity: Any, out: list[str], seen: set[str]) -> None:
+    """Recursively pull @type values out of a JSON-LD entity (which can
+    be a dict, a list, or have @graph nested inside)."""
+    if isinstance(entity, list):
+        for item in entity:
+            _collect_schema_types(item, out, seen)
+        return
+    if not isinstance(entity, dict):
+        return
+    t = entity.get("@type")
+    if isinstance(t, str):
+        if t not in seen:
+            out.append(t)
+            seen.add(t)
+    elif isinstance(t, list):
+        for tt in t:
+            if isinstance(tt, str) and tt not in seen:
+                out.append(tt)
+                seen.add(tt)
+    # @graph contains nested entities
+    graph = entity.get("@graph")
+    if graph is not None:
+        _collect_schema_types(graph, out, seen)
 
 
 # ----------------------------------------------------------------------------
@@ -4971,25 +5068,28 @@ async def web_page_speed(req: _PageSpeedRequest):
     if not url:
         return {"error": "url_required"}
     api_key = os.environ.get("PAGESPEED_API_KEY", "")
-    params = {"url": url, "strategy": "mobile",
-              "category": "performance"}
-    # PSI supports up to 5 categories per call. We do all 4 + perf separately.
     cats = ["performance", "accessibility", "best-practices", "seo"]
+    # PSI accepts repeated `category` query params. httpx params dict
+    # with a list value handles this correctly.
+    params: list[tuple[str, str]] = [
+        ("url", url),
+        ("strategy", "mobile"),
+    ] + [("category", c) for c in cats]
+    if api_key:
+        params.append(("key", api_key))
     try:
-        async with httpx.AsyncClient(timeout=45) as client:
-            # PSI accepts repeated `category` params
-            psi_url = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
-            qs = {"url": url, "strategy": "mobile"}
-            if api_key:
-                qs["key"] = api_key
-            # category= is appended manually because httpx serializes lists weirdly
-            full_url = psi_url + "?" + "&".join([f"{k}={httpx.URL('').params._dict if False else _quote(v)}" for k, v in qs.items()] + [f"category={c}" for c in cats])
-            r = await client.get(full_url)
+        async with httpx.AsyncClient(timeout=90, follow_redirects=True) as client:
+            r = await client.get(
+                "https://www.googleapis.com/pagespeedonline/v5/runPagespeed",
+                params=params,
+            )
             if r.status_code != 200:
-                return {"error": f"pagespeed_http_{r.status_code}"}
+                # 429 = rate limited (no key); 400 = unauthorized URL etc.
+                return {"error": f"pagespeed_http_{r.status_code}",
+                        "detail": r.text[:200] if r.text else ""}
             d = r.json()
     except Exception as e:
-        return {"error": f"pagespeed_failed: {type(e).__name__}"}
+        return {"error": f"pagespeed_failed: {type(e).__name__}: {str(e)[:150]}"}
 
     cats_result = (d.get("lighthouseResult") or {}).get("categories") or {}
     audits = (d.get("lighthouseResult") or {}).get("audits") or {}

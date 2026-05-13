@@ -205,6 +205,15 @@ export interface TeardownPackage {
   gbp?: GbpData | null;
   competitor_radar?: CompetitorRadar | null;
   social_pulse?: SocialPulse | null;
+  schema_audit?: SchemaAudit | null;
+}
+
+export interface SchemaAudit {
+  present: string[];
+  missing_critical: string[];
+  ai_take: string;
+  recommendation: string;
+  automation: string;
 }
 
 const GRADE_PALETTE: Record<AgentScore["grade"], { fg: string; bg: string; ring: string }> = {
@@ -244,6 +253,7 @@ export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
       {pkg.reviews && pkg.reviews.sentiment?.total > 0 && (
         <ReviewsSection reviews={pkg.reviews} />
       )}
+      {pkg.schema_audit && <SchemaAuditSection audit={pkg.schema_audit} />}
       <section
         style={{
           background: "var(--paper-card, #fbfaf4)",
@@ -2268,6 +2278,180 @@ function VoiceCard({ eyebrow, body }: { eyebrow: string; body: string }) {
         {body}
       </p>
     </div>
+  );
+}
+
+function SchemaAuditSection({ audit }: { audit: SchemaAudit }) {
+  return (
+    <section
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 8,
+        padding: 24,
+        marginBottom: 20,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        § schema.org audit — measured, not guessed
+      </span>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, Georgia, serif",
+          fontSize: 24,
+          fontWeight: 400,
+          margin: "6px 0 14px",
+          lineHeight: 1.15,
+        }}
+      >
+        Your rich-result eligibility on Google
+      </h3>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 14 }}>
+        <div
+          style={{
+            padding: 14,
+            background: "#eef5e9",
+            border: "1px solid #bdd7af",
+            borderRadius: 6,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#1e6d3d",
+            }}
+          >
+            ✓ present — {audit.present.length}
+          </span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {audit.present.length === 0 ? (
+              <span style={{ fontSize: 12, fontStyle: "italic", color: "var(--paper-mut, #514c40)" }}>
+                no Schema.org markup detected
+              </span>
+            ) : (
+              audit.present.map((t) => (
+                <span
+                  key={t}
+                  style={{
+                    fontFamily: "var(--mono, ui-monospace)",
+                    fontSize: 11,
+                    padding: "3px 8px",
+                    background: "var(--paper, #f6f3eb)",
+                    border: "1px solid #bdd7af",
+                    borderRadius: 4,
+                    color: "#1e6d3d",
+                  }}
+                >
+                  {t}
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: 14,
+            background: audit.missing_critical.length > 0 ? "#fdf3e3" : "var(--paper, #f6f3eb)",
+            border: `1px solid ${audit.missing_critical.length > 0 ? "#e6c98b" : "var(--paper-line, #d8d2bf)"}`,
+            borderRadius: 6,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: audit.missing_critical.length > 0 ? "#a07232" : "var(--paper-mut, #837c69)",
+            }}
+          >
+            ✗ missing — {audit.missing_critical.length}
+          </span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {audit.missing_critical.length === 0 ? (
+              <span style={{ fontSize: 12, fontStyle: "italic", color: "var(--paper-mut, #514c40)" }}>
+                full coverage for your category
+              </span>
+            ) : (
+              audit.missing_critical.map((t) => (
+                <span
+                  key={t}
+                  style={{
+                    fontFamily: "var(--mono, ui-monospace)",
+                    fontSize: 11,
+                    padding: "3px 8px",
+                    background: "var(--paper, #f6f3eb)",
+                    border: "1px solid #e6c98b",
+                    borderRadius: 4,
+                    color: "#a07232",
+                  }}
+                >
+                  {t}
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <span
+          style={{
+            fontFamily: "var(--mono, ui-monospace)",
+            fontSize: 9,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--paper-mut, #837c69)",
+          }}
+        >
+          ai take
+        </span>
+        <p style={{ fontSize: 13, lineHeight: 1.55, margin: "4px 0 12px" }}>{audit.ai_take}</p>
+
+        <span
+          style={{
+            fontFamily: "var(--mono, ui-monospace)",
+            fontSize: 9,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--paper-mut, #837c69)",
+          }}
+        >
+          do this week
+        </span>
+        <p style={{ fontSize: 13, lineHeight: 1.55, margin: "4px 0 12px", paddingLeft: 10, borderLeft: "2px solid #2d8e7d" }}>
+          {audit.recommendation}
+        </p>
+
+        <span
+          style={{
+            fontFamily: "var(--mono, ui-monospace)",
+            fontSize: 9,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "#1e6d3d",
+          }}
+        >
+          your agent will…
+        </span>
+        <p style={{ fontSize: 13, lineHeight: 1.55, margin: "4px 0 0", fontStyle: "italic", color: "#1e6d3d" }}>
+          {audit.automation}
+        </p>
+      </div>
+    </section>
   );
 }
 

@@ -22,6 +22,7 @@ const nextConfig = {
       { source: "/teardown", destination: `${DASHBOARD_HOST}/app/teardown` },
       { source: "/teardown/", destination: `${DASHBOARD_HOST}/app/teardown` },
       { source: "/teardown/:slug", destination: `${DASHBOARD_HOST}/app/teardown/:slug` },
+      { source: "/teardown/:slug/og", destination: `${DASHBOARD_HOST}/app/teardown/:slug/og` },
       { source: "/api/teardown", destination: `${DASHBOARD_HOST}/app/api/teardown` },
     ];
   },

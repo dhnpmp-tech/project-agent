@@ -48,6 +48,7 @@ interface CrawlResult {
   reviewSources?: { platform: string; url: string }[];
   testimonials?: { quote: string; author?: string }[];
   screenshotUrl?: string | null;
+  schemaTypes?: string[];
 }
 
 interface FaqGap {
@@ -123,6 +124,14 @@ interface ScoreBreakdown {
   reviews: number;      // 0-100, avg rating + volume + sentiment balance
   conversion: number;   // 0-100, booking flow + CTAs + WhatsApp readiness
   presence: number;     // 0-100, social profiles + testimonials + photo signals
+}
+
+interface SchemaAudit {
+  present: string[];                // @type values found on the home page
+  missing_critical: string[];       // category-relevant types NOT found
+  ai_take: string;
+  recommendation: string;
+  automation: string;
 }
 
 interface AgentScore {
@@ -265,6 +274,10 @@ interface TeardownPackage {
   // Social pulse via ScrapeCreators — IG profile freshness, TikTok UGC
   // discovery, Reddit mention count. Null when no SCRAPECREATORS_API_KEY.
   social_pulse?: SocialPulse | null;
+  // Real Schema.org JSON-LD audit — parsed from the rendered HTML, not
+  // LLM-inferred. Fact-states what entities the site declares + which
+  // category-critical ones are missing.
+  schema_audit?: SchemaAudit | null;
 }
 
 interface TeardownBody {
@@ -436,6 +449,52 @@ function inferCategory(crawl: CrawlResult): "restaurant" | "beauty" | "default" 
 // Google Places lookup. Returns null when no key is set or the place
 // can't be matched — the teardown still renders, just without the
 // authoritative GBP section + competitor radar.
+// Category-relevant Schema.org types per business type. The agent later
+// surfaces these as "you have X, you're missing Y" — purely measured,
+// no LLM hallucination. We don't need every Schema.org type, just the
+// ones that materially affect SERP rich results for SMBs.
+const CRITICAL_SCHEMA: Record<"restaurant" | "beauty" | "default", string[]> = {
+  restaurant: ["Restaurant", "LocalBusiness", "Menu", "MenuItem", "FAQPage", "Review", "AggregateRating", "OpeningHoursSpecification"],
+  beauty: ["LocalBusiness", "HealthAndBeautyBusiness", "Service", "FAQPage", "Review", "AggregateRating", "OpeningHoursSpecification"],
+  default: ["LocalBusiness", "Organization", "Service", "FAQPage", "Review", "AggregateRating"],
+};
+
+function buildSchemaAudit(
+  schemaTypes: string[],
+  category: "restaurant" | "beauty" | "default",
+  businessName: string,
+): SchemaAudit {
+  const present = schemaTypes.slice(0, 12);
+  const want = CRITICAL_SCHEMA[category];
+  const presentSet = new Set(present.map((t) => t.toLowerCase()));
+  const missing_critical = want.filter((t) => !presentSet.has(t.toLowerCase()));
+
+  // Pre-formed AI take + recommendation + automation. Deterministic
+  // based on what's measured. No LLM call — keeps this fast + cheap.
+  const presentCount = present.length;
+  const missingCount = missing_critical.length;
+  let ai_take = "";
+  let recommendation = "";
+  let automation = "";
+
+  if (presentCount === 0) {
+    ai_take = `${businessName} has zero Schema.org markup on the home page. Google can't surface rich results for you — your search snippet is plain text while competitors get stars, prices, and FAQ snippets.`;
+    recommendation = `This week: add a single ${category === "restaurant" ? "Restaurant" : "LocalBusiness"} schema block to your home page <head>. Free, takes 20 minutes, instant SERP improvement.`;
+    automation = `Your agent will: emit + maintain the full ${want.join(", ")} schema graph nightly, keep it in sync with menu/hours/reviews.`;
+  } else if (missingCount === 0) {
+    ai_take = `Schema.org is fully covered (${present.join(", ")}). You're set up for every relevant rich snippet — most ${category}s in the UAE/KSA don't have this.`;
+    recommendation = `Run a Google Rich Results Test on your home page to confirm Google sees all entities cleanly.`;
+    automation = `Your agent will: keep schema fresh as menu/hours/reviews change, monitor Search Console for schema warnings.`;
+  } else {
+    const top3Missing = missing_critical.slice(0, 3).join(", ");
+    ai_take = `You have ${presentCount} schema entit${presentCount === 1 ? "y" : "ies"} (${present.slice(0, 3).join(", ")}${presentCount > 3 ? "…" : ""}) but you're missing ${missingCount} that drive ${category} rich results: ${top3Missing}.`;
+    recommendation = `This week: add ${top3Missing} schema to your home page. Each missing block costs you a SERP feature your competitors with the same markup are winning.`;
+    automation = `Your agent will: write the missing ${top3Missing} schema blocks for you (grounded in your current menu/hours/reviews), test against Google Rich Results, monitor for breakage.`;
+  }
+
+  return { present, missing_critical, ai_take, recommendation, automation };
+}
+
 async function fetchSocialPulse(
   businessName: string,
   socialProfiles: Record<string, string> | undefined,
@@ -1338,6 +1397,11 @@ Output STRICT JSON only:
     gbp,
     competitor_radar,
     social_pulse,
+    schema_audit: buildSchemaAudit(
+      crawl.schemaTypes || [],
+      category,
+      businessName,
+    ),
   };
 
   // Persist + slug. Retry slug collision up to 3 times (extremely
