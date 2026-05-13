@@ -751,14 +751,25 @@ Output STRICT JSON only — no preamble, no markdown fence:
 
   // Persist into business_knowledge.crawl_data.day_one so the dashboard
   // can render it immediately + the owner sees the same thing tomorrow.
+  // IMPORTANT: bind the sql client to a local once. Calling db() twice
+  // (once for the tag, once inside ${...} for .json) returns two
+  // independent postgres-js instances in production (singleton is only
+  // cached in dev), and the inner .json() wrapper isn't recognized by
+  // the outer instance — UPDATE silently fails the JSONB parse, the
+  // query becomes a no-op, and no exception fires.
   try {
-    await db()`
+    const sql = db();
+    const updated = await sql`
       UPDATE business_knowledge
       SET crawl_data = COALESCE(crawl_data, '{}'::jsonb)
-                       || jsonb_build_object('day_one', ${db().json(pkg as never)}),
+                       || jsonb_build_object('day_one', ${sql.json(pkg as never)}),
           updated_at = NOW()
       WHERE client_id = ${clientId}
+      RETURNING client_id
     `;
+    if (!updated.length) {
+      console.warn(`[day-one] persist no-op — no business_knowledge row for client_id=${clientId}`);
+    }
   } catch (e) {
     console.error("[day-one] persist failed:", e);
   }

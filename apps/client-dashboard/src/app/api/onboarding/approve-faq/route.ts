@@ -89,10 +89,14 @@ export async function POST(req: NextRequest) {
   const nextDayOne = { ...dayOne, faq_gaps: nextGaps };
   const nextCrawl = { ...crawl, day_one: nextDayOne };
 
-  await db()`
+  // Bind to a local sql once — see day-one route for why mixing db()
+  // calls across the tag and ${...} interpolations fails silently in
+  // production (postgres-js singleton isn't cached when NODE_ENV=production).
+  const sql = db();
+  await sql`
     UPDATE business_knowledge
-    SET faq = ${db().json(nextFaq as never)},
-        crawl_data = ${db().json(nextCrawl as never)},
+    SET faq = ${sql.json(nextFaq as never)},
+        crawl_data = ${sql.json(nextCrawl as never)},
         updated_at = NOW()
     WHERE client_id = ${clientId}
   `;
