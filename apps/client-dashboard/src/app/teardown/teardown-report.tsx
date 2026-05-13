@@ -135,6 +135,49 @@ export interface CompetitorRadar {
   automation: string;
 }
 
+export interface InstagramSignal {
+  handle: string | null;
+  followers: number | null;
+  post_count: number | null;
+  is_verified: boolean | null;
+  bio: string;
+  days_since_last_post: number | null;
+  profile_url: string | null;
+}
+
+export interface TikTokPost {
+  views: number;
+  likes: number;
+  author: string | null;
+  desc: string;
+  url: string;
+}
+
+export interface TikTokSignal {
+  post_count: number;
+  total_views: number;
+  top_posts: TikTokPost[];
+}
+
+export interface RedditMention {
+  title: string;
+  subreddit: string | null;
+  score: number | null;
+  num_comments: number | null;
+  url: string;
+}
+
+export interface RedditSignal {
+  mention_count: number;
+  top_mentions: RedditMention[];
+}
+
+export interface SocialPulse {
+  instagram: InstagramSignal | null;
+  tiktok: TikTokSignal | null;
+  reddit: RedditSignal | null;
+}
+
 export interface TeardownPackage {
   business_name: string;
   url: string;
@@ -161,6 +204,7 @@ export interface TeardownPackage {
   badges?: Badge[];
   gbp?: GbpData | null;
   competitor_radar?: CompetitorRadar | null;
+  social_pulse?: SocialPulse | null;
 }
 
 const GRADE_PALETTE: Record<AgentScore["grade"], { fg: string; bg: string; ring: string }> = {
@@ -189,9 +233,11 @@ const CATEGORY_EMOJI: Record<QuickWin["category"], string> = {
 export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
   return (
     <>
+      <AgentGreeting pkg={pkg} />
       {(pkg.agent_score || pkg.screenshot_url) && <VisualHero pkg={pkg} />}
       {pkg.badges && pkg.badges.length > 0 && <BadgeRow badges={pkg.badges} />}
       {pkg.gbp && <GbpPanel gbp={pkg.gbp} />}
+      {pkg.social_pulse && <SocialPulseSection pulse={pkg.social_pulse} />}
       {pkg.competitor_radar && pkg.competitor_radar.competitors.length > 0 && (
         <CompetitorSection radar={pkg.competitor_radar} ownRating={pkg.gbp?.rating ?? null} />
       )}
@@ -572,6 +618,99 @@ export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
       </div>
       </section>
     </>
+  );
+}
+
+// ============================================================================
+// AGENT GREETING — first-person framing. The whole report reads as the
+// agent narrating its first 60 seconds on the job.
+// ============================================================================
+
+function AgentGreeting({ pkg }: { pkg: TeardownPackage }) {
+  const score = pkg.agent_score;
+  const grade = score?.grade ?? "?";
+  const verb = grade === "A+" || grade === "A" ? "spotted" : grade === "B" || grade === "C" ? "found" : "uncovered";
+  const findingCount = [
+    pkg.faq_gaps?.length || 0,
+    pkg.seo_findings?.length || 0,
+    pkg.directory_strategy?.missing?.length || 0,
+    pkg.competitor_radar?.competitors?.length || 0,
+    pkg.reviews?.top_complaints?.length || 0,
+  ].reduce((a, b) => a + b, 0);
+
+  return (
+    <section
+      style={{
+        background: "#1d1c18",
+        color: "#fbfaf4",
+        borderRadius: 10,
+        padding: 24,
+        marginBottom: 20,
+        display: "grid",
+        gridTemplateColumns: "auto 1fr",
+        gap: 18,
+        alignItems: "start",
+      }}
+    >
+      <div
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: "50%",
+          background: "#2d8e7d",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Instrument Serif, Georgia, serif",
+          fontSize: 26,
+          flexShrink: 0,
+        }}
+      >
+        ⏱
+      </div>
+      <div>
+        <div
+          style={{
+            fontFamily: "var(--mono, ui-monospace)",
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "#837c69",
+            marginBottom: 8,
+          }}
+        >
+          your AI agent · just clocked in
+        </div>
+        <p
+          style={{
+            fontFamily: "Instrument Serif, Georgia, serif",
+            fontSize: 22,
+            lineHeight: 1.35,
+            margin: 0,
+            color: "#fbfaf4",
+          }}
+        >
+          Hi. I&apos;m your AI agent. I just spent <em style={{ color: "#7ad6c0" }}>60 seconds</em> looking at{" "}
+          <em style={{ color: "#7ad6c0" }}>{pkg.business_name}</em> from every angle a smart customer would.{" "}
+          I {verb} <em style={{ color: "#7ad6c0" }}>{findingCount} specific things</em> across {" "}
+          {pkg.gbp ? "Google, " : ""}
+          {pkg.social_pulse?.instagram ? "Instagram, " : ""}
+          {pkg.reviews && pkg.reviews.sentiment.total > 0 ? "your reviews, " : ""}
+          your competitors, and your site itself. Here&apos;s what I&apos;d do if I were you.
+        </p>
+        <p
+          style={{
+            fontSize: 12,
+            margin: "10px 0 0",
+            color: "#837c69",
+            fontFamily: "var(--mono, ui-monospace)",
+            letterSpacing: "0.04em",
+          }}
+        >
+          → scroll. each card shows what I saw + what I&apos;d do this week + what I&apos;ll automate for you ongoing.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -1237,6 +1376,256 @@ function CompetitorSection({
         </div>
       )}
     </section>
+  );
+}
+
+function SocialPulseSection({ pulse }: { pulse: SocialPulse }) {
+  if (!pulse.instagram && !pulse.tiktok && !pulse.reddit) return null;
+  return (
+    <section
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 8,
+        padding: 24,
+        marginBottom: 20,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        § social pulse — where you live off-site
+      </span>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, Georgia, serif",
+          fontSize: 28,
+          fontWeight: 400,
+          margin: "6px 0 16px",
+          lineHeight: 1.1,
+        }}
+      >
+        Your reach <em style={{ color: "#2d8e7d" }}>beyond</em> your website
+      </h3>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 14,
+          marginBottom: 16,
+        }}
+      >
+        {pulse.instagram && pulse.instagram.followers != null && (
+          <SocialStatCard
+            icon="📷"
+            platform="Instagram"
+            primary={pulse.instagram.followers.toLocaleString()}
+            primaryLabel="followers"
+            note={
+              pulse.instagram.days_since_last_post != null
+                ? `last post ${pulse.instagram.days_since_last_post}d ago${pulse.instagram.days_since_last_post > 14 ? " · getting stale" : ""}`
+                : `${pulse.instagram.post_count ?? "?"} posts · ${pulse.instagram.is_verified ? "✓ verified" : "unverified"}`
+            }
+            href={pulse.instagram.profile_url}
+            warn={pulse.instagram.days_since_last_post != null && pulse.instagram.days_since_last_post > 14}
+          />
+        )}
+        {pulse.tiktok && (
+          <SocialStatCard
+            icon="🎵"
+            platform="TikTok"
+            primary={pulse.tiktok.post_count.toString()}
+            primaryLabel={`UGC posts found`}
+            note={
+              pulse.tiktok.total_views > 0
+                ? `${pulse.tiktok.total_views.toLocaleString()} total views (may include name collisions)`
+                : "no UGC found mentioning you"
+            }
+            warn={pulse.tiktok.post_count === 0}
+          />
+        )}
+        {pulse.reddit && (
+          <SocialStatCard
+            icon="🗨️"
+            platform="Reddit"
+            primary={pulse.reddit.mention_count.toString()}
+            primaryLabel="mentions"
+            note={
+              pulse.reddit.mention_count > 0
+                ? `${pulse.reddit.top_mentions[0]?.subreddit ? `top in r/${pulse.reddit.top_mentions[0].subreddit}` : "active discussion"}`
+                : "no Reddit discussion yet"
+            }
+            warn={pulse.reddit.mention_count === 0}
+          />
+        )}
+      </div>
+
+      {pulse.instagram?.days_since_last_post != null && pulse.instagram.days_since_last_post > 14 && (
+        <div
+          style={{
+            padding: 12,
+            background: "#fdf3e3",
+            border: "1px solid #e6c98b",
+            borderRadius: 6,
+            marginBottom: 10,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#a07232",
+            }}
+          >
+            ai take · instagram silence
+          </span>
+          <p style={{ fontSize: 13, lineHeight: 1.55, margin: "4px 0 0" }}>
+            {pulse.instagram.days_since_last_post} days since your last Instagram post. Your {pulse.instagram.followers?.toLocaleString()} followers are an asset you&apos;re not compounding.{" "}
+            <strong>This week:</strong> post 3 Reels using your best dish/service photos.{" "}
+            <em style={{ color: "#1e6d3d" }}>Your agent will: draft + schedule 3 posts per week in your brand voice, post at peak audience hours, monitor engagement.</em>
+          </p>
+        </div>
+      )}
+
+      {pulse.reddit && pulse.reddit.mention_count > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--paper-mut, #837c69)",
+            }}
+          >
+            top reddit mention
+          </span>
+          {pulse.reddit.top_mentions.slice(0, 1).map((m, i) => (
+            <a
+              key={i}
+              href={m.url}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              style={{
+                display: "block",
+                marginTop: 6,
+                padding: 10,
+                background: "var(--paper, #f6f3eb)",
+                border: "1px solid var(--paper-line, #d8d2bf)",
+                borderRadius: 4,
+                textDecoration: "none",
+                color: "var(--paper-ink, #1d1c18)",
+              }}
+            >
+              <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{m.title}</p>
+              <p
+                style={{
+                  fontSize: 11,
+                  fontFamily: "var(--mono, ui-monospace)",
+                  color: "var(--paper-mut, #837c69)",
+                  margin: "4px 0 0",
+                }}
+              >
+                r/{m.subreddit} · score {m.score} · {m.num_comments ?? 0} comments
+              </p>
+            </a>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SocialStatCard({
+  icon,
+  platform,
+  primary,
+  primaryLabel,
+  note,
+  href,
+  warn,
+}: {
+  icon: string;
+  platform: string;
+  primary: string;
+  primaryLabel: string;
+  note: string;
+  href?: string | null;
+  warn?: boolean;
+}) {
+  const content = (
+    <>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: 18 }}>{icon}</span>
+        <span
+          style={{
+            fontFamily: "var(--mono, ui-monospace)",
+            fontSize: 11,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--paper-mut, #514c40)",
+          }}
+        >
+          {platform}
+        </span>
+      </div>
+      <div
+        style={{
+          fontFamily: "Instrument Serif, Georgia, serif",
+          fontSize: 32,
+          lineHeight: 1,
+          color: warn ? "#a07232" : "var(--paper-ink, #1d1c18)",
+        }}
+      >
+        {primary}
+      </div>
+      <div
+        style={{
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 10,
+          letterSpacing: "0.06em",
+          color: "var(--paper-mut, #837c69)",
+          marginTop: 2,
+        }}
+      >
+        {primaryLabel}
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          color: warn ? "#a07232" : "var(--paper-mut, #514c40)",
+          marginTop: 8,
+          fontStyle: "italic",
+        }}
+      >
+        {note}
+      </div>
+    </>
+  );
+  const baseStyle = {
+    padding: 14,
+    background: warn ? "#fdf3e3" : "var(--paper, #f6f3eb)",
+    border: `1px solid ${warn ? "#e6c98b" : "var(--paper-line, #d8d2bf)"}`,
+    borderRadius: 6,
+    textDecoration: "none",
+    color: "inherit",
+    display: "block",
+  } as const;
+  return href ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" style={baseStyle}>
+      {content}
+    </a>
+  ) : (
+    <div style={baseStyle}>{content}</div>
   );
 }
 

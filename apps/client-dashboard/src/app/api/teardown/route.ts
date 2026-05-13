@@ -170,6 +170,49 @@ interface CompetitorRadar {
   automation: string;
 }
 
+interface InstagramSignal {
+  handle: string | null;
+  followers: number | null;
+  post_count: number | null;
+  is_verified: boolean | null;
+  bio: string;
+  days_since_last_post: number | null;
+  profile_url: string | null;
+}
+
+interface TikTokPost {
+  views: number;
+  likes: number;
+  author: string | null;
+  desc: string;
+  url: string;
+}
+
+interface TikTokSignal {
+  post_count: number;
+  total_views: number;
+  top_posts: TikTokPost[];
+}
+
+interface RedditMention {
+  title: string;
+  subreddit: string | null;
+  score: number | null;
+  num_comments: number | null;
+  url: string;
+}
+
+interface RedditSignal {
+  mention_count: number;
+  top_mentions: RedditMention[];
+}
+
+interface SocialPulse {
+  instagram: InstagramSignal | null;
+  tiktok: TikTokSignal | null;
+  reddit: RedditSignal | null;
+}
+
 interface QuickWin {
   category: "marketing" | "seo" | "ads" | "ops" | "social";
   action: string;           // imperative: "Add a WhatsApp Click-to-Chat link to your hero"
@@ -219,6 +262,9 @@ interface TeardownPackage {
   // Nearby competitor radar via Places Nearby Search. Null when GBP
   // lookup failed (we need lat/lng to query nearby).
   competitor_radar?: CompetitorRadar | null;
+  // Social pulse via ScrapeCreators — IG profile freshness, TikTok UGC
+  // discovery, Reddit mention count. Null when no SCRAPECREATORS_API_KEY.
+  social_pulse?: SocialPulse | null;
 }
 
 interface TeardownBody {
@@ -390,6 +436,29 @@ function inferCategory(crawl: CrawlResult): "restaurant" | "beauty" | "default" 
 // Google Places lookup. Returns null when no key is set or the place
 // can't be matched — the teardown still renders, just without the
 // authoritative GBP section + competitor radar.
+async function fetchSocialPulse(
+  businessName: string,
+  socialProfiles: Record<string, string> | undefined,
+): Promise<SocialPulse | null> {
+  try {
+    const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/social-pulse`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        business_name: businessName,
+        social_profiles: socialProfiles || {},
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.error) return null;
+    return data as SocialPulse;
+  } catch (e) {
+    console.error("[teardown] social-pulse failed:", e);
+    return null;
+  }
+}
+
 async function fetchGbp(
   businessName: string,
   country: "AE" | "SA",
@@ -1222,11 +1291,12 @@ Output STRICT JSON only:
   // Both gracefully return null when their preconditions fail (no
   // confirmed listings / no Places API key).
   const locationHint = crawl.contactInfo?.address || "";
-  const [reviews, gbp] = await Promise.all([
+  const [reviews, gbp, social_pulse] = await Promise.all([
     directoryStrategy?.confirmed?.length
       ? fetchReviews(businessName, directoryStrategy.confirmed)
       : Promise.resolve(null),
     fetchGbp(businessName, country, locationHint),
+    fetchSocialPulse(businessName, crawl.socialProfiles),
   ]);
 
   // Third-stage: competitor radar — needs the GBP lat/lng. Same
@@ -1267,6 +1337,7 @@ Output STRICT JSON only:
     badges,
     gbp,
     competitor_radar,
+    social_pulse,
   };
 
   // Persist + slug. Retry slug collision up to 3 times (extremely

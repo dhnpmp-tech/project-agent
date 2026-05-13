@@ -4427,6 +4427,164 @@ Include EVERY platform from both lists. Match platform names EXACTLY as given ab
 
 
 # ----------------------------------------------------------------------------
+# Social Pulse via ScrapeCreators — Instagram profile freshness + TikTok
+# UGC discovery + Reddit mentions. Three signal sources owners can't
+# aggregate themselves. Powers the "social_pulse" section.
+# ----------------------------------------------------------------------------
+
+_SCRAPECREATORS_API_KEY = os.environ.get("SCRAPECREATORS_API_KEY", "")
+_SCRAPECREATORS_BASE = "https://api.scrapecreators.com"
+
+
+async def _sc_get(path: str, params: dict) -> Optional[dict]:
+    """ScrapeCreators GET wrapper. Returns parsed JSON or None on failure.
+    Caller treats None as 'signal unavailable, hide the card'.
+    """
+    if not _SCRAPECREATORS_API_KEY:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.get(
+                f"{_SCRAPECREATORS_BASE}{path}",
+                headers={"x-api-key": _SCRAPECREATORS_API_KEY},
+                params=params,
+            )
+            if r.status_code != 200:
+                return None
+            return r.json()
+    except Exception:
+        return None
+
+
+def _derive_ig_handle(social_profiles: dict) -> Optional[str]:
+    """Pull the Instagram handle out of the social_profiles map.
+    Handles like 'https://instagram.com/foo' → 'foo'.
+    """
+    ig_url = (social_profiles or {}).get("instagram") or ""
+    if not ig_url:
+        return None
+    # https://www.instagram.com/foo/?utm=… → foo
+    import re as _re
+    m = _re.search(r"instagram\.com/(?:@?)([A-Za-z0-9_.]+)", ig_url)
+    return m.group(1) if m else None
+
+
+class _SocialPulseRequest(BaseModel):
+    business_name: str
+    ig_handle: Optional[str] = None
+    social_profiles: Optional[dict] = None
+
+
+@app.post("/web/social-pulse")
+async def web_social_pulse(req: _SocialPulseRequest):
+    """Three parallel signals: Instagram profile freshness, TikTok UGC
+    keyword search, Reddit mention search. Returns a unified
+    SocialPulse shape that the teardown surfaces.
+    """
+    if not _SCRAPECREATORS_API_KEY:
+        return {"error": "no_key"}
+
+    ig_handle = req.ig_handle or _derive_ig_handle(req.social_profiles or {})
+    business_name = req.business_name.strip()
+
+    ig_task = _sc_get("/v1/instagram/profile", {"handle": ig_handle}) if ig_handle else None
+    tiktok_task = _sc_get("/v1/tiktok/search/keyword", {"query": business_name})
+    reddit_task = _sc_get("/v1/reddit/search", {"query": business_name})
+
+    tasks = [t for t in (ig_task, tiktok_task, reddit_task) if t is not None]
+    if not tasks:
+        return {"error": "no_signals_requested"}
+
+    results = await asyncio.gather(*tasks, return_exceptions=False)
+    # Re-align with which tasks ran. Order of insertion matters.
+    iter_results = iter(results)
+    ig_data = next(iter_results) if ig_task else None
+    tiktok_data = next(iter_results) if tiktok_task else None
+    reddit_data = next(iter_results) if reddit_task else None
+
+    # ----- Instagram digest -----
+    instagram: Optional[dict] = None
+    if ig_data and ig_data.get("success") and ig_data.get("data", {}).get("user"):
+        u = ig_data["data"]["user"]
+        edge_followers = (u.get("edge_followed_by") or {}).get("count")
+        edge_posts = (u.get("edge_owner_to_timeline_media") or {}).get("count")
+        # Most recent post timestamp (Unix)
+        nodes = ((u.get("edge_owner_to_timeline_media") or {}).get("edges") or [])
+        latest_ts = None
+        if nodes:
+            latest_ts = (nodes[0].get("node") or {}).get("taken_at_timestamp")
+        from datetime import datetime, timezone
+        days_since_post = None
+        if latest_ts:
+            days_since_post = int((datetime.now(timezone.utc).timestamp() - latest_ts) / 86400)
+        instagram = {
+            "handle": u.get("username") or ig_handle,
+            "followers": edge_followers,
+            "post_count": edge_posts,
+            "is_verified": u.get("is_verified"),
+            "bio": (u.get("biography") or "").strip()[:280],
+            "days_since_last_post": days_since_post,
+            "profile_url": f"https://instagram.com/{u.get('username') or ig_handle}",
+        }
+
+    # ----- TikTok UGC discovery -----
+    tiktok: Optional[dict] = None
+    if tiktok_data and tiktok_data.get("success"):
+        items = tiktok_data.get("search_item_list") or []
+        # Count items, sum views, list top 3
+        total_views = 0
+        top_posts = []
+        for item in items[:20]:
+            aweme = item.get("aweme_info") or {}
+            stats = aweme.get("statistics") or {}
+            plays = stats.get("play_count") or 0
+            total_views += plays
+            if len(top_posts) < 3 and plays > 0:
+                top_posts.append({
+                    "views": plays,
+                    "likes": stats.get("digg_count") or 0,
+                    "author": (aweme.get("author") or {}).get("unique_id"),
+                    "desc": (aweme.get("desc") or "")[:200],
+                    "url": f"https://www.tiktok.com/@{(aweme.get('author') or {}).get('unique_id', '')}/video/{aweme.get('aweme_id', '')}",
+                })
+        tiktok = {
+            "post_count": len(items),
+            "total_views": total_views,
+            "top_posts": top_posts,
+        }
+
+    # ----- Reddit mention discovery -----
+    reddit: Optional[dict] = None
+    if reddit_data and reddit_data.get("success"):
+        posts = reddit_data.get("posts") or []
+        # Filter to posts that actually mention the business name in title or selftext
+        bn_lower = business_name.lower()
+        relevant = []
+        for p in posts[:30]:
+            title = (p.get("title") or "").lower()
+            body = (p.get("selftext") or "").lower()
+            if bn_lower in title or bn_lower in body:
+                relevant.append({
+                    "title": p.get("title"),
+                    "subreddit": p.get("subreddit"),
+                    "score": p.get("score"),
+                    "num_comments": p.get("num_comments"),
+                    "url": f"https://reddit.com{p.get('permalink', '')}",
+                    "created_utc": p.get("created_utc"),
+                })
+        reddit = {
+            "mention_count": len(relevant),
+            "top_mentions": relevant[:5],
+        }
+
+    return {
+        "instagram": instagram,
+        "tiktok": tiktok,
+        "reddit": reddit,
+    }
+
+
+# ----------------------------------------------------------------------------
 # Google Places — authoritative source for Google Business Profile data,
 # Maps reviews, photos, hours, AND nearby competitors. Requires
 # GOOGLE_PLACES_API_KEY (Places API enabled on Google Cloud project).
