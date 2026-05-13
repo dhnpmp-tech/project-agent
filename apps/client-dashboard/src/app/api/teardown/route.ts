@@ -90,22 +90,26 @@ function generateSlug(seedName: string): string {
 
 // ---- Crawl ----------------------------------------------------------------
 
-async function callCrawl(url: string, req: NextRequest): Promise<CrawlResult | null> {
-  // Reuse the existing /api/crawl endpoint via internal fetch.
-  // Same-origin so cookies/headers aren't needed; it's a public endpoint.
+async function callCrawl(url: string, _req: NextRequest): Promise<CrawlResult | null> {
+  // Call the VPS-hosted prompt-builder's /web/crawl endpoint instead of
+  // the Vercel-hosted /api/crawl. Vercel's serverless functions apparently
+  // can't reliably reach random external sites (some egress restriction
+  // we haven't fully diagnosed — fetch returns nothing for example.com
+  // among others). The VPS has unrestricted egress and reaches every
+  // tested URL fine.
   try {
-    const proto = req.headers.get("x-forwarded-proto") || "https";
-    const host = req.headers.get("host") || "agents.dcp.sa";
-    const base = `${proto}://${host}`;
-    // basePath /app applies on Vercel — both teardown and crawl live under it.
-    const baseWithApp = `${base}${host.endsWith("agents.dcp.sa") ? "/app" : ""}`;
-    const res = await fetch(`${baseWithApp}/api/crawl`, {
+    const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/crawl`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url }),
     });
     if (!res.ok) return null;
-    return (await res.json()) as CrawlResult;
+    const data = await res.json();
+    if (data?.error) {
+      console.error("[teardown] crawl error:", data.error, data.detail || "");
+      return null;
+    }
+    return data as CrawlResult;
   } catch (e) {
     console.error("[teardown] crawl failed:", e);
     return null;

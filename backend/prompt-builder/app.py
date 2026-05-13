@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import Any, Optional, List
 import os
 import re
+import json
 import httpx
 import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
 import asyncio
@@ -3741,6 +3742,326 @@ async def inference_chat(req: _InferenceChatRequest):
         return {"error": str(e)[:300], "role": req.role}
     except Exception as e:
         return {"error": f"{type(e).__name__}: {str(e)[:300]}", "role": req.role}
+
+
+# ----------------------------------------------------------------------------
+# Web crawl — same shape as the Vercel /api/crawl route but runs from the VPS
+# where outbound HTTP egress is unrestricted. The Vercel function couldn't
+# reach example.com (and most SMB sites) for unclear reasons; the prompt-
+# builder host has direct internet access and reaches them fine.
+#
+# Returns the CrawlResult shape the dashboard's /api/teardown route expects:
+#   { businessDescription, services, faq, businessHours, contactInfo,
+#     teamMembers, socialProfiles, reviewSources, testimonials, brandVoice,
+#     industryKeywords, jobListings, pagesScanned }
+# ----------------------------------------------------------------------------
+
+_CRAWL_PAGES_TO_TRY = [
+    "",
+    "/about",
+    "/about-us",
+    "/services",
+    "/products",
+    "/menu",
+    "/faq",
+    "/frequently-asked-questions",
+    "/contact",
+    "/contact-us",
+    "/careers",
+    "/jobs",
+    "/team",
+    "/our-team",
+    "/testimonials",
+    "/reviews",
+]
+_CRAWL_UA = (
+    "Mozilla/5.0 (compatible; ProjectAgent/1.0; business-onboarding; "
+    "+https://agents.dcp.sa)"
+)
+
+
+class _CrawlRequest(BaseModel):
+    url: str
+
+
+def _strip_html(html: str) -> str:
+    """Minimal HTML strip — keep tag-less text, collapse whitespace."""
+    import re as _re
+    h = _re.sub(r"<script[^>]*>[\s\S]*?</script>", "", html, flags=_re.IGNORECASE)
+    h = _re.sub(r"<style[^>]*>[\s\S]*?</style>", "", h, flags=_re.IGNORECASE)
+    h = _re.sub(r"<nav[^>]*>[\s\S]*?</nav>", "", h, flags=_re.IGNORECASE)
+    h = _re.sub(r"<footer[^>]*>[\s\S]*?</footer>", " [FOOTER] ", h, flags=_re.IGNORECASE)
+    h = _re.sub(r"<header[^>]*>[\s\S]*?</header>", " [HEADER] ", h, flags=_re.IGNORECASE)
+    h = _re.sub(r"<[^>]+>", " ", h)
+    h = (h.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<")
+         .replace("&gt;", ">"))
+    h = _re.sub(r"&#?\w+;", " ", h)
+    h = _re.sub(r"\s+", " ", h)
+    return h.strip()
+
+
+def _extract_meta(html: str) -> dict:
+    import re as _re
+    meta = {}
+    for m in _re.finditer(
+        r"<meta\s+(?:[^>]*?(?:name|property)\s*=\s*[\"']([^\"']+)[\"'][^>]*?content\s*=\s*[\"']([^\"']+)[\"']|"
+        r"[^>]*?content\s*=\s*[\"']([^\"']+)[\"'][^>]*?(?:name|property)\s*=\s*[\"']([^\"']+)[\"'])[^>]*>",
+        html, _re.IGNORECASE,
+    ):
+        key = (m.group(1) or m.group(4) or "").lower()
+        value = m.group(2) or m.group(3) or ""
+        if key and value:
+            meta[key] = value
+    return meta
+
+
+def _extract_socials(html: str) -> dict:
+    import re as _re
+    patterns = [
+        ("facebook", r"href=[\"'](https?://(?:www\.)?facebook\.com/[^\"'\s]+)[\"']"),
+        ("instagram", r"href=[\"'](https?://(?:www\.)?instagram\.com/[^\"'\s]+)[\"']"),
+        ("twitter", r"href=[\"'](https?://(?:www\.)?(?:twitter|x)\.com/[^\"'\s]+)[\"']"),
+        ("linkedin", r"href=[\"'](https?://(?:www\.)?linkedin\.com/(?:company|in)/[^\"'\s]+)[\"']"),
+        ("youtube", r"href=[\"'](https?://(?:www\.)?youtube\.com/[^\"'\s]+)[\"']"),
+        ("tiktok", r"href=[\"'](https?://(?:www\.)?tiktok\.com/@[^\"'\s]+)[\"']"),
+    ]
+    out = {}
+    for name, pat in patterns:
+        m = _re.search(pat, html, _re.IGNORECASE)
+        if m:
+            out[name] = m.group(1)
+    return out
+
+
+def _extract_review_links(html: str, domain: str) -> list:
+    import re as _re
+    out = []
+    patterns = [
+        ("Google Reviews", r"href=[\"'](https?://(?:www\.)?google\.com/maps/place/[^\"'\s]+)[\"']"),
+        ("Google Reviews", r"href=[\"'](https?://g\.page/[^\"'\s]+)[\"']"),
+        ("Trustpilot", r"href=[\"'](https?://(?:www\.)?trustpilot\.com/review/[^\"'\s]+)[\"']"),
+        ("TripAdvisor", r"href=[\"'](https?://(?:www\.)?tripadvisor\.com/[^\"'\s]+)[\"']"),
+        ("Yelp", r"href=[\"'](https?://(?:www\.)?yelp\.com/biz/[^\"'\s]+)[\"']"),
+    ]
+    for platform, pat in patterns:
+        m = _re.search(pat, html, _re.IGNORECASE)
+        if m:
+            out.append({"platform": platform, "url": m.group(1)})
+    from urllib.parse import quote as _quote
+    out.append({"platform": "Google Business",
+                "url": f"https://www.google.com/search?q={_quote(domain)}+reviews"})
+    return out
+
+
+_FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY", "")
+
+
+async def _fetch_via_curl(url: str) -> Optional[str]:
+    """Subprocess curl. Handles modern TLS, anti-bot fingerprinting, and
+    arbitrary redirects more reliably than httpx for random SMB sites.
+    curl is preinstalled on the VPS; this avoids the Python TLS quirks
+    that make httpx ConnectTimeout on sites that respond fine to curl.
+    """
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "curl", "-sSL",
+            "--connect-timeout", "8",
+            "-m", "15",
+            "-A", _CRAWL_UA,
+            "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "-H", "Accept-Language: en-US,en;q=0.9,ar;q=0.8",
+            "-H", "Accept-Encoding: gzip, deflate, br",
+            "--compressed",
+            url,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        try:
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=18)
+        except asyncio.TimeoutError:
+            proc.kill()
+            return None
+        body = stdout.decode("utf-8", errors="replace")
+        if not body or len(body) < 200:
+            return None
+        # Heuristic content-type check — if there's a <html or doctype, treat
+        # as HTML. Saves us from sites that return non-html content-types.
+        low = body[:500].lower()
+        if "<html" not in low and "<!doctype" not in low and "<body" not in low:
+            return None
+        return body[:50_000]
+    except Exception:
+        return None
+
+
+async def _fetch_via_firecrawl(url: str) -> Optional[str]:
+    """Last-resort scrape via Firecrawl. Handles JS-heavy sites,
+    Cloudflare, and other anti-bot setups that defeat plain curl.
+    No-op if FIRECRAWL_API_KEY isn't configured.
+    """
+    if not _FIRECRAWL_API_KEY:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            r = await client.post(
+                "https://api.firecrawl.dev/v1/scrape",
+                headers={
+                    "Authorization": f"Bearer {_FIRECRAWL_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "url": url,
+                    "formats": ["html"],
+                    "onlyMainContent": False,
+                },
+            )
+            if r.status_code != 200:
+                return None
+            data = r.json()
+            html = (data.get("data") or {}).get("html")
+            if not html or len(html) < 200:
+                return None
+            return html[:50_000]
+    except Exception:
+        return None
+
+
+async def _fetch_page(_client: Any, url: str) -> Optional[str]:
+    """Two-stage fetch: curl first (fast, 95% success), Firecrawl on
+    miss (handles JS / Cloudflare / anti-bot).
+    """
+    html = await _fetch_via_curl(url)
+    if html:
+        return html
+    return await _fetch_via_firecrawl(url)
+
+
+@app.post("/web/crawl")
+async def web_crawl(req: _CrawlRequest):
+    """Crawl a SMB website + extract structured business data.
+
+    Same shape as the dashboard's /api/crawl route. Used by the public
+    teardown endpoint to bypass Vercel's apparent outbound-fetch issue.
+    """
+    raw = (req.url or "").strip()
+    if not raw or len(raw) < 4:
+        return {"error": "url_required"}
+    base = raw if raw.startswith("http") else f"https://{raw}"
+    base = base.rstrip("/")
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(base)
+        if not parsed.hostname:
+            raise ValueError("no hostname")
+    except Exception:
+        return {"error": "invalid_url"}
+
+    import asyncio
+    async with httpx.AsyncClient() as client:
+        pages_raw = await asyncio.gather(*[
+            _fetch_page(client, f"{base}{path}") for path in _CRAWL_PAGES_TO_TRY
+        ])
+    pages = [
+        {"path": p or "/", "html": h, "text": _strip_html(h)}
+        for p, h in zip(_CRAWL_PAGES_TO_TRY, pages_raw)
+        if h is not None
+    ]
+    if not pages:
+        return {"error": "no_pages",
+                "detail": "Could not fetch any pages from this URL."}
+
+    home_html = next((p["html"] for p in pages if p["path"] == "/"), pages[0]["html"])
+    meta = _extract_meta(home_html)
+    all_html = " ".join(p["html"] for p in pages)
+    socials = _extract_socials(all_html)
+    review_sources = _extract_review_links(all_html, parsed.hostname or "")
+
+    # LLM extraction via the inference router. Uses rami_research (cheap +
+    # decent JSON adherence on MiniMax).
+    combined_text = "\n\n".join(
+        f"=== PAGE: {p['path']} ===\n{p['text'][:8000]}" for p in pages
+    )[:30_000]
+    meta_str = "\n".join(f"{k}: {v}" for k, v in meta.items())
+    prompt = f"""Analyze this business website content and extract structured data. Return ONLY valid JSON, no markdown.
+
+META TAGS:
+{meta_str}
+
+SOCIAL PROFILES FOUND:
+{json.dumps(socials)}
+
+WEBSITE CONTENT:
+{combined_text}
+
+Extract this JSON structure:
+{{
+  "businessDescription": "2-3 sentence description",
+  "services": ["main services/products"],
+  "faq": [{{"question": "...", "answer": "..."}}, ...] (up to 15),
+  "businessHours": "operating hours or empty string",
+  "contactInfo": {{"phone": "...", "email": "...", "address": "..."}},
+  "teamMembers": ["Name - Role", ...],
+  "testimonials": [{{"quote": "...", "author": "..."}}, ...] (up to 10, REAL only),
+  "brandVoice": "Brief tone description",
+  "industryKeywords": ["top 10-15 keywords"],
+  "jobListings": ["Job Title", ...]
+}}
+
+Only include real data. Empty arrays/strings where missing."""
+    llm_text = ""
+    try:
+        llm_text = await _inference_module.chat(
+            "rami_research",
+            [{"role": "user", "content": prompt}],
+            max_tokens=2200,
+            json_mode=True,
+        )
+    except Exception as e:
+        log_extra = f"{type(e).__name__}: {str(e)[:150]}"
+        print(f"[web_crawl] LLM extraction failed: {log_extra}")
+
+    llm_data: dict = {}
+    if llm_text:
+        try:
+            import re as _re
+            m = _re.search(r"\{[\s\S]*\}", llm_text)
+            if m:
+                llm_data = json.loads(m.group(0))
+        except Exception:
+            llm_data = {}
+
+    def _testimonials_clean(raw_list: Any) -> list:
+        if not isinstance(raw_list, list):
+            return []
+        out = []
+        for t in raw_list[:10]:
+            if not isinstance(t, dict):
+                continue
+            q = str(t.get("quote", "")).strip()
+            if len(q) < 20:
+                continue
+            entry = {"quote": q[:400]}
+            a = t.get("author")
+            if a:
+                entry["author"] = str(a).strip()[:80]
+            out.append(entry)
+        return out
+
+    return {
+        "businessDescription": llm_data.get("businessDescription") or meta.get("og:description") or meta.get("description") or "",
+        "services": llm_data.get("services") or [],
+        "faq": llm_data.get("faq") or [],
+        "businessHours": llm_data.get("businessHours") or "",
+        "contactInfo": llm_data.get("contactInfo") or {},
+        "teamMembers": llm_data.get("teamMembers") or [],
+        "socialProfiles": socials,
+        "reviewSources": review_sources,
+        "testimonials": _testimonials_clean(llm_data.get("testimonials")),
+        "brandVoice": llm_data.get("brandVoice") or "",
+        "industryKeywords": llm_data.get("industryKeywords") or [],
+        "jobListings": llm_data.get("jobListings") or [],
+        "pagesScanned": [f"{base}{p['path']}" for p in pages],
+    }
 
 
 @app.get("/clients/active")
