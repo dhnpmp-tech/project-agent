@@ -4079,6 +4079,306 @@ Only include real data. Empty arrays/strings where missing."""
     }
 
 
+# ----------------------------------------------------------------------------
+# Directory listing verification — the LLM-only directory_gaps section
+# routinely hallucinated obvious platforms (Zomato, TripAdvisor, Talabat,
+# GBP) as "missing" for businesses that have been listed on them for years.
+# This endpoint queries Firecrawl /v1/search to evidence each candidate
+# before flagging it as a gap. Cuts hallucination to ~zero on listings.
+# ----------------------------------------------------------------------------
+
+# Canonical platforms per (country, category). When category is None or
+# unrecognized, we use the union of all categories for that country.
+# Each entry now uses `search_query` (the full Firecrawl query, gives us
+# control over the site: filter) and `match_host` (the bare hostname we
+# look for in result URLs). Separates lookup query from match logic so
+# strict path filters (e.g. /uae/) don't reject legit hits at /dubai/.
+_DIRECTORY_CATALOG: dict[str, dict[str, list[dict]]] = {
+    "AE": {
+        "restaurant": [
+            {"platform": "Zomato UAE", "search_query": "site:zomato.com", "match_host": "zomato.com", "signup_url": "https://www.zomato.com/uae/restaurant-partners", "why": "Dominant restaurant discovery in UAE — reviews, photos, menu visibility for tourists + expats."},
+            {"platform": "TripAdvisor", "search_query": "site:tripadvisor.com", "match_host": "tripadvisor.com", "signup_url": "https://www.tripadvisor.com/Owners", "why": "Tourist-facing reviews that decide where visitors eat — particularly strong for heritage/cultural restaurants."},
+            {"platform": "TheFork UAE", "search_query": "site:thefork.com OR site:thefork.ae", "match_host": "thefork.", "signup_url": "https://restaurants.thefork.com/", "why": "Reservation marketplace owned by TripAdvisor — captures the booking demand TripAdvisor visibility creates."},
+            {"platform": "Talabat", "search_query": "site:talabat.com", "match_host": "talabat.com", "signup_url": "https://www.talabat.com/uae/business", "why": "#1 food delivery platform in UAE — extends dine-in revenue to deliveries."},
+            {"platform": "Deliveroo UAE", "search_query": "site:deliveroo.ae OR site:deliveroo.com", "match_host": "deliveroo.", "signup_url": "https://restaurants.deliveroo.com/en-ae/", "why": "Premium delivery channel — higher-margin orders + Plus subscriber base."},
+            {"platform": "Careem", "search_query": "site:careem.com", "match_host": "careem.com", "signup_url": "https://www.careem.com/en-AE/food/", "why": "Multi-service super-app delivery — reaches Careem Plus subscribers."},
+            {"platform": "Google Maps / Business Profile", "search_query": "site:google.com/maps", "match_host": "google.com/maps", "signup_url": "https://business.google.com/", "why": "Local search anchor — appears in Maps + 'restaurants near me' queries."},
+            {"platform": "Time Out Dubai", "search_query": "site:timeoutdubai.com", "match_host": "timeoutdubai.com", "signup_url": "https://www.timeoutdubai.com/advertise", "why": "Editorial credibility — reviews + 'best of' lists drive curated visits."},
+            {"platform": "OpenTable", "search_query": "site:opentable.com OR site:opentable.ae", "match_host": "opentable.", "signup_url": "https://restaurant.opentable.com/", "why": "Global reservation system — captures international visitors planning ahead."},
+            {"platform": "Visit Dubai", "search_query": "site:visitdubai.com", "match_host": "visitdubai.com", "signup_url": "https://www.visitdubai.com/en/partner", "why": "Official Dubai tourism board listing — high-credibility surface for tourist arrivals."},
+        ],
+        "beauty": [
+            {"platform": "Fresha", "search_query": "site:fresha.com", "match_host": "fresha.com", "signup_url": "https://partners.fresha.com/", "why": "Dominant beauty/wellness booking platform in MENA — free for the salon, fee per booking."},
+            {"platform": "Booksy", "search_query": "site:booksy.com", "match_host": "booksy.com", "signup_url": "https://booksy.com/biz/", "why": "Strong in MENA beauty — calendar + online booking + automated reminders."},
+            {"platform": "Treatwell", "search_query": "site:treatwell.ae OR site:treatwell.com", "match_host": "treatwell.", "signup_url": "https://connect.treatwell.com/", "why": "Salon/spa-specific marketplace with strong UAE presence."},
+            {"platform": "Google Maps / Business Profile", "search_query": "site:google.com/maps", "match_host": "google.com/maps", "signup_url": "https://business.google.com/", "why": "Local search anchor — 'salons near me' + walk-in discovery."},
+        ],
+        "default": [
+            {"platform": "Google Maps / Business Profile", "search_query": "site:google.com/maps", "match_host": "google.com/maps", "signup_url": "https://business.google.com/", "why": "Local search anchor — appears in Maps + 'near me' queries."},
+        ],
+    },
+    "SA": {
+        "restaurant": [
+            {"platform": "HungerStation", "search_query": "site:hungerstation.com", "match_host": "hungerstation.com", "signup_url": "https://partners.hungerstation.com/", "why": "Largest food delivery in KSA — Delivery Hero-owned, ubiquitous in Riyadh + Jeddah."},
+            {"platform": "Jahez", "search_query": "site:jahez.net OR site:jahez.com", "match_host": "jahez.", "signup_url": "https://partners.jahez.net/", "why": "Saudi-grown delivery leader — strong in tier-2 cities like Khobar, Dammam."},
+            {"platform": "Mrsool", "search_query": "site:mrsool.co", "match_host": "mrsool.co", "signup_url": "https://merchants.mrsool.co/", "why": "On-demand delivery courier app — covers items beyond food + works in smaller cities."},
+            {"platform": "ToYou", "search_query": "site:toyou.app OR site:toyou.com", "match_host": "toyou.", "signup_url": "https://www.toyou.app/business", "why": "Saudi e-commerce + food delivery hybrid — growing share in younger demos."},
+            {"platform": "Talabat KSA", "search_query": "site:talabat.com", "match_host": "talabat.com", "signup_url": "https://www.talabat.com/saudi-arabia/business", "why": "Cross-GCC delivery brand — capture customers ordering across UAE/KSA travels."},
+            {"platform": "Google Maps / Business Profile", "search_query": "site:google.com/maps", "match_host": "google.com/maps", "signup_url": "https://business.google.com/", "why": "Local search anchor — Google Maps + 'near me' queries."},
+            {"platform": "TripAdvisor", "search_query": "site:tripadvisor.com", "match_host": "tripadvisor.com", "signup_url": "https://www.tripadvisor.com/Owners", "why": "Tourism-focused reviews — increasingly important post-Vision-2030 tourist influx."},
+        ],
+        "beauty": [
+            {"platform": "Fresha", "search_query": "site:fresha.com", "match_host": "fresha.com", "signup_url": "https://partners.fresha.com/", "why": "Dominant beauty/wellness booking platform — free for salons, fee per booking."},
+            {"platform": "Glamera", "search_query": "site:glamera.com", "match_host": "glamera.com", "signup_url": "https://glamera.com/business", "why": "MENA beauty marketplace — strong gold-tier salon demographic in KSA."},
+            {"platform": "Booksy", "search_query": "site:booksy.com", "match_host": "booksy.com", "signup_url": "https://booksy.com/biz/", "why": "Online booking + calendar + reminders for beauty + barber."},
+            {"platform": "Google Maps / Business Profile", "search_query": "site:google.com/maps", "match_host": "google.com/maps", "signup_url": "https://business.google.com/", "why": "Local 'salons near me' anchor."},
+        ],
+        "default": [
+            {"platform": "Google Maps / Business Profile", "search_query": "site:google.com/maps", "match_host": "google.com/maps", "signup_url": "https://business.google.com/", "why": "Local search anchor."},
+        ],
+    },
+}
+
+
+class _VerifyListingsRequest(BaseModel):
+    business_name: str
+    country: str  # "AE" or "SA"
+    category: Optional[str] = None  # "restaurant" / "beauty" / "default"
+    # Optional business context — usually the crawl corpus. When present
+    # the endpoint runs one LLM enrichment pass to give every confirmed
+    # and missing entry an AI take + owner recommendation + automation
+    # hook. Without it, only verification facts are returned.
+    business_context: Optional[str] = None
+
+
+async def _firecrawl_search(query: str, limit: int = 3) -> list[dict]:
+    """Search the web via Firecrawl. Returns results with url+title+description.
+    Empty list on any failure — caller treats absence as 'not listed'.
+    """
+    if not _FIRECRAWL_API_KEY:
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.post(
+                "https://api.firecrawl.dev/v1/search",
+                headers={
+                    "Authorization": f"Bearer {_FIRECRAWL_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={"query": query, "limit": limit},
+            )
+            if r.status_code != 200:
+                return []
+            return r.json().get("data") or []
+    except Exception:
+        return []
+
+
+async def _check_listing(business_name: str, entry: dict) -> tuple[dict, Optional[str]]:
+    """Check if business_name appears on the given platform.
+
+    Uses entry['search_query'] verbatim for the Firecrawl query (lets us
+    OR multiple site: filters) and entry['match_host'] as a substring
+    check on result URLs (looser than full domain — accepts /dubai/ when
+    /uae/ was in the catalog).
+
+    Google Maps is special: search engines don't index google.com/maps
+    well with site: filters. For that platform we run a bare-name query
+    and look for ANY maps.google.* or google.*/maps URL in the top
+    results — that's evidence of a Maps place page (= GBP exists).
+    """
+    match_host = (entry.get("match_host") or "").lower()
+    if not match_host or not business_name:
+        return entry, None
+
+    # Special-case Google Maps / Business Profile — site: filters fail.
+    if "google.com/maps" in match_host or "maps.google" in match_host:
+        # Bare query is more reliable for Maps. Try with a location hint
+        # too, but the bare name typically surfaces a Maps place panel
+        # in the first 4-5 results when one exists.
+        for q in [business_name, f"{business_name} Dubai", f"{business_name} restaurant"]:
+            results = await _firecrawl_search(q, limit=6)
+            for r in results:
+                url = (r.get("url") or "").lower()
+                if "google.com/maps" in url or "maps.google" in url or "g.page" in url:
+                    return entry, r.get("url")
+        return entry, None
+
+    search_q = entry.get("search_query") or f"site:{match_host}"
+    query = f'"{business_name}" {search_q}'
+    results = await _firecrawl_search(query, limit=4)
+    for r in results:
+        url = (r.get("url") or "").lower()
+        if match_host in url:
+            return entry, r.get("url")
+    return entry, None
+
+
+@app.post("/web/verify-listings")
+async def web_verify_listings(req: _VerifyListingsRequest):
+    """For a given business + market + category, query each canonical
+    directory and return evidence of listing or absence. Caller uses the
+    'absent' list as the directory_gaps section (no LLM hallucination).
+    """
+    country = req.country if req.country in ("AE", "SA") else "AE"
+    category = (req.category or "default").lower()
+    catalog = _DIRECTORY_CATALOG.get(country, {})
+    candidates = catalog.get(category) or catalog.get("default") or []
+    if category != "default" and catalog.get("default"):
+        # Always include "default" platforms (e.g. Google Business Profile
+        # is universal across categories).
+        seen_domains = {c["match_host"] for c in candidates}
+        for d in catalog["default"]:
+            if d["match_host"] not in seen_domains:
+                candidates.append(d)
+                seen_domains.add(d["match_host"])
+
+    if not candidates or not _FIRECRAWL_API_KEY:
+        return {
+            "confirmed": [],
+            "missing": candidates,
+            "checked": 0,
+            "skipped_reason": "no_firecrawl_key" if not _FIRECRAWL_API_KEY else "no_candidates",
+        }
+
+    # Parallel listing checks (caps Firecrawl spend at len(candidates) searches).
+    results = await asyncio.gather(*[
+        _check_listing(req.business_name, c) for c in candidates
+    ])
+
+    confirmed = []
+    missing = []
+    for entry, evidence_url in results:
+        if evidence_url:
+            confirmed.append({**entry, "evidence_url": evidence_url})
+        else:
+            missing.append(entry)
+
+    # If the caller passed business context, enrich every entry with an
+    # AI take from the owner's perspective: what this fact MEANS, what to
+    # do about it THIS WEEK, and what the AI agent will automate once
+    # they've signed up. One LLM call enriches all entries together so
+    # the model sees the full picture and prioritizes consistently.
+    if req.business_context and (confirmed or missing):
+        enriched = await _enrich_listings(
+            business_name=req.business_name,
+            country=country,
+            category=category,
+            business_context=req.business_context,
+            confirmed=confirmed,
+            missing=missing,
+        )
+        if enriched:
+            return {
+                "confirmed": enriched.get("confirmed") or confirmed,
+                "missing": enriched.get("missing") or missing,
+                "checked": len(candidates),
+                "enriched": True,
+            }
+
+    return {
+        "confirmed": confirmed,
+        "missing": missing,
+        "checked": len(candidates),
+        "enriched": False,
+    }
+
+
+async def _enrich_listings(*, business_name: str, country: str, category: str,
+                            business_context: str, confirmed: list[dict],
+                            missing: list[dict]) -> Optional[dict]:
+    """LLM enrichment pass — adds ai_take + recommendation + automation
+    to every confirmed and missing platform entry.
+
+    Returns the enriched lists or None on failure (caller falls back to
+    bare verification data).
+    """
+    if not confirmed and not missing:
+        return None
+    context = business_context[:8000]  # cap to keep prompt budget sane
+    confirmed_names = ", ".join(c["platform"] for c in confirmed) or "(none)"
+    missing_names = ", ".join(m["platform"] for m in missing) or "(none)"
+    prompt = f"""You are the owner of a {country} SMB, sitting at your laptop deciding what to fix this week. Be sharp, specific, opinionated. No generic marketing advice.
+
+BUSINESS: {business_name}
+COUNTRY: {"UAE" if country == "AE" else "Saudi Arabia"}
+CATEGORY: {category}
+
+WHAT WE KNOW FROM YOUR WEBSITE (verbatim crawl):
+{context}
+
+DIRECTORY VERIFICATION (we already checked):
+- You ARE listed on: {confirmed_names}
+- You are NOT listed on: {missing_names}
+
+TASK: For EVERY platform above (confirmed AND missing), return three things from the owner's perspective:
+
+1. "ai_take" (1-2 sentences max 200 chars) — what this fact MEANS strategically for your business. For confirmed: name the likely STALENESS or optimization gap (e.g. "your last menu update on Zomato is probably ancient — most restaurants forget"). For missing: name the SPECIFIC revenue or discovery you're leaving on the table.
+
+2. "recommendation" (1 sentence max 200 chars) — what YOU as the owner should do THIS WEEK. Concrete, ship-able. Skip "consider" / "explore" — say "do X" or "fix X".
+
+3. "automation" (1 sentence max 200 chars) — what your AI agent will TAKE OFF YOUR PLATE once it has API access to that platform. Specific. (e.g. "auto-sync your menu nightly", "auto-respond to every TripAdvisor review within 30 min in your voice", "DM you when a 1-star review appears so you can call them within an hour").
+
+Output STRICT JSON only:
+{{
+  "confirmed": [
+    {{"platform": "...", "ai_take": "...", "recommendation": "...", "automation": "..."}},
+    ...
+  ],
+  "missing": [
+    {{"platform": "...", "ai_take": "...", "recommendation": "...", "automation": "..."}},
+    ...
+  ]
+}}
+
+Include EVERY platform from both lists. Match platform names EXACTLY as given above."""
+
+    try:
+        text = await _inference_module.chat(
+            "rami_research",
+            [{"role": "user", "content": prompt}],
+            max_tokens=4000,
+            json_mode=True,
+        )
+    except Exception as e:
+        print(f"[enrich-listings] LLM failed: {type(e).__name__}: {str(e)[:150]}")
+        return None
+
+    import re as _re
+    m = _re.search(r"\{[\s\S]*\}", text or "")
+    if not m:
+        return None
+    try:
+        enriched_data = json.loads(m.group(0))
+    except Exception:
+        return None
+
+    def _merge(verified_list: list[dict], enriched_list: list) -> list[dict]:
+        """Merge AI fields onto verified entries by platform-name match."""
+        if not isinstance(enriched_list, list):
+            return verified_list
+        by_platform = {}
+        for e in enriched_list:
+            if isinstance(e, dict) and isinstance(e.get("platform"), str):
+                by_platform[e["platform"].strip().lower()] = e
+        out = []
+        for v in verified_list:
+            key = (v.get("platform") or "").strip().lower()
+            e = by_platform.get(key, {})
+            out.append({
+                **v,
+                "ai_take": str(e.get("ai_take", "")).strip()[:260],
+                "recommendation": str(e.get("recommendation", "")).strip()[:260],
+                "automation": str(e.get("automation", "")).strip()[:260],
+            })
+        return out
+
+    return {
+        "confirmed": _merge(confirmed, enriched_data.get("confirmed", [])),
+        "missing": _merge(missing, enriched_data.get("missing", [])),
+    }
+
+
 @app.get("/clients/active")
 async def clients_active():
     """

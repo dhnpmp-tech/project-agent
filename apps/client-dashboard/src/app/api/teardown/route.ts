@@ -68,6 +68,23 @@ interface DirectoryGap {
   signup_url: string;      // direct signup/claim URL
 }
 
+interface DirectoryEntry {
+  platform: string;
+  why: string;             // why this platform matters
+  signup_url: string;      // claim/signup URL
+  evidence_url?: string;   // present on confirmed entries
+  ai_take: string;         // what this fact MEANS for the owner
+  recommendation: string;  // what to do THIS WEEK
+  automation: string;      // what the AI agent will automate
+}
+
+interface DirectoryStrategy {
+  confirmed: DirectoryEntry[];
+  missing: DirectoryEntry[];
+  checked: number;
+  enriched: boolean;
+}
+
 interface QuickWin {
   category: "marketing" | "seo" | "ads" | "ops" | "social";
   action: string;           // imperative: "Add a WhatsApp Click-to-Chat link to your hero"
@@ -92,9 +109,16 @@ interface TeardownPackage {
   sample_reply: string;
   social_posts: string[];
   faq_gaps: FaqGap[];
-  // 4 new richer sections (grounded in actual crawl content)
+  // Richer sections — grounded in actual crawl content
   seo_findings: SeoFinding[];
-  directory_gaps: DirectoryGap[];
+  // OLD: LLM-only list (kept on the type for backward compat — older
+  // permalinks may still have this). Newer generations use directory_strategy.
+  directory_gaps?: DirectoryGap[];
+  // NEW: Firecrawl-verified + LLM-enriched. Confirmed = "you're on these,
+  // here's what to fix"; Missing = "you're not on these, here's the play".
+  // Each entry carries: data (evidence_url/signup_url) + ai_take +
+  // recommendation (do this week) + automation (what the agent does for you).
+  directory_strategy?: DirectoryStrategy;
   quick_wins: QuickWin[];
   brand_mirror: BrandVoiceMirror | null;
 }
@@ -239,6 +263,70 @@ function inferCountry(url: string, hint: TeardownBody["country"]): "AE" | "SA" {
   return "AE";
 }
 
+// Best-effort category inference from crawl content. Keyword-bag check
+// over the business description + services. We route to "default" when
+// nothing matches — verify-listings still returns Google Business Profile
+// for the default category.
+function inferCategory(crawl: CrawlResult): "restaurant" | "beauty" | "default" {
+  const blob = [
+    crawl.businessDescription || "",
+    (crawl.services || []).join(" "),
+    (crawl.industryKeywords || []).join(" "),
+    crawl.brandVoice || "",
+  ].join(" ").toLowerCase();
+  const restaurantHits = [
+    "restaurant", "menu", "dining", "cuisine", "chef", "kitchen",
+    "cafe", "coffee", "bistro", "eatery", "dishes", "food", "tea house",
+    "bakery", "patisserie", "halal", "delivery", "reservation",
+  ].filter((kw) => blob.includes(kw)).length;
+  const beautyHits = [
+    "salon", "spa", "beauty", "hair", "nail", "facial", "massage",
+    "barber", "wellness", "esthetic", "aesthetic", "makeup", "lashes",
+    "skincare", "treatment", "manicure", "pedicure",
+  ].filter((kw) => blob.includes(kw)).length;
+  if (restaurantHits >= 2 && restaurantHits >= beautyHits) return "restaurant";
+  if (beautyHits >= 2) return "beauty";
+  return "default";
+}
+
+async function fetchDirectoryStrategy(
+  businessName: string,
+  country: "AE" | "SA",
+  category: "restaurant" | "beauty" | "default",
+  businessContext: string,
+): Promise<DirectoryStrategy | null> {
+  try {
+    const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/verify-listings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        business_name: businessName,
+        country,
+        category,
+        business_context: businessContext.slice(0, 8000),
+      }),
+    });
+    if (!res.ok) {
+      console.error(`[teardown] verify-listings HTTP ${res.status}`);
+      return null;
+    }
+    const data = await res.json();
+    if (data?.error) {
+      console.error("[teardown] verify-listings error:", data.error);
+      return null;
+    }
+    return {
+      confirmed: Array.isArray(data.confirmed) ? data.confirmed : [],
+      missing: Array.isArray(data.missing) ? data.missing : [],
+      checked: typeof data.checked === "number" ? data.checked : 0,
+      enriched: Boolean(data.enriched),
+    };
+  } catch (e) {
+    console.error("[teardown] verify-listings failed:", e);
+    return null;
+  }
+}
+
 // ---- Context builder ------------------------------------------------------
 
 function buildContext(crawl: CrawlResult, businessName: string, country: "AE" | "SA"): string {
@@ -381,6 +469,7 @@ export async function POST(req: NextRequest) {
   }
   const context = buildContext(crawl, businessName, country);
   const corpus = buildFullCorpus(crawl);
+  const category = inferCategory(crawl);
 
   // The grounding block — every task gets the real page text + structured
   // metadata, with explicit instructions to cite evidence and not invent.
@@ -398,14 +487,14 @@ GROUNDING RULES — apply to ALL output below:
 - Never invent prices, hours, certifications, awards, or testimonials.
 - This is for a ${country === "AE" ? "UAE" : "Saudi Arabia"} market.`;
 
-  // 8 parallel inference tasks — 4 original + 4 new richer sections
+  // 8 parallel tasks: 7 LLM inference + 1 verified-and-enriched directory lookup
   const [
     insight,
     postsRaw,
     replyRaw,
     faqGapsRaw,
     seoFindingsRaw,
-    directoryGapsRaw,
+    directoryStrategy,
     quickWinsRaw,
     brandMirrorRaw,
   ] = await Promise.all([
@@ -492,27 +581,13 @@ Output STRICT JSON only:
       { maxTokens: 2000 },
     ),
 
-    // --- NEW: Directory & listing gaps ---
-    inferenceJsonChat(
-      "rami_research",
-      `${groundingBlock}
-
-TASK: Identify directory + platform listings this business is likely NOT on but should be, for the ${country === "AE" ? "UAE" : "Saudi"} market. Use your knowledge of the local landscape:
-
-${country === "AE"
-  ? "UAE relevant directories per category — Restaurants: Zomato UAE, TheFork UAE, TripAdvisor, Talabat, Deliveroo, Carriage, Google Business Profile, Time Out Dubai. Beauty: Fresha, Booksy, Gulf News service. Real estate: Bayut, Dubizzle, Property Finder. Health/clinic: Aetna, Daman provider lists, Vezeeta, Wellness."
-  : "Saudi relevant directories per category — Restaurants: Hungerstation, Jahez, Mrsool, ToYou, Talabat, Google Business Profile, FoodAndBeverage. Beauty: Fresha, Treatwell, Glamera. Real estate: Aqar, Bayut SA, Wakane. Health/clinic: Vezeeta, Cura, Altibbi, Nala."}
-
-Surface only platforms NOT clearly referenced in the site content above. Skip platforms they obviously already use.
-
-Output 4-6 entries STRICT JSON only:
-[{"platform":"...","why_it_matters":"...","signup_url":"..."}, ...]
-
-- "platform" max 50 chars — proper brand name
-- "why_it_matters" — 1 sentence on the specific revenue/discovery lift for THIS business type (max 200 chars)
-- "signup_url" — the real claim/signup URL for that platform`,
-      { maxTokens: 1800 },
-    ),
+    // --- NEW: directory verification — Firecrawl-grounded + AI-enriched.
+    // Replaces the prior LLM-only hallucinated list. The endpoint actually
+    // searches each candidate platform, splits into confirmed/missing,
+    // then runs ONE LLM enrichment pass to add AI take + recommendation +
+    // automation per entry. No more "you're missing Zomato" when they're
+    // listed on 4 outlets.
+    fetchDirectoryStrategy(businessName, country, category, corpus),
 
     // --- NEW: Quick-wins playbook ---
     inferenceJsonChat(
@@ -625,33 +700,8 @@ Output STRICT JSON only:
     }
   }
 
-  // 6. Parse directory gaps JSON
-  let directory_gaps: DirectoryGap[] = [];
-  const dirSliced = jsonSliceOrNull(directoryGapsRaw);
-  if (dirSliced) {
-    try {
-      const parsed = JSON.parse(dirSliced);
-      if (Array.isArray(parsed)) {
-        directory_gaps = parsed
-          .filter(
-            (d): d is DirectoryGap =>
-              d &&
-              typeof d.platform === "string" &&
-              typeof d.why_it_matters === "string" &&
-              typeof d.signup_url === "string" &&
-              d.platform.trim().length > 0,
-          )
-          .slice(0, 8)
-          .map((d) => ({
-            platform: d.platform.trim().slice(0, 80),
-            why_it_matters: d.why_it_matters.trim().slice(0, 260),
-            signup_url: d.signup_url.trim().slice(0, 240),
-          }));
-      }
-    } catch {
-      // empty
-    }
-  }
+  // 6. Directory strategy: already returned from the parallel fetch.
+  //    Pass through as-is (verified by Firecrawl, enriched by LLM).
 
   // 7. Parse quick-wins JSON
   let quick_wins: QuickWin[] = [];
@@ -718,7 +768,7 @@ Output STRICT JSON only:
     social_posts,
     faq_gaps,
     seo_findings,
-    directory_gaps,
+    directory_strategy: directoryStrategy ?? undefined,
     quick_wins,
     brand_mirror,
   };

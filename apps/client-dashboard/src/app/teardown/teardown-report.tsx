@@ -25,6 +25,23 @@ export interface DirectoryGap {
   signup_url: string;
 }
 
+export interface DirectoryEntry {
+  platform: string;
+  why: string;
+  signup_url: string;
+  evidence_url?: string;
+  ai_take: string;
+  recommendation: string;
+  automation: string;
+}
+
+export interface DirectoryStrategy {
+  confirmed: DirectoryEntry[];
+  missing: DirectoryEntry[];
+  checked: number;
+  enriched: boolean;
+}
+
 export interface QuickWin {
   category: "marketing" | "seo" | "ads" | "ops" | "social";
   action: string;
@@ -51,7 +68,10 @@ export interface TeardownPackage {
   // Optional richer sections — backward-compat: older permalinks
   // generated before this rollout won't have these. Cards hide.
   seo_findings?: SeoFinding[];
+  // OLD shape (LLM-only) — kept for older permalinks.
   directory_gaps?: DirectoryGap[];
+  // NEW shape (Firecrawl-verified + LLM-enriched).
+  directory_strategy?: DirectoryStrategy;
   quick_wins?: QuickWin[];
   brand_mirror?: BrandVoiceMirror | null;
 }
@@ -237,72 +257,12 @@ export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
         </div>
       )}
 
-      {pkg.directory_gaps && pkg.directory_gaps.length > 0 && (
-        <div style={{ marginTop: 32 }}>
-          <span
-            style={{
-              fontFamily: "var(--mono, ui-monospace)",
-              fontSize: 10,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              color: "var(--paper-mut, #837c69)",
-            }}
-          >
-            § F · the directories
-          </span>
-          <h3
-            style={{
-              fontFamily: "Instrument Serif, serif",
-              fontSize: 22,
-              fontWeight: 400,
-              margin: "6px 0 12px",
-              lineHeight: 1.15,
-            }}
-          >
-            Platforms you&apos;re missing where your customers actually look
-          </h3>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: 12,
-            }}
-          >
-            {pkg.directory_gaps.map((d, i) => (
-              <div
-                key={i}
-                style={{
-                  background: "var(--paper, #f6f3eb)",
-                  border: "1px solid var(--paper-line, #d8d2bf)",
-                  borderRadius: 4,
-                  padding: 14,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                }}
-              >
-                <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>{d.platform}</p>
-                <p style={{ fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>{d.why_it_matters}</p>
-                {d.signup_url && (
-                  <a
-                    href={d.signup_url}
-                    target="_blank"
-                    rel="noopener noreferrer nofollow"
-                    style={{
-                      fontFamily: "var(--mono, ui-monospace)",
-                      fontSize: 11,
-                      color: "#2d8e7d",
-                      textDecoration: "underline",
-                      wordBreak: "break-all",
-                    }}
-                  >
-                    {d.signup_url.replace(/^https?:\/\//, "")}
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+      {pkg.directory_strategy && (
+        <DirectoryStrategySection strategy={pkg.directory_strategy} />
+      )}
+      {!pkg.directory_strategy && pkg.directory_gaps && pkg.directory_gaps.length > 0 && (
+        // Legacy renderer for older permalinks (no verification, no AI take)
+        <LegacyDirectoryGaps gaps={pkg.directory_gaps} />
       )}
 
       {pkg.quick_wins && pkg.quick_wins.length > 0 && (
@@ -504,6 +464,298 @@ export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
         </p>
       </div>
     </section>
+  );
+}
+
+function DirectoryStrategySection({ strategy }: { strategy: DirectoryStrategy }) {
+  return (
+    <div style={{ marginTop: 32 }}>
+      <span
+        style={{
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        § F · the directories — verified
+      </span>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, serif",
+          fontSize: 22,
+          fontWeight: 400,
+          margin: "6px 0 4px",
+          lineHeight: 1.15,
+        }}
+      >
+        Where you actually live online — and where you don&apos;t
+      </h3>
+      <p
+        style={{
+          fontSize: 12,
+          color: "var(--paper-mut, #837c69)",
+          fontStyle: "italic",
+          margin: "0 0 16px",
+        }}
+      >
+        We searched {strategy.checked} platforms for your listings.
+        {strategy.enriched
+          ? " Each entry below has an AI take from the owner's perspective + what we'd automate for you."
+          : " Verified by direct search — no LLM guessing."}
+      </p>
+
+      {strategy.confirmed.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#1e6d3d",
+            }}
+          >
+            ✓ confirmed listings — {strategy.confirmed.length}
+          </span>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: 12,
+              marginTop: 8,
+            }}
+          >
+            {strategy.confirmed.map((d, i) => (
+              <DirectoryCard key={i} entry={d} status="confirmed" />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {strategy.missing.length > 0 && (
+        <div>
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#a83a2b",
+            }}
+          >
+            ✗ missing — {strategy.missing.length}
+          </span>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: 12,
+              marginTop: 8,
+            }}
+          >
+            {strategy.missing.map((d, i) => (
+              <DirectoryCard key={i} entry={d} status="missing" />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DirectoryCard({ entry, status }: { entry: DirectoryEntry; status: "confirmed" | "missing" }) {
+  const isConfirmed = status === "confirmed";
+  return (
+    <div
+      style={{
+        background: isConfirmed ? "#f4f9ef" : "#fdf3e3",
+        border: `1px solid ${isConfirmed ? "#bdd7af" : "#e6c98b"}`,
+        borderRadius: 6,
+        padding: 14,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+        <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{entry.platform}</p>
+        {entry.evidence_url && (
+          <a
+            href={entry.evidence_url}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              color: "#2d8e7d",
+              textDecoration: "underline",
+            }}
+          >
+            view listing →
+          </a>
+        )}
+      </div>
+
+      {entry.ai_take && (
+        <div>
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 9,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--paper-mut, #837c69)",
+            }}
+          >
+            ai take
+          </span>
+          <p style={{ fontSize: 12.5, lineHeight: 1.5, margin: "2px 0 0" }}>{entry.ai_take}</p>
+        </div>
+      )}
+
+      {entry.recommendation && (
+        <div>
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 9,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--paper-mut, #837c69)",
+            }}
+          >
+            do this week
+          </span>
+          <p
+            style={{
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              margin: "2px 0 0",
+              paddingLeft: 8,
+              borderLeft: "2px solid #2d8e7d",
+            }}
+          >
+            {entry.recommendation}
+          </p>
+        </div>
+      )}
+
+      {entry.automation && (
+        <div>
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 9,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#1e6d3d",
+            }}
+          >
+            your agent will…
+          </span>
+          <p
+            style={{
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              margin: "2px 0 0",
+              fontStyle: "italic",
+              color: "#1e6d3d",
+            }}
+          >
+            {entry.automation}
+          </p>
+        </div>
+      )}
+
+      {!isConfirmed && entry.signup_url && (
+        <a
+          href={entry.signup_url}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          style={{
+            fontFamily: "var(--mono, ui-monospace)",
+            fontSize: 11,
+            color: "#a83a2b",
+            textDecoration: "underline",
+            wordBreak: "break-all",
+            marginTop: 2,
+          }}
+        >
+          claim →&nbsp;{entry.signup_url.replace(/^https?:\/\//, "")}
+        </a>
+      )}
+    </div>
+  );
+}
+
+function LegacyDirectoryGaps({ gaps }: { gaps: DirectoryGap[] }) {
+  return (
+    <div style={{ marginTop: 32 }}>
+      <span
+        style={{
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        § F · the directories (legacy view)
+      </span>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, serif",
+          fontSize: 22,
+          fontWeight: 400,
+          margin: "6px 0 12px",
+          lineHeight: 1.15,
+        }}
+      >
+        Platforms you&apos;re missing
+      </h3>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 12,
+        }}
+      >
+        {gaps.map((d, i) => (
+          <div
+            key={i}
+            style={{
+              background: "var(--paper, #f6f3eb)",
+              border: "1px solid var(--paper-line, #d8d2bf)",
+              borderRadius: 4,
+              padding: 14,
+            }}
+          >
+            <p style={{ fontSize: 14, fontWeight: 600, margin: "0 0 6px" }}>{d.platform}</p>
+            <p style={{ fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>{d.why_it_matters}</p>
+            {d.signup_url && (
+              <a
+                href={d.signup_url}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                style={{
+                  fontFamily: "var(--mono, ui-monospace)",
+                  fontSize: 11,
+                  color: "#2d8e7d",
+                  textDecoration: "underline",
+                  wordBreak: "break-all",
+                  marginTop: 8,
+                  display: "block",
+                }}
+              >
+                {d.signup_url.replace(/^https?:\/\//, "")}
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
