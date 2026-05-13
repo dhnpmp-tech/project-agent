@@ -22,7 +22,11 @@ import { db } from "@/lib/db";
 import { getServerSession } from "@/lib/session";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// 10 parallel inference calls fan out to OpenRouter/MiniMax/DCP — slowest
+// is typically the demo transcript (~30-40s for a full 10-turn output).
+// Bumped to 300s so the whole package completes inside one request. Vercel
+// Hobby will cap at 60s and that's fine — production runs on Pro.
+export const maxDuration = 300;
 
 interface KnowledgeRow {
   business_description: string | null;

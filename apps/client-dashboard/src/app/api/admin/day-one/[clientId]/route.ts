@@ -19,7 +19,9 @@ import { headers, cookies } from "next/headers";
 import { requireAdmin } from "@/lib/admin-guard";
 
 export const runtime = "nodejs";
-export const maxDuration = 90;
+// Must be ≥ day-one's maxDuration since this route awaits day-one through
+// a self-fetch.
+export const maxDuration = 300;
 
 interface RouteParams {
   params: Promise<{ clientId: string }>;
