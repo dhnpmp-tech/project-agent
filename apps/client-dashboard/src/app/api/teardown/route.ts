@@ -132,6 +132,44 @@ interface AgentScore {
   percentile_blurb: string;  // "you beat 73% of similar businesses" — encouraging or honest
 }
 
+interface GbpData {
+  place_id: string;
+  name: string | null;
+  address: string | null;
+  phone: string | null;
+  website: string | null;
+  maps_url: string | null;
+  rating: number | null;
+  user_ratings_total: number | null;
+  price_level: number | null;
+  hours: string[];          // weekday_text from Places
+  photos_count: number;
+  business_status: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
+interface Competitor {
+  name: string;
+  place_id: string | null;
+  rating: number | null;
+  user_ratings_total: number | null;
+  price_level: number | null;
+  open_now: boolean | null;
+  address: string | null;
+  // AI-generated 1-line on how this competitor compares — added by LLM
+  // enrichment pass after the Places nearby search returns.
+  ai_take?: string;
+}
+
+interface CompetitorRadar {
+  competitors: Competitor[];
+  // Overall positioning take across the cohort
+  positioning_summary: string;
+  // What the agent will automate ongoing
+  automation: string;
+}
+
 interface QuickWin {
   category: "marketing" | "seo" | "ads" | "ops" | "social";
   action: string;           // imperative: "Add a WhatsApp Click-to-Chat link to your hero"
@@ -174,6 +212,13 @@ interface TeardownPackage {
   reviews?: ReviewMining | null;
   agent_score?: AgentScore | null;
   badges?: Badge[];
+  // Authoritative GBP data via Google Places API. Null when key isn't
+  // configured — directory_strategy still surfaces the same fact via
+  // Firecrawl fallback.
+  gbp?: GbpData | null;
+  // Nearby competitor radar via Places Nearby Search. Null when GBP
+  // lookup failed (we need lat/lng to query nearby).
+  competitor_radar?: CompetitorRadar | null;
 }
 
 interface TeardownBody {
@@ -340,6 +385,142 @@ function inferCategory(crawl: CrawlResult): "restaurant" | "beauty" | "default" 
   if (restaurantHits >= 2 && restaurantHits >= beautyHits) return "restaurant";
   if (beautyHits >= 2) return "beauty";
   return "default";
+}
+
+// Google Places lookup. Returns null when no key is set or the place
+// can't be matched — the teardown still renders, just without the
+// authoritative GBP section + competitor radar.
+async function fetchGbp(
+  businessName: string,
+  country: "AE" | "SA",
+  locationHint: string,
+): Promise<GbpData | null> {
+  try {
+    const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/places-lookup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        business_name: businessName,
+        location_hint: locationHint,
+        country,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.error) return null;
+    return data as GbpData;
+  } catch (e) {
+    console.error("[teardown] places-lookup failed:", e);
+    return null;
+  }
+}
+
+async function fetchCompetitors(
+  gbp: GbpData,
+  category: "restaurant" | "beauty" | "default",
+  corpus: string,
+  businessName: string,
+  country: "AE" | "SA",
+): Promise<CompetitorRadar | null> {
+  if (!gbp.lat || !gbp.lng) return null;
+
+  const placeType = category === "restaurant" ? "restaurant"
+    : category === "beauty" ? "beauty_salon"
+    : undefined;
+
+  try {
+    const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/places-nearby`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        place_id: gbp.place_id,
+        lat: gbp.lat,
+        lng: gbp.lng,
+        radius_meters: 800,
+        type: placeType,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.error || !Array.isArray(data?.results)) return null;
+    const raw: Competitor[] = data.results.slice(0, 6);
+    if (raw.length === 0) return null;
+
+    // One LLM enrichment pass — gives each competitor a 1-line "how
+    // they compare to you" + an overall positioning summary +
+    // automation hook.
+    const list = raw
+      .map((c, i) => `${i + 1}. ${c.name} — rating ${c.rating ?? "?"} (${c.user_ratings_total ?? 0} reviews)${c.price_level != null ? ` · price ${c.price_level}` : ""}${c.address ? ` · ${c.address}` : ""}`)
+      .join("\n");
+
+    const prompt = `You are advising ${businessName} (a ${country === "AE" ? "UAE" : "Saudi"} ${category}) on how they stack up against nearby competitors.
+
+YOUR BUSINESS (from website):
+${corpus.slice(0, 4000)}
+
+YOUR PUBLIC METRICS:
+- Rating: ${gbp.rating ?? "?"} / 5
+- Reviews: ${gbp.user_ratings_total ?? 0}
+- Price level: ${gbp.price_level ?? "?"}
+- Address: ${gbp.address ?? "?"}
+
+NEARBY COMPETITORS (within 800m):
+${list}
+
+TASK: For each competitor, write ONE sentence (max 180 chars) — what specifically they have / do that the owner should care about, contrasted with your business. Be concrete: name the angle (price, hours, cuisine focus, review volume edge, etc).
+
+Then write:
+- "positioning_summary" — 1 paragraph (max 320 chars). Where do you WIN against this cohort? Where do they WIN against you? Be honest.
+- "automation" — 1 sentence (max 180 chars). What your AI agent will monitor + automate ongoing for competitor intel.
+
+Output STRICT JSON only:
+{
+  "competitors": [
+    {"name": "...", "ai_take": "..."},
+    ...
+  ],
+  "positioning_summary": "...",
+  "automation": "..."
+}
+
+Match competitor names EXACTLY as given above. Include every competitor — don't drop any.`;
+
+    const raw_text = await inferenceJsonChat("rami_research", prompt, { maxTokens: 2200 });
+    const sliced = jsonSliceOrNull(raw_text);
+    if (!sliced) {
+      return {
+        competitors: raw,
+        positioning_summary: "(AI take pending — verify Places data is fresh)",
+        automation: "",
+      };
+    }
+    try {
+      const parsed = JSON.parse(sliced);
+      const byName = new Map<string, { ai_take: string }>();
+      for (const c of parsed.competitors || []) {
+        if (typeof c?.name === "string" && typeof c?.ai_take === "string") {
+          byName.set(c.name.trim().toLowerCase(), { ai_take: c.ai_take.trim().slice(0, 220) });
+        }
+      }
+      return {
+        competitors: raw.map((c) => ({
+          ...c,
+          ai_take: byName.get(c.name.trim().toLowerCase())?.ai_take,
+        })),
+        positioning_summary: String(parsed.positioning_summary || "").slice(0, 400),
+        automation: String(parsed.automation || "").slice(0, 220),
+      };
+    } catch {
+      return {
+        competitors: raw,
+        positioning_summary: "(AI take parse failed)",
+        automation: "",
+      };
+    }
+  } catch (e) {
+    console.error("[teardown] places-nearby failed:", e);
+    return null;
+  }
 }
 
 async function fetchReviews(
@@ -1034,14 +1215,24 @@ Output STRICT JSON only:
     }
   }
 
-  // Second-stage: mine real reviews from the verified platform listings.
-  // Runs sequentially after directoryStrategy is known (we need the
-  // confirmed evidence_urls). One LLM call, capped to 5 platforms,
-  // returns sentiment distribution + verbatim praise + top complaints
-  // with draft responses. Skipped if no review-bearing platforms are
-  // confirmed.
-  const reviews = directoryStrategy?.confirmed?.length
-    ? await fetchReviews(businessName, directoryStrategy.confirmed)
+  // Second-stage. Two operations that depend on first-stage results:
+  //   1. Review mining — needs the verified platform URLs
+  //   2. GBP lookup via Google Places — independent, but cheap; we run
+  //      it in parallel with reviews to amortize latency
+  // Both gracefully return null when their preconditions fail (no
+  // confirmed listings / no Places API key).
+  const locationHint = crawl.contactInfo?.address || "";
+  const [reviews, gbp] = await Promise.all([
+    directoryStrategy?.confirmed?.length
+      ? fetchReviews(businessName, directoryStrategy.confirmed)
+      : Promise.resolve(null),
+    fetchGbp(businessName, country, locationHint),
+  ]);
+
+  // Third-stage: competitor radar — needs the GBP lat/lng. Same
+  // graceful-skip pattern.
+  const competitor_radar = gbp
+    ? await fetchCompetitors(gbp, category, corpus, businessName, country)
     : null;
 
   // Compute the gamified score + grade + badges from everything we know.
@@ -1074,6 +1265,8 @@ Output STRICT JSON only:
     reviews,
     agent_score,
     badges,
+    gbp,
+    competitor_radar,
   };
 
   // Persist + slug. Retry slug collision up to 3 times (extremely

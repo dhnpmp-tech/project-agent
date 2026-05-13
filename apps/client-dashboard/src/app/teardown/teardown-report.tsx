@@ -101,6 +101,40 @@ export interface AgentScore {
   percentile_blurb: string;
 }
 
+export interface GbpData {
+  place_id: string;
+  name: string | null;
+  address: string | null;
+  phone: string | null;
+  website: string | null;
+  maps_url: string | null;
+  rating: number | null;
+  user_ratings_total: number | null;
+  price_level: number | null;
+  hours: string[];
+  photos_count: number;
+  business_status: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
+export interface Competitor {
+  name: string;
+  place_id: string | null;
+  rating: number | null;
+  user_ratings_total: number | null;
+  price_level: number | null;
+  open_now: boolean | null;
+  address: string | null;
+  ai_take?: string;
+}
+
+export interface CompetitorRadar {
+  competitors: Competitor[];
+  positioning_summary: string;
+  automation: string;
+}
+
 export interface TeardownPackage {
   business_name: string;
   url: string;
@@ -125,6 +159,8 @@ export interface TeardownPackage {
   reviews?: ReviewMining | null;
   agent_score?: AgentScore | null;
   badges?: Badge[];
+  gbp?: GbpData | null;
+  competitor_radar?: CompetitorRadar | null;
 }
 
 const GRADE_PALETTE: Record<AgentScore["grade"], { fg: string; bg: string; ring: string }> = {
@@ -155,6 +191,10 @@ export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
     <>
       {(pkg.agent_score || pkg.screenshot_url) && <VisualHero pkg={pkg} />}
       {pkg.badges && pkg.badges.length > 0 && <BadgeRow badges={pkg.badges} />}
+      {pkg.gbp && <GbpPanel gbp={pkg.gbp} />}
+      {pkg.competitor_radar && pkg.competitor_radar.competitors.length > 0 && (
+        <CompetitorSection radar={pkg.competitor_radar} ownRating={pkg.gbp?.rating ?? null} />
+      )}
       {pkg.reviews && pkg.reviews.sentiment?.total > 0 && (
         <ReviewsSection reviews={pkg.reviews} />
       )}
@@ -596,7 +636,7 @@ function VisualHero({ pkg }: { pkg: TeardownPackage }) {
           >
             {score.percentile_blurb}
           </p>
-          <ScoreBreakdownBars breakdown={score.breakdown} />
+          <ScoreRadar breakdown={score.breakdown} />
         </div>
       )}
     </section>
@@ -693,6 +733,125 @@ function ScoreGauge({ score }: { score: AgentScore }) {
   );
 }
 
+function ScoreRadar({ breakdown }: { breakdown: ScoreBreakdown }) {
+  // SVG pentagon radar — 5 axes, score 0-100 mapped to radius
+  const cx = 110;
+  const cy = 110;
+  const maxR = 80;
+  const axes: { key: keyof ScoreBreakdown; label: string }[] = [
+    { key: "discovery", label: "Discovery" },
+    { key: "reviews", label: "Reviews" },
+    { key: "presence", label: "Presence" },
+    { key: "conversion", label: "Conversion" },
+    { key: "content", label: "Content" },
+  ];
+
+  // Compute axis positions (top = -90°, then clockwise)
+  const points = axes.map((a, i) => {
+    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / axes.length;
+    const v = (breakdown[a.key] ?? 0) / 100;
+    return {
+      label: a.label,
+      value: breakdown[a.key] ?? 0,
+      x: cx + Math.cos(angle) * maxR * v,
+      y: cy + Math.sin(angle) * maxR * v,
+      lx: cx + Math.cos(angle) * (maxR + 16),
+      ly: cy + Math.sin(angle) * (maxR + 16),
+      anchor: (Math.abs(Math.cos(angle)) < 0.2 ? "middle" : Math.cos(angle) > 0 ? "start" : "end") as "middle" | "start" | "end",
+    };
+  });
+
+  // Grid rings at 25/50/75/100
+  const rings = [0.25, 0.5, 0.75, 1.0].map((scale) =>
+    axes
+      .map((_, i) => {
+        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / axes.length;
+        return `${cx + Math.cos(angle) * maxR * scale},${cy + Math.sin(angle) * maxR * scale}`;
+      })
+      .join(" "),
+  );
+
+  const polygon = points.map((p) => `${p.x},${p.y}`).join(" ");
+
+  return (
+    <svg width="220" height="220" viewBox="0 0 220 220" style={{ display: "block", margin: "0 auto" }}>
+      {/* Grid rings */}
+      {rings.map((pts, i) => (
+        <polygon
+          key={i}
+          points={pts}
+          fill="none"
+          stroke="var(--paper-line, #d8d2bf)"
+          strokeWidth={1}
+          strokeDasharray={i === 3 ? "0" : "2 3"}
+        />
+      ))}
+      {/* Axis lines */}
+      {axes.map((_, i) => {
+        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / axes.length;
+        const x = cx + Math.cos(angle) * maxR;
+        const y = cy + Math.sin(angle) * maxR;
+        return (
+          <line
+            key={i}
+            x1={cx}
+            y1={cy}
+            x2={x}
+            y2={y}
+            stroke="var(--paper-line, #d8d2bf)"
+            strokeWidth={1}
+          />
+        );
+      })}
+      {/* Score polygon */}
+      <polygon
+        points={polygon}
+        fill="rgba(45, 142, 125, 0.18)"
+        stroke="#2d8e7d"
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+      {/* Vertex dots */}
+      {points.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r={3.5} fill="#2d8e7d" />
+      ))}
+      {/* Labels */}
+      {points.map((p, i) => (
+        <g key={i}>
+          <text
+            x={p.lx}
+            y={p.ly}
+            textAnchor={p.anchor}
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              fill: "var(--paper-mut, #514c40)",
+            }}
+            dominantBaseline="middle"
+          >
+            {p.label}
+          </text>
+          <text
+            x={p.lx}
+            y={p.ly + 12}
+            textAnchor={p.anchor}
+            style={{
+              fontFamily: "Instrument Serif, Georgia, serif",
+              fontSize: 14,
+              fill: "var(--paper-ink, #1d1c18)",
+            }}
+            dominantBaseline="middle"
+          >
+            {p.value}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 function ScoreBreakdownBars({ breakdown }: { breakdown: ScoreBreakdown }) {
   const axes: { key: keyof ScoreBreakdown; label: string }[] = [
     { key: "discovery", label: "Discovery" },
@@ -742,6 +901,342 @@ function ScoreBreakdownBars({ breakdown }: { breakdown: ScoreBreakdown }) {
         );
       })}
     </div>
+  );
+}
+
+function GbpPanel({ gbp }: { gbp: GbpData }) {
+  const open = (gbp.business_status || "").toUpperCase() === "OPERATIONAL";
+  return (
+    <section
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 8,
+        padding: 20,
+        marginBottom: 20,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+        <span
+          style={{
+            fontFamily: "var(--mono, ui-monospace)",
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "var(--paper-mut, #837c69)",
+          }}
+        >
+          § google business profile — live data
+        </span>
+        {open && (
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              padding: "2px 8px",
+              background: "#dfeede",
+              color: "#1e6d3d",
+              borderRadius: 4,
+            }}
+          >
+            operational
+          </span>
+        )}
+      </div>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, Georgia, serif",
+          fontSize: 24,
+          fontWeight: 400,
+          margin: "6px 0 14px",
+          lineHeight: 1.15,
+        }}
+      >
+        {gbp.name || "Your Google listing"}
+      </h3>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+          gap: 12,
+        }}
+      >
+        <StatTile label="Rating" value={gbp.rating != null ? `${gbp.rating.toFixed(1)} ★` : "—"} />
+        <StatTile label="Reviews" value={gbp.user_ratings_total != null ? gbp.user_ratings_total.toLocaleString() : "—"} />
+        <StatTile label="Photos" value={gbp.photos_count != null ? String(gbp.photos_count) : "—"} />
+        <StatTile label="Price level" value={gbp.price_level != null ? "$".repeat(Math.max(1, gbp.price_level)) : "—"} />
+      </div>
+
+      {gbp.hours && gbp.hours.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "var(--paper-mut, #837c69)",
+            }}
+          >
+            published hours
+          </span>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+              gap: 4,
+              marginTop: 6,
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 11.5,
+              color: "var(--paper-ink, #1d1c18)",
+            }}
+          >
+            {gbp.hours.map((h, i) => (
+              <span key={i}>{h}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 14, display: "flex", gap: 12, flexWrap: "wrap" }}>
+        {gbp.maps_url && (
+          <a
+            href={gbp.maps_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 11,
+              color: "#2d8e7d",
+              textDecoration: "underline",
+            }}
+          >
+            view on Maps →
+          </a>
+        )}
+        {gbp.address && (
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 11,
+              color: "var(--paper-mut, #837c69)",
+            }}
+          >
+            {gbp.address}
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        padding: 10,
+        background: "var(--paper, #f6f3eb)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 6,
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 9,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontFamily: "Instrument Serif, Georgia, serif",
+          fontSize: 22,
+          color: "var(--paper-ink, #1d1c18)",
+          marginTop: 2,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function CompetitorSection({
+  radar,
+  ownRating,
+}: {
+  radar: CompetitorRadar;
+  ownRating: number | null;
+}) {
+  return (
+    <section
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 8,
+        padding: 24,
+        marginBottom: 20,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        § competitor radar — within 800m
+      </span>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, Georgia, serif",
+          fontSize: 28,
+          fontWeight: 400,
+          margin: "6px 0 14px",
+          lineHeight: 1.1,
+        }}
+      >
+        Where you <em style={{ color: "#2d8e7d" }}>actually</em> stack up
+      </h3>
+
+      {radar.positioning_summary && (
+        <p
+          style={{
+            fontSize: 14,
+            lineHeight: 1.6,
+            margin: "0 0 18px",
+            padding: 14,
+            background: "var(--paper, #f6f3eb)",
+            borderRadius: 6,
+            borderLeft: "3px solid #2d8e7d",
+          }}
+        >
+          {radar.positioning_summary}
+        </p>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {radar.competitors.map((c, i) => {
+          const winningOnRating =
+            ownRating != null && c.rating != null && ownRating >= c.rating;
+          return (
+            <div
+              key={i}
+              style={{
+                padding: 14,
+                background: "var(--paper, #f6f3eb)",
+                border: "1px solid var(--paper-line, #d8d2bf)",
+                borderRadius: 6,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  marginBottom: 6,
+                }}
+              >
+                <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{c.name}</p>
+                <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+                  {c.rating != null && (
+                    <span
+                      style={{
+                        fontFamily: "var(--mono, ui-monospace)",
+                        fontSize: 12,
+                        color: winningOnRating ? "#1e6d3d" : "#a83a2b",
+                      }}
+                    >
+                      {c.rating.toFixed(1)}★ ({c.user_ratings_total?.toLocaleString() ?? "?"})
+                    </span>
+                  )}
+                  {c.price_level != null && (
+                    <span
+                      style={{
+                        fontFamily: "var(--mono, ui-monospace)",
+                        fontSize: 12,
+                        color: "var(--paper-mut, #837c69)",
+                      }}
+                    >
+                      {"$".repeat(Math.max(1, c.price_level))}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {c.ai_take && (
+                <p
+                  style={{
+                    fontSize: 12.5,
+                    lineHeight: 1.55,
+                    margin: 0,
+                    color: "var(--paper-ink, #1d1c18)",
+                  }}
+                >
+                  {c.ai_take}
+                </p>
+              )}
+              {c.address && (
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontFamily: "var(--mono, ui-monospace)",
+                    color: "var(--paper-mut, #837c69)",
+                    margin: "6px 0 0",
+                  }}
+                >
+                  {c.address}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {radar.automation && (
+        <div
+          style={{
+            marginTop: 14,
+            padding: 12,
+            background: "#eef5e9",
+            border: "1px solid #bdd7af",
+            borderRadius: 6,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 9,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#1e6d3d",
+            }}
+          >
+            your agent will…
+          </span>
+          <p
+            style={{
+              fontSize: 13,
+              lineHeight: 1.55,
+              margin: "4px 0 0",
+              fontStyle: "italic",
+              color: "#1e6d3d",
+            }}
+          >
+            {radar.automation}
+          </p>
+        </div>
+      )}
+    </section>
   );
 }
 

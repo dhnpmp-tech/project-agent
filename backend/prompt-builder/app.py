@@ -4427,6 +4427,179 @@ Include EVERY platform from both lists. Match platform names EXACTLY as given ab
 
 
 # ----------------------------------------------------------------------------
+# Google Places — authoritative source for Google Business Profile data,
+# Maps reviews, photos, hours, AND nearby competitors. Requires
+# GOOGLE_PLACES_API_KEY (Places API enabled on Google Cloud project).
+# Free tier: ~$200/month of credits, ~10k Find Place requests free.
+# Gracefully no-ops without the key — endpoints return {error:"no_key"}.
+# ----------------------------------------------------------------------------
+
+_GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+
+
+class _PlacesLookupRequest(BaseModel):
+    business_name: str
+    location_hint: Optional[str] = None  # "Dubai", "Al Fahidi", "Riyadh", etc.
+    country: Optional[str] = None        # "AE" or "SA"
+
+
+class _PlacesNearbyRequest(BaseModel):
+    place_id: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    radius_meters: int = 500
+    type: Optional[str] = None  # "restaurant" / "beauty_salon" / "cafe" etc.
+
+
+@app.post("/web/places-lookup")
+async def web_places_lookup(req: _PlacesLookupRequest):
+    """Find a business on Google Places. Returns the canonical Place
+    record: place_id, rating, user_ratings_total, hours, formatted
+    address, photos count, top reviews. This is the authoritative GBP
+    signal — replaces the Firecrawl Maps detection workaround.
+    """
+    if not _GOOGLE_PLACES_API_KEY:
+        return {"error": "no_key", "skipped_reason": "GOOGLE_PLACES_API_KEY not set"}
+
+    query_parts = [req.business_name]
+    if req.location_hint:
+        query_parts.append(req.location_hint)
+    elif req.country == "AE":
+        query_parts.append("Dubai UAE")
+    elif req.country == "SA":
+        query_parts.append("Riyadh Saudi Arabia")
+    query = " ".join(query_parts)
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            # Find Place From Text — cheaper than Text Search
+            find = await client.get(
+                "https://maps.googleapis.com/maps/api/place/findplacefromtext/json",
+                params={
+                    "input": query,
+                    "inputtype": "textquery",
+                    "fields": "place_id,name,formatted_address,rating,user_ratings_total,types,geometry",
+                    "key": _GOOGLE_PLACES_API_KEY,
+                },
+            )
+            if find.status_code != 200:
+                return {"error": f"find_http_{find.status_code}"}
+            find_data = find.json()
+            candidates = find_data.get("candidates") or []
+            if not candidates:
+                return {"error": "no_match", "query": query}
+            top = candidates[0]
+            place_id = top.get("place_id")
+            if not place_id:
+                return {"error": "no_place_id"}
+
+            # Place Details for richer fields (hours, reviews, photos)
+            details = await client.get(
+                "https://maps.googleapis.com/maps/api/place/details/json",
+                params={
+                    "place_id": place_id,
+                    "fields": (
+                        "place_id,name,formatted_address,rating,user_ratings_total,"
+                        "opening_hours,current_opening_hours,price_level,types,"
+                        "formatted_phone_number,international_phone_number,website,"
+                        "url,photos,reviews,geometry,business_status"
+                    ),
+                    "key": _GOOGLE_PLACES_API_KEY,
+                },
+            )
+            if details.status_code != 200:
+                return {"error": f"details_http_{details.status_code}", "place_id": place_id}
+            d = (details.json() or {}).get("result") or {}
+    except Exception as e:
+        return {"error": f"places_failed: {type(e).__name__}"}
+
+    # Reviews: keep up to 5 with text + rating + author + time
+    reviews_out = []
+    for r in (d.get("reviews") or [])[:5]:
+        reviews_out.append({
+            "rating": r.get("rating"),
+            "text": (r.get("text") or "")[:1000],
+            "author": r.get("author_name"),
+            "time": r.get("relative_time_description"),
+            "lang": r.get("language"),
+        })
+
+    photos_count = len(d.get("photos") or [])
+    hours_open = (d.get("opening_hours") or {}).get("weekday_text") or []
+
+    geom = (d.get("geometry") or {}).get("location") or {}
+    return {
+        "place_id": d.get("place_id"),
+        "name": d.get("name"),
+        "address": d.get("formatted_address"),
+        "phone": d.get("formatted_phone_number") or d.get("international_phone_number"),
+        "website": d.get("website"),
+        "maps_url": d.get("url"),
+        "rating": d.get("rating"),
+        "user_ratings_total": d.get("user_ratings_total"),
+        "price_level": d.get("price_level"),
+        "types": d.get("types") or [],
+        "hours": hours_open,
+        "photos_count": photos_count,
+        "reviews": reviews_out,
+        "lat": geom.get("lat"),
+        "lng": geom.get("lng"),
+        "business_status": d.get("business_status"),
+    }
+
+
+@app.post("/web/places-nearby")
+async def web_places_nearby(req: _PlacesNearbyRequest):
+    """Find nearby businesses of the same type — competitor radar.
+    Returns up to 12 with rating, hours, address, distance hint.
+    """
+    if not _GOOGLE_PLACES_API_KEY:
+        return {"error": "no_key", "skipped_reason": "GOOGLE_PLACES_API_KEY not set"}
+    if req.lat is None or req.lng is None:
+        return {"error": "lat_lng_required"}
+
+    params = {
+        "location": f"{req.lat},{req.lng}",
+        "radius": str(max(100, min(req.radius_meters, 5000))),
+        "key": _GOOGLE_PLACES_API_KEY,
+    }
+    if req.type:
+        params["type"] = req.type
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.get(
+                "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                params=params,
+            )
+            if r.status_code != 200:
+                return {"error": f"nearby_http_{r.status_code}"}
+            data = r.json()
+    except Exception as e:
+        return {"error": f"nearby_failed: {type(e).__name__}"}
+
+    own_place_id = req.place_id
+    results = []
+    for p in (data.get("results") or [])[:15]:
+        if p.get("place_id") == own_place_id:
+            continue  # skip self
+        results.append({
+            "name": p.get("name"),
+            "place_id": p.get("place_id"),
+            "rating": p.get("rating"),
+            "user_ratings_total": p.get("user_ratings_total"),
+            "price_level": p.get("price_level"),
+            "open_now": ((p.get("opening_hours") or {}).get("open_now")),
+            "address": p.get("vicinity"),
+            "types": p.get("types") or [],
+        })
+        if len(results) >= 12:
+            break
+
+    return {"results": results, "count": len(results)}
+
+
+# ----------------------------------------------------------------------------
 # Review mining — scrape the platform URLs we already verified in
 # directory_strategy.confirmed and distill into structured 1★/3★/5★
 # review signal. Owners can't see their bad reviews aggregated anywhere
