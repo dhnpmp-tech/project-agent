@@ -154,10 +154,17 @@ const INTELLIGENCE: IntelItem[] = [
     },
   },
   {
-    t: { en: "WhatsApp Onboarding", ar: "تسجيل عبر واتساب" },
+    t: { en: "Day-One Deliverables", ar: "نتائج اليوم الأول" },
     msg: {
-      en: "No website needed. Text our setup number, answer 5 questions in 2 minutes, your AI agent is live. Works in Arabic and English.",
-      ar: "بدون موقع. كلّم رقم الإعداد، جاوب على ٥ أسئلة في دقيقتين، وذكاؤك جاهز. يشتغل بالعربي والإنجليزي.",
+      en: "Within minutes of signup: an FAQ gap analyzer, a GBP audit one-pager, ICP-matched prospects, a morning owner-brief preview, and a full WhatsApp demo transcript using your real business. Ten artifacts, not a 'getting started' email.",
+      ar: "خلال دقائق من التسجيل: تحليل ثغرات الأسئلة، تدقيق ملف قوقل، عملاء محتملون مطابقون لمواصفاتك، معاينة موجز المالك الصباحي، ومحادثة واتساب تجريبية كاملة باسم عملك. عشر منتجات حقيقية، لا بريد ترحيبي.",
+    },
+  },
+  {
+    t: { en: "Multi-Outlet Brand View", ar: "عرض موحّد لكل الفروع" },
+    msg: {
+      en: "If you run a chain, the agent pulls every outlet on Google, weights reviews across all of them, surfaces the laggard, and benchmarks each location against the others. One brand, every address, one dashboard.",
+      ar: "إن كنت تدير سلسلة، يسحب الذكاء كل فرع على قوقل، يزن المراجعات في جميعها، يكشف الأضعف، ويقارن كل موقع بالآخرين. علامة واحدة، كل العناوين، لوحة واحدة.",
     },
   },
   {
@@ -592,10 +599,13 @@ function Hero() {
     <section className="section hero-v2">
       <div className="container">
         <div className="hero-head">
-          <span className="eyebrow">
+          <a href="/teardown" className="eyebrow" style={{ textDecoration: "none" }}>
             <span className="d" />
-            {lang === "ar" ? "مباشر في الإمارات والسعودية" : "Live in UAE and Saudi Arabia"}
-          </span>
+            {lang === "ar"
+              ? "جديد · تشريح مجاني لأي عمل — ٦٠ ثانية"
+              : "NEW · Free teardown for any business — 60 seconds"}
+            <Arrow size={10} />
+          </a>
         </div>
         <div className="hero-grid">
           <div className="hero-left">
@@ -624,16 +634,17 @@ function Hero() {
             </Reveal>
 
             <Reveal as="div" className="cta-row tight" delay={200}>
+              <a className="btn primary lg" href="/teardown">
+                {lang === "ar" ? "تشريح مجاني · ٦٠ ثانية" : "Free teardown · 60s"}{" "}
+                <Arrow size={14} />
+              </a>
               <a
-                className="btn primary lg"
+                className="btn ghost lg"
                 href="https://wa.me/12058582516?text=Hi"
                 target="_blank"
                 rel="noreferrer"
               >
-                {lang === "ar" ? "جرّب العرض المباشر" : "Try the live demo"} <Arrow size={14} />
-              </a>
-              <a className="btn ghost lg" href="#how">
-                {lang === "ar" ? "كيف يعمل" : "How it works"}
+                {lang === "ar" ? "عرض واتساب مباشر" : "Live WhatsApp demo"}
               </a>
             </Reveal>
 
@@ -665,13 +676,130 @@ function Hero() {
   );
 }
 
+/* ─── Teardown (NEW — public viral wedge) ─── */
+
+interface TeardownTile {
+  num: string;
+  t: BiString;
+  msg: BiString;
+}
+
+const TEARDOWN_TILES: TeardownTile[] = [
+  {
+    num: "01",
+    t: { en: "Agent score · A+ to F", ar: "تقييم الذكاء · A+ إلى F" },
+    msg: {
+      en: "We grade your digital presence the way a senior ops consultant would. One number, plus the breakdown so you know exactly what's bleeding.",
+      ar: "نقيّم حضورك الرقمي كما يفعل مستشار عمليات. رقم واحد، مع التفصيل لتعرف بالضبط أين النزيف.",
+    },
+  },
+  {
+    num: "02",
+    t: { en: "All outlets, not just one", ar: "كل الفروع، لا فرع واحد" },
+    msg: {
+      en: "Chains and franchises: we pull every Google location, weight the reviews, and surface the laggard. One brand view across all addresses.",
+      ar: "السلاسل والامتيازات: نسحب كل موقع على قوقل، نزن المراجعات، ونكشف الأضعف. عرض موحّد لكل العناوين.",
+    },
+  },
+  {
+    num: "03",
+    t: { en: "Review sentiment + drafted replies", ar: "مشاعر المراجعات + ردود جاهزة" },
+    msg: {
+      en: "We mine your last 90 days of reviews, classify the sentiment, surface the top complaints, and pre-draft owner responses you can copy now.",
+      ar: "نحلل مراجعات آخر ٩٠ يوماً، نصنّف المشاعر، نُبرز أبرز الشكاوى، ونصيغ ردوداً جاهزة للنسخ مباشرةً.",
+    },
+  },
+  {
+    num: "04",
+    t: { en: "Schema audit · production JSON-LD", ar: "تدقيق Schema · JSON-LD جاهز" },
+    msg: {
+      en: "We check what structured data is missing from your site — and emit production-ready JSON-LD blocks (Restaurant, FAQPage, Menu) you can paste straight in.",
+      ar: "نفحص البيانات المنظّمة الناقصة من موقعك — ونصدر كتل JSON-LD جاهزة للنسخ (مطعم، أسئلة، قائمة).",
+    },
+  },
+  {
+    num: "05",
+    t: { en: "Competitor radar", ar: "رادار المنافسين" },
+    msg: {
+      en: "Nearby competitors plotted on a 6-axis radar: rating, review velocity, photo count, social signal, schema coverage, response speed. See where you're losing.",
+      ar: "المنافسون القريبون على رادار سداسي: التقييم، سرعة المراجعات، الصور، الإشارات الاجتماعية، تغطية Schema، سرعة الرد. ترى أين تخسر.",
+    },
+  },
+  {
+    num: "06",
+    t: { en: "Social pulse · IG · TikTok · Reddit", ar: "نبض السوشيال · IG · TikTok · Reddit" },
+    msg: {
+      en: "How long since your last post? Are people tagging you on TikTok? Any Reddit threads mentioning the brand? We pull the freshness signals you can't see from your phone.",
+      ar: "كم مضى على آخر منشور؟ هل يذكرونك على TikTok؟ هل في خيوط Reddit عن العلامة؟ نسحب إشارات الحضور التي لا تراها من جوالك.",
+    },
+  },
+];
+
+function Teardown() {
+  const { lang } = useLang();
+  return (
+    <section className="section section-dark">
+      <div className="container">
+        <SectionMeta
+          idx="01"
+          label={lang === "ar" ? "تشريح مجاني · جديد" : "free teardown · new"}
+          right={
+            <span className="live mono">
+              <span className="d" /> {lang === "ar" ? "بدون تسجيل · ٦٠ ثانية" : "NO SIGNUP · 60s"}
+            </span>
+          }
+        />
+        <div className="sec-title-row">
+          <h2 className="display-2">
+            {lang === "ar" ? (
+              <>
+                شاهد عملك <em>بعين الذكاء</em>.
+              </>
+            ) : (
+              <>
+                See your business through <em>the agent&apos;s eyes</em>.
+              </>
+            )}
+          </h2>
+          <p className="ss strong" style={{ maxWidth: "44ch" }}>
+            {lang === "ar"
+              ? "الصق رابط موقعك. نشغّل نفس فحوصات الذكاء الاصطناعي التي نشغّلها لعملائنا — بدون تسجيل، بدون بريد إلكتروني، بدون قيود. النتيجة قابلة للمشاركة برابط دائم."
+              : "Paste your URL. We run the same AI audit we run for paying clients — no signup, no email gate, no calendar booking. The result is a permanent, shareable link."}
+          </p>
+        </div>
+        <div className="intel-grid">
+          {TEARDOWN_TILES.map((it, i) => (
+            <Reveal key={it.t.en} delay={i * 35}>
+              <div className="intel-cell">
+                <div className="intel-num mono">{it.num}</div>
+                <h4 className="intel-t">{it.t[lang]}</h4>
+                <p className="intel-msg">{it.msg[lang]}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <div className="ctas" style={{ marginTop: 36, justifyContent: "center" }}>
+          <a className="btn primary lg" href="/teardown">
+            {lang === "ar" ? "شغّل التشريح الآن" : "Run the teardown now"} <Arrow size={14} />
+          </a>
+          <span className="mono" style={{ alignSelf: "center", opacity: 0.55 }}>
+            {lang === "ar"
+              ? "مثال مباشر · arabianteahouse.com · ٥ فروع · ٤٥٬٧٦١ مراجعة"
+              : "Live example · arabianteahouse.com · 5 outlets · 45,761 reviews"}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Pain() {
   const { lang } = useLang();
   return (
     <section className="section section-tight">
       <div className="container">
         <SectionMeta
-          idx="01"
+          idx="02"
           label={lang === "ar" ? "المشكلة" : "the problem"}
           right={<span className="mono">{lang === "ar" ? "~٣٠ س/أسبوع" : "~30h/week"}</span>}
         />
@@ -718,7 +846,7 @@ function AgentsSection() {
     <section className="section section-dark">
       <div className="container">
         <SectionMeta
-          idx="02"
+          idx="03"
           label={lang === "ar" ? "الفريق" : "your AI team"}
           right={
             <span className="mono">
@@ -782,7 +910,7 @@ function Intelligence() {
     <section className="section section-dark">
       <div className="container">
         <SectionMeta
-          idx="03"
+          idx="04"
           label={lang === "ar" ? "محرّك الذكاء" : "the intelligence engine"}
           right={
             <span className="mono live">
@@ -923,7 +1051,7 @@ function MessageAnatomy() {
     <section className="section">
       <div className="container">
         <SectionMeta
-          idx="04"
+          idx="05"
           label={lang === "ar" ? "تشريح رسالة واحدة" : "anatomy of a single message"}
           right={
             <span className="live mono">
@@ -1133,7 +1261,7 @@ function Industries() {
     <section className="section">
       <div className="container">
         <SectionMeta
-          idx="05"
+          idx="06"
           label={lang === "ar" ? "حسب القطاع" : "built for your industry"}
           right={<span className="mono">{lang === "ar" ? "٣ قطاعات" : "3 verticals"}</span>}
         />
@@ -1192,7 +1320,7 @@ function Memory() {
     <section className="section section-tight">
       <div className="container">
         <SectionMeta
-          idx="06"
+          idx="07"
           label={lang === "ar" ? "الذاكرة الدائمة" : "persistent memory"}
           right={<span className="mono">{lang === "ar" ? "تمتدّ لأشهر" : "SPANS MONTHS"}</span>}
         />
@@ -1258,7 +1386,7 @@ function HowItWorks() {
     <section className="section" id="how">
       <div className="container">
         <SectionMeta
-          idx="07"
+          idx="08"
           label={lang === "ar" ? "كيف يعمل" : "how it works"}
           right={
             <span className="mono">
@@ -1335,13 +1463,157 @@ function PricingCardV2({ tier, lang }: { tier: PricingTier; lang: Lang }) {
   );
 }
 
+/* ─── HireVsAgent (comparison table) ─── */
+
+interface CompareRow {
+  k: BiString;
+  hire: BiString;
+  agent: BiString;
+  ours: boolean;
+}
+
+const COMPARE: CompareRow[] = [
+  {
+    k: { en: "Monthly cost", ar: "التكلفة الشهرية" },
+    hire: { en: "AED 4,500 + benefits", ar: "٤٬٥٠٠ د.إ + مزايا" },
+    agent: { en: "AED 3,000 · all-in", ar: "٣٬٠٠٠ د.إ · شامل" },
+    ours: true,
+  },
+  {
+    k: { en: "Coverage", ar: "ساعات العمل" },
+    hire: { en: "8h × 6 days · daylight only", ar: "٨ س × ٦ أيام · نهاراً فقط" },
+    agent: { en: "24/7/365 · always on", ar: "٢٤/٧/٣٦٥ · دائماً" },
+    ours: true,
+  },
+  {
+    k: { en: "Languages", ar: "اللغات" },
+    hire: { en: "Usually 1, sometimes 2", ar: "عادة واحدة، أحياناً اثنتان" },
+    agent: { en: "Arabic + English native, 6 more", ar: "عربي + إنجليزي أصلي، و٦ أخرى" },
+    ours: true,
+  },
+  {
+    k: { en: "Memory across visits", ar: "ذاكرة بين الزيارات" },
+    hire: { en: "Forgets after 2 weeks", ar: "ينسى بعد أسبوعين" },
+    agent: { en: "Permanent · spans months", ar: "دائمة · تمتدّ لأشهر" },
+    ours: true,
+  },
+  {
+    k: { en: "Ramp time", ar: "الجاهزية" },
+    hire: { en: "4-6 weeks training", ar: "٤–٦ أسابيع تدريب" },
+    agent: { en: "Live in 10 minutes", ar: "جاهز في ١٠ دقائق" },
+    ours: true,
+  },
+  {
+    k: { en: "Sick days · turnover", ar: "إجازات · دوران" },
+    hire: { en: "21 days + 30-50% annual turnover", ar: "٢١ يوماً + دوران ٣٠–٥٠٪ سنوياً" },
+    agent: { en: "Zero · same agent for years", ar: "صفر · نفس الموظف لسنوات" },
+    ours: true,
+  },
+  {
+    k: { en: "Self-improvement", ar: "التحسّن الذاتي" },
+    hire: { en: "Manual coaching needed", ar: "يحتاج إشراف يدوي" },
+    agent: { en: "Writes rules every night", ar: "يكتب قواعد كل ليلة" },
+    ours: true,
+  },
+  {
+    k: { en: "Reporting to you", ar: "التقارير لك" },
+    hire: { en: "Weekly meeting if lucky", ar: "اجتماع أسبوعي إن أُتيح" },
+    agent: { en: "Morning brief at 9am sharp", ar: "موجز صباحي ٩:٠٠ بدقّة" },
+    ours: true,
+  },
+];
+
+function HireVsAgent() {
+  const { lang } = useLang();
+  return (
+    <section className="section">
+      <div className="container">
+        <SectionMeta
+          idx="09"
+          label={lang === "ar" ? "موظف بشري · مقابل · ذكاء" : "human hire · vs · agent"}
+          right={<span className="mono">{lang === "ar" ? "٨ معايير" : "8 dimensions"}</span>}
+        />
+        <div className="sec-title-row">
+          <h2 className="display-2">
+            {lang === "ar" ? (
+              <>
+                لماذا <em>الذكاء يفوز</em>.
+              </>
+            ) : (
+              <>
+                Why the agent <em>wins on paper</em>.
+              </>
+            )}
+          </h2>
+          <p className="ss strong" style={{ maxWidth: "44ch" }}>
+            {lang === "ar"
+              ? "بدون مشاعر. مجرّد الأرقام. لا نقول إن البشر سيئون — نقول إن هذه الوظيفة بالذات يفعلها الذكاء أفضل، أسرع، وأرخص."
+              : "No emotion. Just the math. We're not saying humans are bad — we're saying for this specific job, the agent does it better, faster, and cheaper."}
+          </p>
+        </div>
+        <div
+          style={{
+            border: "1px solid var(--line, rgba(255,255,255,0.08))",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1.4fr 1.4fr",
+              fontFamily: "var(--mono, monospace)",
+              fontSize: 10,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              opacity: 0.55,
+              padding: "12px 18px",
+              borderBottom: "1px solid var(--line, rgba(255,255,255,0.08))",
+            }}
+          >
+            <span>{lang === "ar" ? "المعيار" : "Dimension"}</span>
+            <span>{lang === "ar" ? "موظف بشري" : "Human hire"}</span>
+            <span style={{ color: "var(--green, #5d8a4a)" }}>
+              {lang === "ar" ? "موظف الذكاء" : "Project Agent"}
+            </span>
+          </div>
+          {COMPARE.map((row, i) => (
+            <div
+              key={row.k.en}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1.4fr 1.4fr",
+                padding: "14px 18px",
+                borderBottom:
+                  i < COMPARE.length - 1
+                    ? "1px solid var(--line, rgba(255,255,255,0.05))"
+                    : "none",
+                alignItems: "baseline",
+                fontSize: 14,
+                gap: 12,
+              }}
+            >
+              <span style={{ opacity: 0.7 }}>{row.k[lang]}</span>
+              <span style={{ opacity: 0.55 }}>{row.hire[lang]}</span>
+              <span style={{ fontWeight: 500 }}>
+                <span style={{ color: "var(--green, #5d8a4a)", marginRight: 8 }}>✓</span>
+                {row.agent[lang]}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Pricing() {
   const { lang } = useLang();
   return (
     <section className="section">
       <div className="container">
         <SectionMeta
-          idx="08"
+          idx="10"
           label={lang === "ar" ? "الأسعار" : "pricing"}
           right={
             <span className="mono">
@@ -1373,6 +1645,193 @@ function Pricing() {
           {TIERS.map((tier) => (
             <PricingCardV2 key={tier.id} tier={tier} lang={lang} />
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── ShippingLog (built this week — proof of velocity) ─── */
+
+interface Ship {
+  date: string; // ISO-ish display: "May 13"
+  t: BiString;
+  msg: BiString;
+}
+
+const SHIPS: Ship[] = [
+  {
+    date: "May 13",
+    t: { en: "Multi-outlet brand view", ar: "عرض موحّد لكل الفروع" },
+    msg: {
+      en: "Chains and franchises now show every Google location with weighted reviews. Arabian Tea House: 5 outlets, 45,761 reviews aggregated, 4.81★ weighted.",
+      ar: "السلاسل والامتيازات تعرض الآن كل موقع على قوقل مع مراجعات مرجَّحة. مطعم البيت العربي: ٥ فروع، ٤٥٬٧٦١ مراجعة، ٤٫٨١★.",
+    },
+  },
+  {
+    date: "May 13",
+    t: { en: "Schema markup generator", ar: "مولّد Schema" },
+    msg: {
+      en: "The agent now emits production-ready JSON-LD blocks (Restaurant, FAQPage, Menu) grounded in verified GBP + crawl facts. One-click copy.",
+      ar: "الذكاء يصدر الآن كتل JSON-LD جاهزة (مطعم، أسئلة، قائمة) مبنية على بيانات GBP والزحف الموثّقة. نسخ بضغطة واحدة.",
+    },
+  },
+  {
+    date: "May 13",
+    t: { en: "Free public teardown", ar: "تشريح مجاني علني" },
+    msg: {
+      en: "Zero-auth viral surface at agents.dcp.sa/teardown. Paste any UAE/Saudi SMB URL — get a 60-second AI audit with shareable permalink.",
+      ar: "واجهة فيروسية بدون تسجيل على agents.dcp.sa/teardown. الصق أي رابط لمنشأة في الإمارات/السعودية — احصل على تدقيق ذكاء في ٦٠ ثانية برابط دائم.",
+    },
+  },
+  {
+    date: "May 13",
+    t: { en: "Competitor radar · 6-axis", ar: "رادار المنافسين · سداسي" },
+    msg: {
+      en: "Plots nearby competitors on a 6-axis radar: rating, review velocity, photos, social signal, schema coverage, response speed.",
+      ar: "يرسم المنافسين على رادار سداسي: التقييم، سرعة المراجعات، الصور، السوشيال، Schema، سرعة الرد.",
+    },
+  },
+  {
+    date: "May 13",
+    t: { en: "Social pulse · IG · TikTok · Reddit", ar: "نبض السوشيال" },
+    msg: {
+      en: "Live freshness signals: post drought detection, UGC mentions, Reddit threads — all pulled at teardown time.",
+      ar: "إشارات حضور مباشرة: كشف فجوات النشر، إشارات UGC، خيوط Reddit — كلها وقت التشريح.",
+    },
+  },
+  {
+    date: "May 12",
+    t: { en: "Day-one deliverables (10)", ar: "نتائج اليوم الأول (١٠)" },
+    msg: {
+      en: "Signup now produces 10 real artifacts: FAQ gaps, GBP audit, ICP prospects, owner-brief preview, WhatsApp demo transcript, review mining, and more.",
+      ar: "التسجيل يولّد الآن ١٠ منتجات حقيقية: ثغرات الأسئلة، تدقيق قوقل، عملاء محتملون، معاينة موجز المالك، محادثة واتساب تجريبية، تحليل المراجعات، والمزيد.",
+    },
+  },
+  {
+    date: "May 12",
+    t: { en: "Central inference router", ar: "موجّه استدلال مركزي" },
+    msg: {
+      en: "Every LLM call now routes through one function: role → provider. Auto-failover from Anthropic → MiniMax when keys revoke. Reasoning traces sanitized.",
+      ar: "كل استدعاء LLM يمرّ عبر دالة واحدة: الدور → المزوّد. تحويل تلقائي من Anthropic إلى MiniMax عند انتهاء المفاتيح. تنظيف آثار التفكير.",
+    },
+  },
+  {
+    date: "May 11",
+    t: { en: "Self-hosted data plane", ar: "بنية بيانات ذاتية" },
+    msg: {
+      en: "Migrated off hosted Supabase to self-hosted Postgres 17 + pgvector on our VPS. Resend OTP auth replaces the dead third party. Owner-controlled, end-to-end.",
+      ar: "انتقلنا من Supabase المستضافة إلى Postgres 17 + pgvector على VPS خاص. مصادقة Resend OTP تحلّ محلّ الطرف الثالث. تحكّم كامل من جهة المالك.",
+    },
+  },
+];
+
+function ShippingLog() {
+  const { lang } = useLang();
+  return (
+    <section className="section section-dark">
+      <div className="container">
+        <SectionMeta
+          idx="11"
+          label={lang === "ar" ? "شُحن هذا الأسبوع" : "shipped this week"}
+          right={
+            <span className="live mono">
+              <span className="d" /> {lang === "ar" ? "٥٢ التزاماً · ٧ أيام" : "52 COMMITS · 7 DAYS"}
+            </span>
+          }
+        />
+        <div className="sec-title-row">
+          <h2 className="display-2">
+            {lang === "ar" ? (
+              <>
+                نبني <em>أمام الكل</em>.
+              </>
+            ) : (
+              <>
+                We build <em>in public</em>.
+              </>
+            )}
+          </h2>
+          <p className="ss strong" style={{ maxWidth: "44ch" }}>
+            {lang === "ar"
+              ? "هذه أبرز الميزات التي شُحنت في آخر سبعة أيام. نسجّل ساعة وتاريخ كل التزام لأن السرعة جزء من المنتج."
+              : "These are the headline features that shipped in the last seven days. Every commit is timestamped because velocity is part of the product."}
+          </p>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: 18,
+          }}
+        >
+          {SHIPS.map((s, i) => (
+            <Reveal key={s.t.en + i} delay={i * 30}>
+              <div
+                style={{
+                  padding: "18px 20px",
+                  border: "1px solid var(--line, rgba(255,255,255,0.08))",
+                  borderRadius: 8,
+                  background: "var(--card-bg, rgba(255,255,255,0.02))",
+                }}
+              >
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    opacity: 0.55,
+                    marginBottom: 8,
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <span>{s.date}</span>
+                  <span style={{ color: "var(--green, #5d8a4a)" }}>
+                    {lang === "ar" ? "● مباشر" : "● shipped"}
+                  </span>
+                </div>
+                <h4
+                  style={{
+                    fontSize: 18,
+                    margin: "0 0 6px",
+                    fontFamily: "var(--serif, Georgia, serif)",
+                    fontWeight: 400,
+                  }}
+                >
+                  {s.t[lang]}
+                </h4>
+                <p style={{ fontSize: 13, lineHeight: 1.55, margin: 0, opacity: 0.75 }}>
+                  {s.msg[lang]}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <div
+          className="mono"
+          style={{
+            marginTop: 32,
+            paddingTop: 18,
+            borderTop: "1px solid var(--line, rgba(255,255,255,0.06))",
+            opacity: 0.5,
+            fontSize: 11,
+            letterSpacing: "0.12em",
+            display: "flex",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 10,
+          }}
+        >
+          <span>
+            {lang === "ar"
+              ? "أحدث التزام: 222086e · multi-outlet aggregation"
+              : "latest commit: 222086e · multi-outlet aggregation"}
+          </span>
+          <span>
+            {lang === "ar" ? "الأسبوع القادم: تصدير فيديو MP4 من Remotion" : "next week: Remotion MP4 export"}
+          </span>
         </div>
       </div>
     </section>
@@ -1439,12 +1898,12 @@ function AgentsFooter() {
     {
       heading: { en: "Get started", ar: "ابدأ" },
       links: [
+        {
+          label: { en: "Free teardown · 60s", ar: "تشريح مجاني · ٦٠ ثانية" },
+          href: "/teardown",
+        },
         { label: { en: "Sign up", ar: "تسجيل" }, href: "/app/onboarding" },
         { label: { en: "Login", ar: "دخول" }, href: "/app" },
-        {
-          label: { en: "Book free audit", ar: "احجز تدقيقاً مجانياً" },
-          href: "/app/onboarding",
-        },
         {
           label: { en: "Live WhatsApp demo", ar: "عرض واتساب مباشر" },
           href: "https://wa.me/12058582516?text=Hi",
@@ -1537,10 +1996,11 @@ function HomeApp() {
         links={navLinks}
         active="home"
         status={{ label: lang === "ar" ? "مباشر · الإمارات والسعودية" : "LIVE · UAE & SAUDI" }}
-        ctaLabel={lang === "ar" ? "احجز تدقيقاً مجانياً" : "Book free audit"}
-        ctaHref="/app/onboarding"
+        ctaLabel={lang === "ar" ? "تشريح مجاني" : "Free teardown"}
+        ctaHref="/teardown"
       />
       <Hero />
+      <Teardown />
       <Pain />
       <AgentsSection />
       <Intelligence />
@@ -1548,7 +2008,9 @@ function HomeApp() {
       <Industries />
       <Memory />
       <HowItWorks />
+      <HireVsAgent />
       <Pricing />
+      <ShippingLog />
       <CTA />
       <AgentsFooter />
       <TweaksPanel />

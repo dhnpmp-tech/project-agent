@@ -99,7 +99,7 @@ export const DCP_I18N: Record<Lang, Dict> = {
       start: "Start free",
     },
     marquee:
-      "Saudi-first AI employees — runs on WhatsApp — bilingual Arabic + English — ~SAR 0.004 per conversation — RUH · JED · DMM — 9 agents · one platform — Owner Brain texts you back — built in Riyadh",
+      "Free teardown — paste your URL · get the brutal truth in 60s — Saudi-first AI employees — runs on WhatsApp — bilingual Arabic + English — ~SAR 0.004 per conversation — RUH · JED · DMM — Owner Brain texts you back — built in Riyadh",
     hero: {
       eyebrow: "§ 01 · DCP AGENTS · v3",
       title_a: "AI employees that work",
@@ -187,7 +187,7 @@ export const DCP_I18N: Record<Lang, Dict> = {
       start: "ابدأ مجاناً",
     },
     marquee:
-      "موظفون رقميون يعملون على واتساب — عربي وإنجليزي — تكلفة المحادثة ٠٫٠٠٤ ريال — الرياض · جدة · الدمام — تسعة وكلاء على منصّة واحدة — العقل المالك يرسل لك — صُنع في الرياض",
+      "تشريح مجاني — الصق رابط موقعك · واحصل على الحقيقة في ٦٠ ثانية — موظفون رقميون يعملون على واتساب — عربي وإنجليزي — تكلفة المحادثة ٠٫٠٠٤ ريال — الرياض · جدة · الدمام — العقل المالك يرسل لك — صُنع في الرياض",
     hero: {
       eyebrow: "§ ٠١ · وكلاء دي‌سي‌بي · ٣",
       title_a: "موظفون ذكاء اصطناعي يعملون",
