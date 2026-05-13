@@ -128,17 +128,25 @@ interface DayOnePackage {
 const PROMPT_BUILDER_URL =
   process.env.PROMPT_BUILDER_URL || "https://n8n.dcp.sa";
 
-async function inferenceChat(role: string, prompt: string): Promise<string> {
+async function inferenceChat(
+  role: string,
+  prompt: string,
+  opts: { maxTokens?: number } = {},
+): Promise<string> {
   // Calls the prompt-builder's inference router by hitting a thin chat
-  // endpoint. Returns the assistant reply text.
+  // endpoint. Returns the assistant reply text. `maxTokens` overrides the
+  // role default — JSON-output prompts often need more headroom than the
+  // role's default (which is sized for short chat replies).
   try {
+    const body: Record<string, unknown> = {
+      role,
+      messages: [{ role: "user", content: prompt }],
+    };
+    if (opts.maxTokens) body.max_tokens = opts.maxTokens;
     const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/inference/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        role,
-        messages: [{ role: "user", content: prompt }],
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       console.error(`[day-one] inference role=${role} HTTP ${res.status}`);
@@ -345,6 +353,7 @@ Output as STRICT JSON only — no preamble, no markdown fence:
 [{"question":"...","draft_answer":"..."}, ...]
 
 Exactly five objects. Each "question" max 120 chars, each "draft_answer" max 280 chars.`,
+      { maxTokens: 1800 },
     ),
     inferenceChat(
       "customer_response_en",
@@ -371,6 +380,7 @@ Output as STRICT JSON only — no preamble, no markdown fence:
 }
 
 The turns array MUST alternate strictly starting with "customer". Each "text" max 240 chars.`,
+      { maxTokens: 2000 },
     ),
     inferenceChat(
       "owner_brain",
@@ -392,6 +402,7 @@ Output STRICT JSON only — no preamble, no markdown fence:
 }
 
 The numbers can be plausible fictional ones for the demo (e.g. "5 confirmed, 2 waitlist") — they should look real, not placeholder.`,
+      { maxTokens: 1500 },
     ),
     inferenceChat(
       "sales_outbound",
@@ -418,6 +429,7 @@ Output STRICT JSON only — no preamble, no markdown fence:
   },
   ... 3 objects total
 ]`,
+      { maxTokens: 1800 },
     ),
     testimonialsFromCrawl.length > 0
       ? inferenceChat(
@@ -443,6 +455,7 @@ Output STRICT JSON only — no preamble, no markdown fence:
     ... 3 objects total
   ]
 }`,
+          { maxTokens: 1500 },
         )
       : Promise.resolve(""),
   ]);

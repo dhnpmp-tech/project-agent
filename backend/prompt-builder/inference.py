@@ -52,6 +52,54 @@ _NAKED_THINK_RE = re.compile(r"</?think>", re.IGNORECASE)
 _LEAK_CHARS_RE = re.compile(
     r"[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\u0400-\u04ff]+"
 )
+# MiniMax M2.7 sometimes leaks naked reasoning (no <think> wrapper) when
+# operating without a system prompt that suppresses it. Common opening
+# phrases: "The user wants…", "Let me think…", "Okay, I need to…",
+# "We need to produce…". These all start with a meta-statement *about*
+# the task before the answer arrives.
+_REASONING_PREAMBLE_RE = re.compile(
+    # Anchored to start. Match a meta-opener…
+    r"^\s*"
+    r"(?:Okay|Alright|So|Right|First|Looking at this|"
+    r"Let me think|Let me|Let's think|Let's|"
+    r"I need to|I'll|I will|I should|"
+    r"The user (?:is asking|wants|asked|has provided|provided)|"
+    r"We need to|"
+    r"To answer|"
+    r"Based on (?:the|this)|"
+    r"Given (?:the|this)|"
+    r"Looking at the (?:brief|context|input)|"
+    r"Alright then,?)"
+    # …then everything (non-greedy) until we hit either a blank line or
+    # a clear answer-start marker on its own line: quote, JSON, list item,
+    # or a capitalized sentence start.
+    r"[\s\S]*?"
+    r"(?=\n\s*\n|\n\s*[\[{\"\d\-\*•]|\n[A-Z])",
+    re.IGNORECASE,
+)
+
+
+def _strip_reasoning_preamble(text: str) -> str:
+    """Drop a MiniMax-style naked-reasoning preamble if present.
+
+    Conservative: only strips when the text starts with one of a small set
+    of meta-statements AND there's a clear break before the actual content.
+    On any uncertainty, leaves the text alone.
+    """
+    if not text:
+        return text
+    # Only strip preambles if the response is clearly long enough to have
+    # both reasoning + answer; short outputs are usually the answer itself.
+    if len(text) < 200:
+        return text
+    m = _REASONING_PREAMBLE_RE.match(text)
+    if not m:
+        return text
+    stripped = text[m.end():].lstrip()
+    # Don't strip if it would leave us with nothing useful.
+    if len(stripped) < 20:
+        return text
+    return stripped
 
 
 def _clean_output(text: str) -> str:
@@ -61,6 +109,7 @@ def _clean_output(text: str) -> str:
     cleaned = _THINK_RE.sub("", text).strip()
     if not cleaned and "<think>" in text.lower():
         cleaned = _NAKED_THINK_RE.sub("", text).strip()
+    cleaned = _strip_reasoning_preamble(cleaned)
     cleaned = _LEAK_CHARS_RE.sub("", cleaned)
     cleaned = cleaned.replace("**", "")
     cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
@@ -128,12 +177,19 @@ PROVIDERS: dict[str, Provider] = {
 #  - Vault research / batch jobs: open-source via DCP (cost optimization)
 
 ROUTING: dict[str, dict[str, Any]] = {
-    # Customer-facing WhatsApp responses. Anthropic ideal but until
-    # ANTHROPIC_API_KEY lands on prompt-builder, route via openrouter
-    # (same Claude Sonnet, OpenRouter handles the auth side).
+    # NOTE on routing as of 2026-05-13:
+    # OpenRouter key was revoked (returns 401 "User not found" both via
+    # the prompt-builder and direct curl). Until a new key lands, every
+    # role that was on `openrouter` is failed over to MiniMax M2.7. The
+    # MiniMax-leaks-reasoning issue is mitigated by the stronger
+    # _clean_output filter + a sys prompt that forbids preamble in the
+    # MiniMax adapter.
+    # When OPENROUTER_API_KEY is rotated, restore the closed-source
+    # mappings (Anthropic/Qwen) — they're commented above each role.
     "customer_response_en": {
-        "provider": "openrouter",
-        "model": "anthropic/claude-sonnet-4",
+        # was: openrouter / anthropic/claude-sonnet-4
+        "provider": "minimax",
+        "model": "MiniMax-M2.7",
         "max_tokens": 600,
         "temperature": 0.7,
     },
@@ -143,23 +199,26 @@ ROUTING: dict[str, dict[str, Any]] = {
         "max_tokens": 600,
         "temperature": 0.7,
     },
-    # Intent + booking-stage classifiers — route via openrouter for now
     "intent_classification": {
-        "provider": "openrouter",
-        "model": "anthropic/claude-3-5-haiku",
+        # was: openrouter / anthropic/claude-3-5-haiku
+        "provider": "minimax",
+        "model": "MiniMax-M2.7",
         "max_tokens": 100,
         "temperature": 0.0,
     },
     "booking_extraction": {
-        "provider": "openrouter",
-        "model": "anthropic/claude-3-5-haiku",
+        # was: openrouter / anthropic/claude-3-5-haiku
+        "provider": "minimax",
+        "model": "MiniMax-M2.7",
         "max_tokens": 200,
         "temperature": 0.0,
     },
-    # Vision (receipt OCR, photo categorization)
+    # Vision: MiniMax has vision via M2.7 as well — same model, image_url
+    # content blocks still work.
     "receipt_ocr": {
-        "provider": "openrouter",
-        "model": "anthropic/claude-sonnet-4",
+        # was: openrouter / anthropic/claude-sonnet-4
+        "provider": "minimax",
+        "model": "MiniMax-M2.7",
         "max_tokens": 800,
         "temperature": 0.0,
     },
@@ -177,10 +236,10 @@ ROUTING: dict[str, dict[str, Any]] = {
         "max_tokens": 800,
         "temperature": 0.8,
     },
-    # Rami's research / reflection loop — open-source on DCP when served.
     "rami_research": {
-        "provider": "openrouter",
-        "model": "qwen/qwen-2.5-72b-instruct",
+        # was: openrouter / qwen/qwen-2.5-72b-instruct
+        "provider": "minimax",
+        "model": "MiniMax-M2.7",
         "max_tokens": 1500,
         "temperature": 0.5,
     },
@@ -198,24 +257,24 @@ ROUTING: dict[str, dict[str, Any]] = {
         "max_tokens": 600,
         "temperature": 0.7,
     },
-    # Karpathy loop — distilling rules from many conversations
     "karpathy_distill": {
-        "provider": "openrouter",
-        "model": "qwen/qwen-2.5-72b-instruct",
+        # was: openrouter / qwen/qwen-2.5-72b-instruct
+        "provider": "minimax",
+        "model": "MiniMax-M2.7",
         "max_tokens": 2000,
         "temperature": 0.3,
     },
-    # GEPA prompt evolution
     "gepa_evolve": {
-        "provider": "openrouter",
-        "model": "anthropic/claude-sonnet-4",
+        # was: openrouter / anthropic/claude-sonnet-4
+        "provider": "minimax",
+        "model": "MiniMax-M2.7",
         "max_tokens": 2000,
         "temperature": 0.5,
     },
-    # Quality eval
     "quality_eval": {
-        "provider": "openrouter",
-        "model": "anthropic/claude-3-5-haiku",
+        # was: openrouter / anthropic/claude-3-5-haiku
+        "provider": "minimax",
+        "model": "MiniMax-M2.7",
         "max_tokens": 400,
         "temperature": 0.0,
     },
@@ -293,6 +352,26 @@ async def chat(
 
     final_max_tokens = max_tokens if max_tokens is not None else cfg.get("max_tokens", 600)
     final_temp = temperature if temperature is not None else cfg.get("temperature", 0.7)
+
+    # MiniMax M2.7 narrates its reasoning when the conversation lacks an
+    # explicit system message. Prepend a strict no-preamble directive when
+    # the caller didn't already provide one. Harmless on other providers.
+    if provider_name == "minimax" and not any(
+        m.get("role") == "system" for m in messages
+    ):
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Respond directly with the requested output. Do not narrate "
+                    "your reasoning, do not restate the task, do not include "
+                    "preamble like 'Let me think', 'The user wants', 'Okay, I need to'. "
+                    "If the user asked for JSON, output ONLY the JSON. If the user "
+                    "asked for a message, output ONLY the message text."
+                ),
+            },
+            *messages,
+        ]
 
     started = time.time()
     try:
