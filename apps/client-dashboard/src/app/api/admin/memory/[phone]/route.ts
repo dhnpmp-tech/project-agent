@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-guard";
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/admin/memory/[phone]                                      */
 /*  Fetches Mem0 relation graph for a given phone number.              */
 /*  Returns nodes, edges, and stats for graph visualization.           */
-/*  Auth is handled by middleware — no check needed here.              */
+/*  Admin status checked explicitly — Next.js middleware doesn't       */
+/*  match /api/* paths.                                                */
 /* ------------------------------------------------------------------ */
 
 const MEM0_URL = process.env.MEM0_URL || "http://172.17.0.1:8888";
@@ -32,6 +34,8 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ phone: string }> }
 ) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
   try {
     const { phone } = await params;
 

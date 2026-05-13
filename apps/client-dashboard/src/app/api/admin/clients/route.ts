@@ -1,14 +1,16 @@
 // GET /api/admin/clients — admin-only listing of every tenant with
-// agent counts and persona name. Auth is enforced by middleware
-// (requires role=admin or email in ADMIN_EMAILS), so the handler trusts
-// the request reached it.
+// agent counts and persona name. Admin status is checked explicitly via
+// requireAdmin() because Next.js middleware doesn't match /api/* paths.
 
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/admin-guard";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
   try {
     const rows = await db()<{
       id: string;
