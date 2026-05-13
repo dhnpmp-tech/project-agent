@@ -1,0 +1,90 @@
+# Postiz — AI social media scheduler (★30k, MIT)
+# Wire content_draft inference role to publish through Postiz REST API.
+# Self-hosted on the VPS alongside prompt-builder + n8n + agents-platform.
+#
+# Networks:
+#   - Bound to localhost; nginx-proxied externally as post.agents.dcp.sa
+#
+# Required env (drop into /opt/postiz/.env):
+#   - MAIN_URL=https://post.agents.dcp.sa
+#   - FRONTEND_URL=https://post.agents.dcp.sa
+#   - NEXT_PUBLIC_BACKEND_URL=https://post.agents.dcp.sa/api
+#   - JWT_SECRET=<long random>
+#   - DATABASE_URL=postgresql://postiz:<pw>@postiz-postgres:5432/postiz
+#   - REDIS_URL=redis://postiz-redis:6379
+#   - STORAGE_PROVIDER=local
+#   - UPLOAD_DIRECTORY=/uploads
+#   - NEXT_PUBLIC_UPLOAD_DIRECTORY=/uploads
+#   - At minimum one provider OAuth key set
+#     (FACEBOOK_APP_ID + SECRET, X_API_KEY + SECRET, LINKEDIN_CLIENT_ID + SECRET,
+#      INSTAGRAM_APP_ID + SECRET, TIKTOK_CLIENT_KEY + SECRET, YOUTUBE_CLIENT_ID + SECRET,
+#      THREADS_APP_ID + SECRET, REDDIT_CLIENT_ID + SECRET, PINTEREST_CLIENT_ID + SECRET)
+#
+# Boot:
+#   cd /opt/postiz && docker compose up -d
+#
+# nginx config skeleton (add to /etc/nginx/sites-enabled/postiz):
+#   server {
+#     listen 443 ssl;
+#     server_name post.agents.dcp.sa;
+#     ssl_certificate /etc/letsencrypt/live/post.agents.dcp.sa/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/post.agents.dcp.sa/privkey.pem;
+#     location / {
+#       proxy_pass http://127.0.0.1:5000;
+#       proxy_http_version 1.1;
+#       proxy_set_header Upgrade $http_upgrade;
+#       proxy_set_header Connection "upgrade";
+#       proxy_set_header Host $host;
+#       proxy_set_header X-Forwarded-Proto $scheme;
+#       proxy_read_timeout 90s;
+#       client_max_body_size 100M;
+#     }
+#   }
+
+services:
+  postiz:
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    container_name: postiz
+    restart: unless-stopped
+    env_file:
+      - /opt/postiz/.env
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - postiz_uploads:/uploads
+    depends_on:
+      - postiz-postgres
+      - postiz-redis
+    networks:
+      - postiz_net
+
+  postiz-postgres:
+    image: postgres:16-alpine
+    container_name: postiz-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postiz
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: postiz
+    volumes:
+      - postiz_pg:/var/lib/postgresql/data
+    networks:
+      - postiz_net
+
+  postiz-redis:
+    image: redis:7-alpine
+    container_name: postiz-redis
+    restart: unless-stopped
+    volumes:
+      - postiz_redis:/data
+    networks:
+      - postiz_net
+
+volumes:
+  postiz_uploads:
+  postiz_pg:
+  postiz_redis:
+
+networks:
+  postiz_net:
+    driver: bridge

@@ -217,6 +217,7 @@ export interface SchemaAudit {
 }
 
 import { TeardownVideoPlayer } from "./teardown-video";
+import { SchemaEmitButton } from "./schema-emit-button";
 
 const GRADE_PALETTE: Record<AgentScore["grade"], { fg: string; bg: string; ring: string }> = {
   "A+": { fg: "#1e6d3d", bg: "#dfeede", ring: "#2d8e7d" },
@@ -241,7 +242,7 @@ const CATEGORY_EMOJI: Record<QuickWin["category"], string> = {
   social: "📱",
 };
 
-export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
+export function TeardownReport({ pkg, slug }: { pkg: TeardownPackage; slug?: string }) {
   return (
     <>
       <AgentGreeting pkg={pkg} />
@@ -256,7 +257,7 @@ export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
       {pkg.reviews && pkg.reviews.sentiment?.total > 0 && (
         <ReviewsSection reviews={pkg.reviews} />
       )}
-      {pkg.schema_audit && <SchemaAuditSection audit={pkg.schema_audit} />}
+      {pkg.schema_audit && <SchemaAuditSection audit={pkg.schema_audit} slug={slug} />}
       <section
         style={{
           background: "var(--paper-card, #fbfaf4)",
@@ -2284,7 +2285,7 @@ function VoiceCard({ eyebrow, body }: { eyebrow: string; body: string }) {
   );
 }
 
-function SchemaAuditSection({ audit }: { audit: SchemaAudit }) {
+function SchemaAuditSection({ audit, slug }: { audit: SchemaAudit; slug?: string }) {
   return (
     <section
       style={{
@@ -2454,6 +2455,10 @@ function SchemaAuditSection({ audit }: { audit: SchemaAudit }) {
           {audit.automation}
         </p>
       </div>
+
+      {slug && audit.missing_critical.length > 0 && (
+        <SchemaEmitButton slug={slug} missingTypes={audit.missing_critical} />
+      )}
     </section>
   );
 }

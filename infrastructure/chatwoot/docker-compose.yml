@@ -1,0 +1,122 @@
+# Chatwoot — omni-channel customer support inbox (★29k, MIT-with-restrictions)
+# Replaces the custom WhatsApp inbox UI. Tenants give their agent +
+# human team members the same inbox: WhatsApp + Email + Instagram DM
+# + Facebook + Live Chat + SMS all routed into Chatwoot.
+#
+# The Project Agent AI agent operates AS a Chatwoot integration user.
+# It reads incoming messages, drafts replies via inference.chat(),
+# either auto-sends (high-confidence customer FAQs) or queues for
+# human approval (anything contentious, owner-facing decisions, refunds).
+#
+# Networks:
+#   - Bound to localhost; nginx-proxied as inbox.agents.dcp.sa
+#
+# Required env (/opt/chatwoot/.env):
+#   - SECRET_KEY_BASE=<long random hex, 128 chars>
+#   - FRONTEND_URL=https://inbox.agents.dcp.sa
+#   - DEFAULT_LOCALE=en
+#   - INSTALLATION_ENV=docker
+#   - REDIS_URL=redis://chatwoot-redis:6379
+#   - POSTGRES_HOST=chatwoot-postgres
+#   - POSTGRES_USERNAME=chatwoot
+#   - POSTGRES_PASSWORD=<set>
+#   - POSTGRES_DATABASE=chatwoot_production
+#   - RAILS_ENV=production
+#   - NODE_ENV=production
+#   - MAILER_SENDER_EMAIL=noreply@agents.dcp.sa
+#   - SMTP_ADDRESS=smtp.resend.com (or other)
+#   - SMTP_USERNAME=resend
+#   - SMTP_PASSWORD=<resend api key>
+#   - WHATSAPP_PROVIDER=cloud_api / 360dialog / twilio (Project Agent uses Kapso; configure as a custom_channel)
+#
+# Boot sequence (one-time prep + start):
+#   cd /opt/chatwoot
+#   docker compose run --rm rails bundle exec rails db:chatwoot_prepare
+#   docker compose up -d
+#
+# nginx config skeleton (add to /etc/nginx/sites-enabled/chatwoot):
+#   server {
+#     listen 443 ssl;
+#     server_name inbox.agents.dcp.sa;
+#     ssl_certificate /etc/letsencrypt/live/inbox.agents.dcp.sa/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/inbox.agents.dcp.sa/privkey.pem;
+#     client_max_body_size 50M;
+#     location / {
+#       proxy_pass http://127.0.0.1:3000;
+#       proxy_http_version 1.1;
+#       proxy_set_header Upgrade $http_upgrade;
+#       proxy_set_header Connection "upgrade";
+#       proxy_set_header Host $host;
+#       proxy_set_header X-Forwarded-Proto $scheme;
+#       proxy_set_header X-Real-IP $remote_addr;
+#       proxy_read_timeout 90s;
+#     }
+#   }
+
+services:
+  rails:
+    image: chatwoot/chatwoot:latest
+    container_name: chatwoot-rails
+    restart: unless-stopped
+    env_file:
+      - /opt/chatwoot/.env
+    entrypoint: docker/entrypoints/rails.sh
+    command: ["bundle", "exec", "rails", "s", "-p", "3000", "-b", "0.0.0.0"]
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - chatwoot_storage:/app/storage
+      - chatwoot_public:/app/public
+    depends_on:
+      - chatwoot-postgres
+      - chatwoot-redis
+    networks:
+      - chatwoot_net
+
+  sidekiq:
+    image: chatwoot/chatwoot:latest
+    container_name: chatwoot-sidekiq
+    restart: unless-stopped
+    env_file:
+      - /opt/chatwoot/.env
+    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+    volumes:
+      - chatwoot_storage:/app/storage
+    depends_on:
+      - chatwoot-postgres
+      - chatwoot-redis
+    networks:
+      - chatwoot_net
+
+  chatwoot-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: chatwoot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: chatwoot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: chatwoot_production
+    volumes:
+      - chatwoot_pg:/var/lib/postgresql/data
+    networks:
+      - chatwoot_net
+
+  chatwoot-redis:
+    image: redis:7-alpine
+    container_name: chatwoot-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1"]
+    volumes:
+      - chatwoot_redis:/data
+    networks:
+      - chatwoot_net
+
+volumes:
+  chatwoot_storage:
+  chatwoot_public:
+  chatwoot_pg:
+  chatwoot_redis:
+
+networks:
+  chatwoot_net:
+    driver: bridge

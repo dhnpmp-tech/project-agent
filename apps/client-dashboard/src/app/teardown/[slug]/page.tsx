@@ -124,7 +124,7 @@ export default async function TeardownPermalinkPage({ params }: PageParams) {
           </p>
         </header>
 
-        <TeardownReport pkg={row.package} />
+        <TeardownReport pkg={row.package} slug={slug} />
 
         <footer
           style={{
