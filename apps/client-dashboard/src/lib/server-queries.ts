@@ -241,6 +241,9 @@ export interface GbpAuditSummary {
 export interface FaqGap {
   question: string;
   draft_answer: string;
+  // True after the owner has clicked "approve" on the dashboard — the Q&A
+  // has been promoted to business_knowledge.faq.
+  approved?: boolean;
 }
 
 export async function getDayOnePackage(): Promise<DayOnePackage | null> {

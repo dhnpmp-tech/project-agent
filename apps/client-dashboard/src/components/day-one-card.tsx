@@ -3,6 +3,7 @@
 // Server Component — receives the package as a prop from the dashboard.
 
 import type { DayOnePackage, GbpAuditSummary, FaqGap } from "@/lib/server-queries";
+import { FaqGapApproveButton } from "./faq-gap-approve-button";
 
 interface Props {
   pkg: DayOnePackage | null;
@@ -160,24 +161,40 @@ function FaqGapsBlock({ gaps }: { gaps: FaqGap[] }) {
           <div
             key={i}
             style={{
-              background: "var(--paper, #f6f3eb)",
-              border: "1px solid var(--paper-line, #d8d2bf)",
+              background: g.approved ? "#eef5e9" : "var(--paper, #f6f3eb)",
+              border: `1px solid ${g.approved ? "#bdd7af" : "var(--paper-line, #d8d2bf)"}`,
               borderRadius: 4,
               padding: 14,
               display: "flex",
               flexDirection: "column",
               gap: 6,
+              opacity: g.approved ? 0.85 : 1,
             }}
           >
-            <span
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                color: "var(--paper-mut, #837c69)",
-              }}
-            >
-              Gap {i + 1}
-            </span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 10,
+                  color: "var(--paper-mut, #837c69)",
+                }}
+              >
+                Gap {i + 1}
+              </span>
+              {g.approved && (
+                <span
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: 10,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "#1e6d3d",
+                  }}
+                >
+                  ✓ approved
+                </span>
+              )}
+            </div>
             <p
               style={{
                 fontSize: 13,
@@ -200,6 +217,12 @@ function FaqGapsBlock({ gaps }: { gaps: FaqGap[] }) {
             >
               {g.draft_answer}
             </p>
+            {!g.approved && (
+              <FaqGapApproveButton
+                question={g.question}
+                draftAnswer={g.draft_answer}
+              />
+            )}
           </div>
         ))}
       </div>
