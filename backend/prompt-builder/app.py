@@ -4026,7 +4026,7 @@ async def _fetch_screenshot_via_firecrawl(url: str) -> Optional[str]:
         return None
 
 
-async def _fetch_page(_client: Any, url: str) -> Optional[str]:
+async def _fetch_page(_client: Any, url: str, allow_cloak: bool = False) -> Optional[str]:
     """Three-stage fetch ladder, ordered by speed + cost:
 
     1. Firecrawl /v1/scrape — cleanest main-content extraction. Fast,
@@ -4038,9 +4038,12 @@ async def _fetch_page(_client: Any, url: str) -> Optional[str]:
        Slowest (~3-6s) but reaches Cloudflare-protected + advanced
        anti-bot sites the others can't touch.
 
-    Each stage tries once per URL. The whole ladder runs in parallel
-    across the 16 path candidates inside web_crawl, so total crawl
-    time is bounded by the slowest single-page resolution.
+    `allow_cloak` gates the slowest stage. Defaults False because on
+    a typical 16-path enumeration we don't want CloakBrowser attempting
+    every dead /menu /about-us /faq-page path — that adds up to ~96s
+    of pointless waiting + can hang Vercel functions past their budget.
+    web_crawl passes True for the home page only; sub-paths just return
+    None when curl + Firecrawl both miss.
     """
     if _FIRECRAWL_API_KEY:
         html = await _fetch_via_firecrawl(url)
@@ -4049,6 +4052,8 @@ async def _fetch_page(_client: Any, url: str) -> Optional[str]:
     html = await _fetch_via_curl(url)
     if html:
         return html
+    if not allow_cloak:
+        return None
     return await _fetch_via_cloak(url)
 
 
@@ -4075,7 +4080,16 @@ async def web_crawl(req: _CrawlRequest):
     import asyncio
     async with httpx.AsyncClient() as client:
         pages_raw = await asyncio.gather(*[
-            _fetch_page(client, f"{base}{path}") for path in _CRAWL_PAGES_TO_TRY
+            _fetch_page(
+                client,
+                f"{base}{path}",
+                # Only allow the heavy stealth-browser fallback on the
+                # root path. For sub-paths, a 404 just means that path
+                # doesn't exist on this site — no point spending 5s+
+                # trying CloakBrowser on it.
+                allow_cloak=(path == ""),
+            )
+            for path in _CRAWL_PAGES_TO_TRY
         ])
     pages = [
         {"path": p or "/", "html": h, "text": _strip_html(h)}
@@ -4764,6 +4778,80 @@ async def web_social_pulse(req: _SocialPulseRequest):
         "instagram": instagram,
         "tiktok": tiktok,
         "reddit": reddit,
+    }
+
+
+# ----------------------------------------------------------------------------
+# Image cleanup — rembg-powered background removal. Used by the dashboard
+# when an owner uploads a phone-snap of a dish/product and wants a clean
+# cutout for social posts. One quick call: in→png, no AI needed.
+# Replaces the "wait for a designer" excuse owners use to never post.
+# ----------------------------------------------------------------------------
+
+
+class _CleanupImageRequest(BaseModel):
+    image_url: Optional[str] = None
+    image_base64: Optional[str] = None
+    # Optional: "u2net" (default, balanced), "u2netp" (smaller/faster),
+    # "isnet-general-use" (best quality for products), "isnet-anime",
+    # "silueta" (fast portrait). Default works well for food/product.
+    model: Optional[str] = "u2net"
+
+
+@app.post("/web/cleanup-image")
+async def web_cleanup_image(req: _CleanupImageRequest):
+    """Remove the background from a photo using rembg. Returns the
+    cleaned PNG as base64. Accepts either a URL (we fetch via curl)
+    or pre-encoded base64 bytes.
+
+    Typical call latency: 2-5s on a single photo (first call slower
+    due to model load). The first request also downloads the model
+    (~50-180MB depending on model choice).
+    """
+    if not req.image_url and not req.image_base64:
+        return {"error": "image_url_or_base64_required"}
+
+    # 1. Fetch the source bytes
+    import base64
+    if req.image_url:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "curl", "-sSL", "-m", "15", "-A", _CRAWL_UA, req.image_url,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=18)
+            src_bytes = stdout
+        except Exception as e:
+            return {"error": f"fetch_failed: {type(e).__name__}: {str(e)[:120]}"}
+    else:
+        try:
+            src_bytes = base64.b64decode(req.image_base64 or "")
+        except Exception:
+            return {"error": "invalid_base64"}
+
+    if not src_bytes or len(src_bytes) < 100:
+        return {"error": "image_too_small"}
+    if len(src_bytes) > 12_000_000:  # 12 MB cap
+        return {"error": "image_too_large"}
+
+    # 2. Run rembg in a thread pool (CPU-bound, blocks the event loop)
+    try:
+        from rembg import remove
+        loop = asyncio.get_event_loop()
+        out_bytes = await loop.run_in_executor(
+            None,
+            lambda: remove(src_bytes, session=None),
+        )
+    except Exception as e:
+        return {"error": f"rembg_failed: {type(e).__name__}: {str(e)[:200]}"}
+
+    return {
+        "ok": True,
+        "format": "png",
+        "size_in": len(src_bytes),
+        "size_out": len(out_bytes),
+        "data_base64": base64.b64encode(out_bytes).decode("ascii"),
     }
 
 
