@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Auto-publish website to here.now after commit
+# Only runs if files in apps/website were changed
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+WEBSITE_DIR="$REPO_ROOT/apps/website"
+SKILL_PATH="$HOME/.claude/skills/here-now/scripts/publish.sh"
+
+# Check if website files were changed in this commit
+if git diff-tree --no-commit-id --name-only -r HEAD | grep -q "^apps/website/"; then
+    echo "Website files changed, publishing to here.now..."
+
+    # Build the website
+    cd "$WEBSITE_DIR"
+    if npm run build > /dev/null 2>&1; then
+        # Publish to here.now (uses slug from state.json if available)
+        if [ -f "$SKILL_PATH" ]; then
+            SLUG="clear-fjord-96p9"
+            "$SKILL_PATH" ./out --slug "$SLUG" --client claude-code 2>&1 | grep -E "(https://|error:)"
+        else
+            echo "here.now skill not found at $SKILL_PATH"
+        fi
+    else
+        echo "Website build failed, skipping publish"
+    fi
+fi
