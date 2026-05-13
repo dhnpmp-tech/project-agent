@@ -4618,6 +4618,11 @@ class _SocialPulseRequest(BaseModel):
     business_name: str
     ig_handle: Optional[str] = None
     social_profiles: Optional[dict] = None
+    # Optional context used to filter TikTok UGC results against
+    # name-collision noise. Pass things like the city + business type
+    # ("Dubai restaurant", "Riyadh salon"); we keep only TikTok results
+    # whose description contains at least one of these keywords.
+    tiktok_filter_keywords: Optional[list[str]] = None
 
 
 @app.post("/web/social-pulse")
@@ -4676,26 +4681,59 @@ async def web_social_pulse(req: _SocialPulseRequest):
     tiktok: Optional[dict] = None
     if tiktok_data and tiktok_data.get("success"):
         items = tiktok_data.get("search_item_list") or []
+
+        # Build a relevance filter to fight name-collision noise. Common
+        # case: a fragrance brand named "Arabian Tea House" floods the
+        # results for a Dubai restaurant. We keep results whose
+        # description contains:
+        #   - the business name itself (any case), AND
+        #   - at least one filter keyword (if any were provided)
+        bn_lower = business_name.lower()
+        kw_filter = [k.lower().strip() for k in (req.tiktok_filter_keywords or []) if k.strip()]
+
+        def _is_relevant(desc: str) -> bool:
+            d = (desc or "").lower()
+            if bn_lower not in d:
+                # Some TikToks use the name only in audio/text overlay,
+                # not the description. We still count those as long as
+                # SOME keyword matches when filters are provided.
+                if not kw_filter:
+                    return True
+                return any(k in d for k in kw_filter)
+            if not kw_filter:
+                return True
+            return any(k in d for k in kw_filter)
+
         # Count items, sum views, list top 3
         total_views = 0
+        filtered_count = 0
         top_posts = []
-        for item in items[:20]:
+        skipped_collisions = 0
+        for item in items[:30]:
             aweme = item.get("aweme_info") or {}
             stats = aweme.get("statistics") or {}
             plays = stats.get("play_count") or 0
+            desc = (aweme.get("desc") or "")
+            relevant = _is_relevant(desc)
+            if not relevant:
+                skipped_collisions += 1
+                continue
+            filtered_count += 1
             total_views += plays
             if len(top_posts) < 3 and plays > 0:
                 top_posts.append({
                     "views": plays,
                     "likes": stats.get("digg_count") or 0,
                     "author": (aweme.get("author") or {}).get("unique_id"),
-                    "desc": (aweme.get("desc") or "")[:200],
+                    "desc": desc[:200],
                     "url": f"https://www.tiktok.com/@{(aweme.get('author') or {}).get('unique_id', '')}/video/{aweme.get('aweme_id', '')}",
                 })
         tiktok = {
-            "post_count": len(items),
+            "post_count": filtered_count,
             "total_views": total_views,
             "top_posts": top_posts,
+            "skipped_collisions": skipped_collisions,
+            "raw_count": len(items),
         }
 
     # ----- Reddit mention discovery -----

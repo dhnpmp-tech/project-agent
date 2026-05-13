@@ -216,6 +216,8 @@ export interface SchemaAudit {
   automation: string;
 }
 
+import { TeardownVideoPlayer } from "./teardown-video";
+
 const GRADE_PALETTE: Record<AgentScore["grade"], { fg: string; bg: string; ring: string }> = {
   "A+": { fg: "#1e6d3d", bg: "#dfeede", ring: "#2d8e7d" },
   A: { fg: "#1e6d3d", bg: "#dfeede", ring: "#2d8e7d" },
@@ -243,6 +245,7 @@ export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
   return (
     <>
       <AgentGreeting pkg={pkg} />
+      <TeardownVideoPlayer pkg={pkg} />
       {(pkg.agent_score || pkg.screenshot_url) && <VisualHero pkg={pkg} />}
       {pkg.badges && pkg.badges.length > 0 && <BadgeRow badges={pkg.badges} />}
       {pkg.gbp && <GbpPanel gbp={pkg.gbp} />}

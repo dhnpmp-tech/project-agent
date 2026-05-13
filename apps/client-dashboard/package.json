@@ -12,13 +12,15 @@
   "dependencies": {
     "@project-agent/calendar-adapter": "workspace:*",
     "@project-agent/shared-types": "workspace:*",
+    "@remotion/player": "^4.0.460",
     "jose": "^5.9.6",
     "next": "^15.1.0",
-    "postgres": "^3.4.5",
     "next-intl": "^4.0.0",
+    "postgres": "^3.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.0",
+    "remotion": "^4.0.460",
     "resend": "^6.9.4"
   },
   "devDependencies": {

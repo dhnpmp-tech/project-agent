@@ -498,7 +498,19 @@ function buildSchemaAudit(
 async function fetchSocialPulse(
   businessName: string,
   socialProfiles: Record<string, string> | undefined,
+  country: "AE" | "SA",
+  category: "restaurant" | "beauty" | "default",
 ): Promise<SocialPulse | null> {
+  // TikTok queries return name-collision noise (e.g. a fragrance brand
+  // named "Arabian Tea House" floods results for the Dubai restaurant).
+  // Pass category + market keywords so prompt-builder filters results.
+  const filterKeywords: string[] = [
+    country === "AE" ? "dubai" : "riyadh",
+    country === "AE" ? "uae" : "saudi",
+    category === "restaurant" ? "restaurant" : category === "beauty" ? "salon" : "",
+    category === "restaurant" ? "food" : "",
+  ].filter(Boolean);
+
   try {
     const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/social-pulse`, {
       method: "POST",
@@ -506,6 +518,7 @@ async function fetchSocialPulse(
       body: JSON.stringify({
         business_name: businessName,
         social_profiles: socialProfiles || {},
+        tiktok_filter_keywords: filterKeywords,
       }),
     });
     if (!res.ok) return null;
@@ -1355,7 +1368,7 @@ Output STRICT JSON only:
       ? fetchReviews(businessName, directoryStrategy.confirmed)
       : Promise.resolve(null),
     fetchGbp(businessName, country, locationHint),
-    fetchSocialPulse(businessName, crawl.socialProfiles),
+    fetchSocialPulse(businessName, crawl.socialProfiles, country, category),
   ]);
 
   // Third-stage: competitor radar — needs the GBP lat/lng. Same

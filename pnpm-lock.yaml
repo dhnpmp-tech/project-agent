@@ -35,6 +35,9 @@ importers:
       '@project-agent/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      '@remotion/player':
+        specifier: ^4.0.460
+        version: 4.0.460(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       jose:
         specifier: ^5.9.6
         version: 5.10.0
@@ -56,6 +59,9 @@ importers:
       recharts:
         specifier: ^2.15.0
         version: 2.15.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      remotion:
+        specifier: ^4.0.460
+        version: 4.0.460(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       resend:
         specifier: ^6.9.4
         version: 6.9.4
@@ -933,6 +939,12 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@remotion/player@4.0.460':
+    resolution: {integrity: sha512-xlShVD9Fjf5ikEiTtpzDGpBgzcqsECbY6pqXpPLZhkmpf9QZ3HVRFIVPc4cCgxB67uppeQ4eIWlNG+ecYGHicw==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
 
   '@rolldown/pluginutils@1.0.0-rc.3':
     resolution: {integrity: sha512-eybk3TjzzzV97Dlj5c+XrBFW57eTNhzod66y9HrBlzJ6NsCrWCp/2kaPS3K9wJmurBC0Tdw4yPjXKZqlznim3Q==}
@@ -2431,6 +2443,12 @@ packages:
     resolution: {integrity: sha512-6tDA8g98We0zd0GvVeMT9arEOnTw9qM03L9cJXaCjrip1OO764RDBLBfrB4cwzNGDj5OA5ioymC9GkizgWJDUg==}
     engines: {node: '>=8'}
 
+  remotion@4.0.460:
+    resolution: {integrity: sha512-rpCLLW9tPSiRsBIgEeh29INRagWir+v7OAY4UabDGqXSE+C1D3o4HzOmxM3BgtmHTi4+viI9QaHtMQR/w20y5Q==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+
   require-from-string@2.0.2:
     resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
     engines: {node: '>=0.10.0'}
@@ -3411,6 +3429,12 @@ snapshots:
       react: 19.2.4
     optionalDependencies:
       '@types/react': 19.2.14
+
+  '@remotion/player@4.0.460(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      remotion: 4.0.460(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   '@rolldown/pluginutils@1.0.0-rc.3': {}
 
@@ -4821,6 +4845,11 @@ snapshots:
     dependencies:
       indent-string: 4.0.0
       strip-indent: 3.0.0
+
+  remotion@4.0.460(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
 
   require-from-string@2.0.2: {}
 

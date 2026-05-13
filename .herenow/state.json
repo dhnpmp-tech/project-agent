@@ -2,6 +2,12 @@
   "publishes": {
     "clear-fjord-96p9": {
       "siteUrl": "https://clear-fjord-96p9.here.now/"
+    },
+    "fancy-flint-bej5": {
+      "siteUrl": "https://fancy-flint-bej5.here.now/"
+    },
+    "mindful-tablet-wyxa": {
+      "siteUrl": "https://mindful-tablet-wyxa.here.now/"
     }
   }
 }
