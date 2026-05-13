@@ -156,15 +156,15 @@ const INTELLIGENCE: IntelItem[] = [
   {
     t: { en: "Day-One Deliverables", ar: "نتائج اليوم الأول" },
     msg: {
-      en: "Within minutes of signup: an FAQ gap analyzer, a GBP audit one-pager, ICP-matched prospects, a morning owner-brief preview, and a full WhatsApp demo transcript using your real business. Ten artifacts, not a 'getting started' email.",
-      ar: "خلال دقائق من التسجيل: تحليل ثغرات الأسئلة، تدقيق ملف قوقل، عملاء محتملون مطابقون لمواصفاتك، معاينة موجز المالك الصباحي، ومحادثة واتساب تجريبية كاملة باسم عملك. عشر منتجات حقيقية، لا بريد ترحيبي.",
+      en: "Within minutes of signup: a Google Business Profile audit, an FAQ gap analyzer, ICP-matched prospects, a morning owner-brief preview, and a full WhatsApp demo transcript scripted around your actual business. Ten artifacts — not a 'getting started' email.",
+      ar: "خلال دقائق من التسجيل: تدقيق ملف قوقل التجاري، تحليل ثغرات الأسئلة، عملاء محتملون مطابقون لمواصفاتك، معاينة موجز المالك الصباحي، ومحادثة واتساب تجريبية كاملة مكتوبة حول عملك تحديداً. عشر منتجات حقيقية — لا بريد ترحيبي.",
     },
   },
   {
     t: { en: "Multi-Outlet Brand View", ar: "عرض موحّد لكل الفروع" },
     msg: {
-      en: "If you run a chain, the agent pulls every outlet on Google, weights reviews across all of them, surfaces the laggard, and benchmarks each location against the others. One brand, every address, one dashboard.",
-      ar: "إن كنت تدير سلسلة، يسحب الذكاء كل فرع على قوقل، يزن المراجعات في جميعها، يكشف الأضعف، ويقارن كل موقع بالآخرين. علامة واحدة، كل العناوين، لوحة واحدة.",
+      en: "If you run a chain, the agent pulls every outlet on Google, weights reviews across every location, surfaces the laggard, and benchmarks each one against the rest. One brand, every address, one dashboard.",
+      ar: "إن كنت تدير سلسلة، يسحب الذكاء كل فرع على قوقل، يزن المراجعات في كل موقع، يكشف الأضعف، ويقارن كل فرع بالبقية. علامة واحدة، كل العناوين، لوحة واحدة.",
     },
   },
   {
@@ -599,11 +599,13 @@ function Hero() {
     <section className="section hero-v2">
       <div className="container">
         <div className="hero-head">
-          <a href="/teardown" className="eyebrow" style={{ textDecoration: "none" }}>
+          <a
+            href="/teardown"
+            className="eyebrow"
+            style={{ textDecoration: "none", cursor: "pointer" }}
+          >
             <span className="d" />
-            {lang === "ar"
-              ? "جديد · تشريح مجاني لأي عمل — ٦٠ ثانية"
-              : "NEW · Free teardown for any business — 60 seconds"}
+            {lang === "ar" ? "جديد · تشريح مجاني · ٦٠ ثانية" : "NEW · Free teardown · 60s"}
             <Arrow size={10} />
           </a>
         </div>
@@ -703,18 +705,18 @@ const TEARDOWN_TILES: TeardownTile[] = [
   },
   {
     num: "03",
-    t: { en: "Review sentiment + drafted replies", ar: "مشاعر المراجعات + ردود جاهزة" },
+    t: { en: "Reviews · sentiment + drafted replies", ar: "المراجعات · مشاعر + ردود جاهزة" },
     msg: {
-      en: "We mine your last 90 days of reviews, classify the sentiment, surface the top complaints, and pre-draft owner responses you can copy now.",
-      ar: "نحلل مراجعات آخر ٩٠ يوماً، نصنّف المشاعر، نُبرز أبرز الشكاوى، ونصيغ ردوداً جاهزة للنسخ مباشرةً.",
+      en: "We mine your last 90 days of reviews, classify the sentiment, surface the top complaints, and pre-draft owner responses you can copy and post right now.",
+      ar: "نحلّل مراجعات آخر ٩٠ يوماً، نصنّف المشاعر، نُبرز أبرز الشكاوى، ونصيغ ردود مالك جاهزة للنسخ والنشر فوراً.",
     },
   },
   {
     num: "04",
-    t: { en: "Schema audit · production JSON-LD", ar: "تدقيق Schema · JSON-LD جاهز" },
+    t: { en: "Schema audit · ready-to-paste JSON-LD", ar: "تدقيق Schema · JSON-LD جاهز للنسخ" },
     msg: {
-      en: "We check what structured data is missing from your site — and emit production-ready JSON-LD blocks (Restaurant, FAQPage, Menu) you can paste straight in.",
-      ar: "نفحص البيانات المنظّمة الناقصة من موقعك — ونصدر كتل JSON-LD جاهزة للنسخ (مطعم، أسئلة، قائمة).",
+      en: "We check what structured data is missing from your site — then generate the JSON-LD blocks (Restaurant, FAQPage, Menu) for you to paste directly into your <head>.",
+      ar: "نفحص البيانات المنظّمة الناقصة من موقعك — ثم نولّد كتل JSON-LD (مطعم، أسئلة، قائمة) جاهزة للصق مباشرةً داخل وسم <head>.",
     },
   },
   {
@@ -763,8 +765,8 @@ function Teardown() {
           </h2>
           <p className="ss strong" style={{ maxWidth: "44ch" }}>
             {lang === "ar"
-              ? "الصق رابط موقعك. نشغّل نفس فحوصات الذكاء الاصطناعي التي نشغّلها لعملائنا — بدون تسجيل، بدون بريد إلكتروني، بدون قيود. النتيجة قابلة للمشاركة برابط دائم."
-              : "Paste your URL. We run the same AI audit we run for paying clients — no signup, no email gate, no calendar booking. The result is a permanent, shareable link."}
+              ? "الصق رابط موقعك. تشغّل وكلاؤنا نفس التحليل الذي يقومون به عند استقبال أي منشأة جديدة — بدون تسجيل، بدون بريد إلكتروني، بدون مكالمة مبيعات. النتيجة رابط دائم قابل للمشاركة."
+              : "Paste your URL. Our agents run the same analysis they perform when onboarding any new business — no signup, no email gate, no sales call. The result is a permanent, shareable link."}
           </p>
         </div>
         <div className="intel-grid">
@@ -780,12 +782,12 @@ function Teardown() {
         </div>
         <div className="ctas" style={{ marginTop: 36, justifyContent: "center" }}>
           <a className="btn primary lg" href="/teardown">
-            {lang === "ar" ? "شغّل التشريح الآن" : "Run the teardown now"} <Arrow size={14} />
+            {lang === "ar" ? "شغّل التشريح المجاني" : "Run a free teardown"} <Arrow size={14} />
           </a>
           <span className="mono" style={{ alignSelf: "center", opacity: 0.55 }}>
             {lang === "ar"
-              ? "مثال مباشر · arabianteahouse.com · ٥ فروع · ٤٥٬٧٦١ مراجعة"
-              : "Live example · arabianteahouse.com · 5 outlets · 45,761 reviews"}
+              ? "آخر مثال · arabianteahouse.com · ٥ فروع · ٤٥٬٧٦١ مراجعة · ★ ٤٫٨١"
+              : "Recent example · arabianteahouse.com · 5 outlets · 45,761 reviews · ★ 4.81"}
           </span>
         </div>
       </div>
@@ -1488,7 +1490,7 @@ const COMPARE: CompareRow[] = [
   {
     k: { en: "Languages", ar: "اللغات" },
     hire: { en: "Usually 1, sometimes 2", ar: "عادة واحدة، أحياناً اثنتان" },
-    agent: { en: "Arabic + English native, 6 more", ar: "عربي + إنجليزي أصلي، و٦ أخرى" },
+    agent: { en: "Arabic + English · native fluency", ar: "عربي + إنجليزي · إتقان أصلي" },
     ours: true,
   },
   {
@@ -1664,24 +1666,24 @@ const SHIPS: Ship[] = [
     date: "May 13",
     t: { en: "Multi-outlet brand view", ar: "عرض موحّد لكل الفروع" },
     msg: {
-      en: "Chains and franchises now show every Google location with weighted reviews. Arabian Tea House: 5 outlets, 45,761 reviews aggregated, 4.81★ weighted.",
-      ar: "السلاسل والامتيازات تعرض الآن كل موقع على قوقل مع مراجعات مرجَّحة. مطعم البيت العربي: ٥ فروع، ٤٥٬٧٦١ مراجعة، ٤٫٨١★.",
+      en: "Chains and franchises now show every Google location with weighted reviews. Arabian Tea House: 5 outlets, 45,761 reviews aggregated, ★ 4.81 weighted average.",
+      ar: "السلاسل والامتيازات تعرض الآن كل موقع على قوقل مع مراجعات مرجَّحة. مطعم البيت العربي: ٥ فروع، ٤٥٬٧٦١ مراجعة مجمّعة، بمتوسط مرجَّح ★ ٤٫٨١.",
     },
   },
   {
     date: "May 13",
     t: { en: "Schema markup generator", ar: "مولّد Schema" },
     msg: {
-      en: "The agent now emits production-ready JSON-LD blocks (Restaurant, FAQPage, Menu) grounded in verified GBP + crawl facts. One-click copy.",
-      ar: "الذكاء يصدر الآن كتل JSON-LD جاهزة (مطعم، أسئلة، قائمة) مبنية على بيانات GBP والزحف الموثّقة. نسخ بضغطة واحدة.",
+      en: "The agent now writes ready-to-paste JSON-LD blocks (Restaurant, FAQPage, Menu) grounded in your verified Google Business Profile and crawl data. One-click copy.",
+      ar: "الذكاء يكتب الآن كتل JSON-LD جاهزة للصق (مطعم، أسئلة، قائمة) مبنية على بيانات ملف قوقل التجاري الموثّقة وبيانات الزحف. نسخ بضغطة واحدة.",
     },
   },
   {
     date: "May 13",
     t: { en: "Free public teardown", ar: "تشريح مجاني علني" },
     msg: {
-      en: "Zero-auth viral surface at agents.dcp.sa/teardown. Paste any UAE/Saudi SMB URL — get a 60-second AI audit with shareable permalink.",
-      ar: "واجهة فيروسية بدون تسجيل على agents.dcp.sa/teardown. الصق أي رابط لمنشأة في الإمارات/السعودية — احصل على تدقيق ذكاء في ٦٠ ثانية برابط دائم.",
+      en: "Public, zero-signup audit at agents.dcp.sa/teardown. Paste any UAE or Saudi SMB URL and you get a 60-second AI breakdown with a permanent, shareable link.",
+      ar: "تدقيق علني بدون تسجيل على agents.dcp.sa/teardown. الصق أي رابط لمنشأة في الإمارات أو السعودية لتحصل على تحليل ذكاء في ٦٠ ثانية برابط دائم قابل للمشاركة.",
     },
   },
   {
@@ -1694,34 +1696,34 @@ const SHIPS: Ship[] = [
   },
   {
     date: "May 13",
-    t: { en: "Social pulse · IG · TikTok · Reddit", ar: "نبض السوشيال" },
+    t: { en: "Social pulse · Instagram · TikTok · Reddit", ar: "نبض السوشيال · إنستغرام · تيك توك · ريديت" },
     msg: {
-      en: "Live freshness signals: post drought detection, UGC mentions, Reddit threads — all pulled at teardown time.",
-      ar: "إشارات حضور مباشرة: كشف فجوات النشر، إشارات UGC، خيوط Reddit — كلها وقت التشريح.",
+      en: "Live freshness signals: post-drought detection on Instagram, UGC mentions on TikTok, and brand threads on Reddit — all pulled fresh every time you run a teardown.",
+      ar: "إشارات حضور حيّة: كشف فجوات النشر على إنستغرام، إشارات المحتوى على تيك توك، وخيوط النقاش حول علامتك على ريديت — تُسحب كلها لحظياً مع كل تشريح.",
     },
   },
   {
     date: "May 12",
-    t: { en: "Day-one deliverables (10)", ar: "نتائج اليوم الأول (١٠)" },
+    t: { en: "Day-one deliverables · 10 artifacts", ar: "نتائج اليوم الأول · ١٠ منتجات" },
     msg: {
-      en: "Signup now produces 10 real artifacts: FAQ gaps, GBP audit, ICP prospects, owner-brief preview, WhatsApp demo transcript, review mining, and more.",
-      ar: "التسجيل يولّد الآن ١٠ منتجات حقيقية: ثغرات الأسئلة، تدقيق قوقل، عملاء محتملون، معاينة موجز المالك، محادثة واتساب تجريبية، تحليل المراجعات، والمزيد.",
+      en: "Signup now produces ten real artifacts: Google Business Profile audit, FAQ gap report, ICP-matched prospects, owner-brief preview, WhatsApp demo transcript, review mining — and more.",
+      ar: "التسجيل يولّد الآن عشر منتجات حقيقية: تدقيق ملف قوقل التجاري، تقرير ثغرات الأسئلة، عملاء محتملون مطابقون، معاينة موجز المالك، محادثة واتساب تجريبية، تحليل المراجعات — والمزيد.",
     },
   },
   {
     date: "May 12",
-    t: { en: "Central inference router", ar: "موجّه استدلال مركزي" },
+    t: { en: "Central inference router", ar: "موجّه ذكاء اصطناعي مركزي" },
     msg: {
-      en: "Every LLM call now routes through one function: role → provider. Auto-failover from Anthropic → MiniMax when keys revoke. Reasoning traces sanitized.",
-      ar: "كل استدعاء LLM يمرّ عبر دالة واحدة: الدور → المزوّد. تحويل تلقائي من Anthropic إلى MiniMax عند انتهاء المفاتيح. تنظيف آثار التفكير.",
+      en: "Every AI call now flows through a single router that picks the right model for each role. When one provider fails, traffic auto-fails over to the next — no dropped conversations.",
+      ar: "كل استدعاء للذكاء يمرّ الآن عبر موجّه واحد يختار النموذج المناسب لكل دور. عند تعطّل أي مزوّد، يُحوَّل الطلب تلقائياً إلى البديل — دون انقطاع المحادثات.",
     },
   },
   {
     date: "May 11",
-    t: { en: "Self-hosted data plane", ar: "بنية بيانات ذاتية" },
+    t: { en: "Self-hosted data layer", ar: "بنية بيانات ذاتية الاستضافة" },
     msg: {
-      en: "Migrated off hosted Supabase to self-hosted Postgres 17 + pgvector on our VPS. Resend OTP auth replaces the dead third party. Owner-controlled, end-to-end.",
-      ar: "انتقلنا من Supabase المستضافة إلى Postgres 17 + pgvector على VPS خاص. مصادقة Resend OTP تحلّ محلّ الطرف الثالث. تحكّم كامل من جهة المالك.",
+      en: "Moved off third-party Supabase onto self-hosted Postgres 17 + pgvector on our own VPS, with Resend OTP magic-link auth. Owner-controlled end-to-end — no vendor lock-in.",
+      ar: "انتقلنا من Supabase الخارجية إلى Postgres 17 + pgvector على خادم خاص بنا، مع مصادقة Resend OTP عبر رابط سحري. تحكّم كامل من جهة المالك — دون ارتهان بمزوّد خارجي.",
     },
   },
 ];
@@ -1736,7 +1738,7 @@ function ShippingLog() {
           label={lang === "ar" ? "شُحن هذا الأسبوع" : "shipped this week"}
           right={
             <span className="live mono">
-              <span className="d" /> {lang === "ar" ? "٥٢ التزاماً · ٧ أيام" : "52 COMMITS · 7 DAYS"}
+              <span className="d" /> {lang === "ar" ? "٦١ التزاماً · ٧ أيام" : "61 COMMITS · 7 DAYS"}
             </span>
           }
         />
@@ -1985,6 +1987,7 @@ function HomeApp() {
   const { lang } = useLang();
   const navLinks: NavLink[] = [
     { href: "/", label: lang === "ar" ? "الخدمات" : "Services", key: "home" },
+    { href: "/teardown", label: lang === "ar" ? "التشريح" : "Teardown", key: "teardown" },
     { href: "/pricing", label: lang === "ar" ? "الأسعار" : "Pricing", key: "pricing" },
     { href: "/demo", label: lang === "ar" ? "العملية" : "Process", key: "process" },
     { href: "/app", label: lang === "ar" ? "اللوحة" : "Dashboard", key: "dash" },
