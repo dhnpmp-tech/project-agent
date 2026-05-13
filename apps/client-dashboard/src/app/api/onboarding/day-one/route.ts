@@ -198,10 +198,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Allow callers to pass a clientId (e.g. /api/onboarding/submit calling
-  // immediately after the JWT was reissued — both paths converge here).
+  // Allow callers to pass a clientId. Two legitimate cases:
+  //  - /api/onboarding/submit calling immediately after the JWT was
+  //    reissued, before the cookie has propagated to the next request
+  //  - /api/admin/day-one/[clientId] backfilling for a different tenant
+  // To prevent a normal authenticated user from overwriting somebody
+  // else's day_one package, the cross-tenant override is gated to
+  // admins only.
   const body = (await req.json().catch(() => ({}))) as { clientId?: string };
-  const clientId = body.clientId || session.clientId;
+  const requested = body.clientId;
+  const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "setup@dcp.sa,dhnpmp@gmail.com")
+    .split(",")
+    .map((s) => s.trim().toLowerCase());
+  const isAdminCaller =
+    session.role === "admin" ||
+    (session.email && ADMIN_EMAILS.includes(session.email.toLowerCase()));
+  if (requested && requested !== session.clientId && !isAdminCaller) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  const clientId = requested || session.clientId;
 
   // Pull company + KB in one round-trip
   const [companyRows, kbRows] = await Promise.all([
