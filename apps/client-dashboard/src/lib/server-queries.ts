@@ -234,6 +234,9 @@ export interface DayOnePackage {
   // WhatsApp. Demonstrates the AI Chief of Staff value before any data
   // has accumulated.
   owner_brief?: OwnerBriefPreview | null;
+  // Three ICP-matched prospects the AI SDR would start working today,
+  // each with a draft first outbound message.
+  icp_leads?: IcpLead[];
 }
 
 export interface GbpAuditSummary {
@@ -275,6 +278,12 @@ export interface OwnerBriefPreview {
   bullets: OwnerBriefBullet[];
   decision: string;
   closer: string;
+}
+
+export interface IcpLead {
+  name_and_location: string;
+  why_it_matches: string;
+  first_message: string;
 }
 
 export async function getDayOnePackage(): Promise<DayOnePackage | null> {

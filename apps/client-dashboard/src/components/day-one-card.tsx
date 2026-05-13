@@ -8,6 +8,7 @@ import type {
   FaqGap,
   DemoTranscript,
   OwnerBriefPreview,
+  IcpLead,
 } from "@/lib/server-queries";
 import { FaqGapApproveButton } from "./faq-gap-approve-button";
 
@@ -106,9 +107,156 @@ export function DayOneCard({ pkg }: Props) {
         {pkg.faq_gaps && pkg.faq_gaps.length > 0 && (
           <FaqGapsBlock gaps={pkg.faq_gaps} />
         )}
+        {pkg.icp_leads && pkg.icp_leads.length > 0 && (
+          <IcpLeadsBlock leads={pkg.icp_leads} />
+        )}
         <SocialBlock posts={pkg.social_posts} />
       </div>
     </section>
+  );
+}
+
+function IcpLeadsBlock({ leads }: { leads: IcpLead[] }) {
+  return (
+    <article
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 6,
+        padding: 20,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        gridColumn: "1 / -1",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        § I · the prospects
+      </span>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, serif",
+          fontWeight: 400,
+          fontSize: 20,
+          lineHeight: 1.15,
+          color: "var(--paper-ink, #1d1c18)",
+          margin: 0,
+        }}
+      >
+        Three accounts your AI SDR would start working today
+      </h3>
+      <p
+        style={{
+          fontSize: 12,
+          color: "var(--paper-mut, #837c69)",
+          fontStyle: "italic",
+          margin: 0,
+          maxWidth: 720,
+        }}
+      >
+        Each prospect comes with the actual first message your SDR will send.
+        Approve them later in the SDR tab — for now, see who&apos;d be on the
+        list.
+      </p>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 12,
+          marginTop: 4,
+        }}
+      >
+        {leads.map((lead, i) => (
+          <div
+            key={i}
+            style={{
+              background: "var(--paper, #f6f3eb)",
+              border: "1px solid var(--paper-line, #d8d2bf)",
+              borderRadius: 4,
+              padding: 14,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                color: "var(--paper-mut, #837c69)",
+              }}
+            >
+              Prospect {i + 1}
+            </span>
+            <h4
+              style={{
+                fontFamily: "Instrument Serif, serif",
+                fontWeight: 400,
+                fontSize: 18,
+                lineHeight: 1.2,
+                color: "var(--paper-ink, #1d1c18)",
+                margin: 0,
+              }}
+            >
+              {lead.name_and_location}
+            </h4>
+            <p
+              style={{
+                fontSize: 12,
+                lineHeight: 1.5,
+                color: "var(--paper-mut, #514c40)",
+                fontStyle: "italic",
+                margin: 0,
+              }}
+            >
+              {lead.why_it_matches}
+            </p>
+            <div
+              style={{
+                background: "#fffef9",
+                border: "1px solid var(--paper-line, #d8d2bf)",
+                borderRadius: 4,
+                padding: 10,
+                marginTop: 2,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 9,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "var(--paper-mut, #837c69)",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                draft first message
+              </span>
+              <p
+                style={{
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  color: "var(--paper-ink, #1d1c18)",
+                  margin: 0,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {lead.first_message}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </article>
   );
 }
 

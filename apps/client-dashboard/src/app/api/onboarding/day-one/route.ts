@@ -78,6 +78,18 @@ interface OwnerBriefPreview {
   closer: string;          // signoff line: "Just say 'yes' or 'no' — I'll take it from there."
 }
 
+interface IcpLead {
+  // e.g. "Café Bateel · DIFC" — name + a locator pulled from the brand
+  // context (location/area/neighborhood). Strict 80-char cap.
+  name_and_location: string;
+  // 1–2 sentence reason this prospect fits the tenant's ICP — references
+  // the *tenant's* business, not generic SDR fluff.
+  why_it_matches: string;
+  // The DM/email the AI SDR would send first. On-brand, short, opens
+  // with something the prospect would actually notice.
+  first_message: string;
+}
+
 interface DayOnePackage {
   generated_at: string;
   insight: string;
@@ -88,6 +100,7 @@ interface DayOnePackage {
   faq_gaps: FaqGap[];
   demo_transcript: DemoTranscript | null;
   owner_brief: OwnerBriefPreview | null;
+  icp_leads: IcpLead[];
 }
 
 const PROMPT_BUILDER_URL =
@@ -230,6 +243,7 @@ export async function POST(req: NextRequest) {
     faqGapsRaw,
     transcriptRaw,
     ownerBriefRaw,
+    icpLeadsRaw,
   ] = await Promise.all([
     inferenceChat(
       "rami_research",
@@ -332,6 +346,32 @@ Output STRICT JSON only — no preamble, no markdown fence:
 }
 
 The numbers can be plausible fictional ones for the demo (e.g. "5 confirmed, 2 waitlist") — they should look real, not placeholder.`,
+    ),
+    inferenceChat(
+      "sales_outbound",
+      `You are the AI SDR for ${company.company_name}. The owner just finished onboarding and you want to immediately surface THREE prospect businesses you'd start working today. Pick businesses that are:
+- A plausible adjacent customer for this business (B2B accounts or partnership opportunities — NOT random consumers)
+- Located in the same metro area as ${company.company_name} (${company.country === "AE" ? "UAE — Dubai/Abu Dhabi/Sharjah" : "Saudi Arabia — Riyadh/Jeddah/Dammam"})
+- Realistic for the ${company.country === "AE" ? "UAE" : "Saudi"} market — use real categories of business that exist there (DMCC traders, DIFC firms, hotel groups, malls, schools, clinics, etc.)
+
+${context}
+
+For each prospect, draft the FIRST outbound message the SDR would send. It must:
+- Open with something specific to that prospect (a guess about their need, their location, their team)
+- Mention how ${company.company_name} could serve them with one concrete value proposition
+- End with a low-friction ask (introduction, brief intro call, a sample)
+- Stay under 350 characters
+- Match the brand voice
+
+Output STRICT JSON only — no preamble, no markdown fence:
+[
+  {
+    "name_and_location": "Prospect Name · Area (max 80 chars)",
+    "why_it_matches": "1–2 sentences naming the specific overlap with this tenant's business (max 280 chars)",
+    "first_message": "the actual outbound message text (max 350 chars)"
+  },
+  ... 3 objects total
+]`,
     ),
   ]);
 
@@ -476,6 +516,42 @@ The numbers can be plausible fictional ones for the demo (e.g. "5 confirmed, 2 w
     }
   }
 
+  // Parse ICP leads. Same defensive pattern.
+  let icp_leads: IcpLead[] = [];
+  if (icpLeadsRaw) {
+    const cleaned = icpLeadsRaw
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+    const start = cleaned.indexOf("[");
+    const end = cleaned.lastIndexOf("]");
+    if (start >= 0 && end > start) {
+      try {
+        const parsed = JSON.parse(cleaned.slice(start, end + 1));
+        if (Array.isArray(parsed)) {
+          icp_leads = parsed
+            .filter(
+              (l): l is IcpLead =>
+                l &&
+                typeof l.name_and_location === "string" &&
+                typeof l.why_it_matches === "string" &&
+                typeof l.first_message === "string" &&
+                l.name_and_location.trim().length > 5 &&
+                l.first_message.trim().length > 20,
+            )
+            .slice(0, 3)
+            .map((l) => ({
+              name_and_location: l.name_and_location.trim().slice(0, 100),
+              why_it_matches: l.why_it_matches.trim().slice(0, 320),
+              first_message: l.first_message.trim().slice(0, 400),
+            }));
+        }
+      } catch {
+        // Card hides on bad data.
+      }
+    }
+  }
+
   const pkg: DayOnePackage = {
     generated_at: new Date().toISOString(),
     insight: insight.trim(),
@@ -486,6 +562,7 @@ The numbers can be plausible fictional ones for the demo (e.g. "5 confirmed, 2 w
     faq_gaps,
     demo_transcript,
     owner_brief,
+    icp_leads,
   };
 
   // Persist into business_knowledge.crawl_data.day_one so the dashboard
