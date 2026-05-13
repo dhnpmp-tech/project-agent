@@ -54,6 +54,17 @@ interface FaqGap {
   draft_answer: string;
 }
 
+interface DemoTranscriptTurn {
+  speaker: "customer" | "agent";
+  text: string;
+}
+
+interface DemoTranscript {
+  scenario: string;        // e.g. "A first-time visitor asks about Friday dinner"
+  resolution: string;      // e.g. "Booking confirmed for 8pm Friday, table for 4"
+  turns: DemoTranscriptTurn[];
+}
+
 interface DayOnePackage {
   generated_at: string;
   insight: string;
@@ -62,6 +73,7 @@ interface DayOnePackage {
   customer_welcome: string;
   gbp_audit: GbpAuditSummary | null;
   faq_gaps: FaqGap[];
+  demo_transcript: DemoTranscript | null;
 }
 
 const PROMPT_BUILDER_URL =
@@ -195,7 +207,15 @@ export async function POST(req: NextRequest) {
       ? kb.faq.slice(0, 20).map((f) => f.question).join("\n- ")
       : "(no FAQ extracted from your website)";
 
-  const [insight, postsRaw, reply, welcome, gbp_audit, faqGapsRaw] = await Promise.all([
+  const [
+    insight,
+    postsRaw,
+    reply,
+    welcome,
+    gbp_audit,
+    faqGapsRaw,
+    transcriptRaw,
+  ] = await Promise.all([
     inferenceChat(
       "rami_research",
       `You are an analyst looking at this UAE/Saudi SMB for the first time.
@@ -251,6 +271,32 @@ Output as STRICT JSON only — no preamble, no markdown fence:
 
 Exactly five objects. Each "question" max 120 chars, each "draft_answer" max 280 chars.`,
     ),
+    inferenceChat(
+      "customer_response_en",
+      `You are simulating a complete realistic WhatsApp conversation between a new customer and Nadia, the AI concierge for ${company.company_name}. The owner wants to see what their AI will actually do before any real customer arrives.
+
+${context}
+
+Generate ONE end-to-end conversation that:
+- Starts with the customer messaging cold (typical UAE/Saudi opener)
+- Goes through 8–10 turns total (alternating customer/agent)
+- Resolves with a concrete outcome (booking confirmed, order placed, question answered with a clear next step)
+- Stays on-brand throughout, uses short WhatsApp-style messages (no formal email tone)
+- Demonstrates at least one moment where the agent uses something specific to this business (a service name, a price, an hour, a location detail)
+
+Output as STRICT JSON only — no preamble, no markdown fence:
+{
+  "scenario": "one-line description of the conversation context",
+  "resolution": "one-line description of what was achieved",
+  "turns": [
+    {"speaker": "customer", "text": "..."},
+    {"speaker": "agent",    "text": "..."},
+    ...
+  ]
+}
+
+The turns array MUST alternate strictly starting with "customer". Each "text" max 240 chars.`,
+    ),
   ]);
 
   // Parse the FAQ gap response. Be defensive — the model may wrap in ```json
@@ -296,6 +342,55 @@ Exactly five objects. Each "question" max 120 chars, each "draft_answer" max 280
     .filter((p) => p.length > 20)
     .slice(0, 3);
 
+  // Parse the demo transcript. Same defensive pattern as faq_gaps.
+  let demo_transcript: DemoTranscript | null = null;
+  if (transcriptRaw) {
+    const cleaned = transcriptRaw
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        const parsed = JSON.parse(cleaned.slice(start, end + 1));
+        if (
+          parsed &&
+          typeof parsed.scenario === "string" &&
+          typeof parsed.resolution === "string" &&
+          Array.isArray(parsed.turns)
+        ) {
+          const turns: DemoTranscriptTurn[] = parsed.turns
+            .filter(
+              (t: unknown): t is DemoTranscriptTurn =>
+                !!t &&
+                typeof t === "object" &&
+                "speaker" in t &&
+                "text" in t &&
+                (t as DemoTranscriptTurn).speaker !== undefined &&
+                typeof (t as DemoTranscriptTurn).text === "string" &&
+                ((t as DemoTranscriptTurn).speaker === "customer" ||
+                  (t as DemoTranscriptTurn).speaker === "agent"),
+            )
+            .map((t: DemoTranscriptTurn) => ({
+              speaker: t.speaker,
+              text: t.text.trim().slice(0, 320),
+            }))
+            .slice(0, 12);
+          if (turns.length >= 4) {
+            demo_transcript = {
+              scenario: parsed.scenario.trim().slice(0, 200),
+              resolution: parsed.resolution.trim().slice(0, 200),
+              turns,
+            };
+          }
+        }
+      } catch {
+        // Leave demo_transcript null — card hides on missing data.
+      }
+    }
+  }
+
   const pkg: DayOnePackage = {
     generated_at: new Date().toISOString(),
     insight: insight.trim(),
@@ -304,6 +399,7 @@ Exactly five objects. Each "question" max 120 chars, each "draft_answer" max 280
     customer_welcome: welcome.trim(),
     gbp_audit,
     faq_gaps,
+    demo_transcript,
   };
 
   // Persist into business_knowledge.crawl_data.day_one so the dashboard

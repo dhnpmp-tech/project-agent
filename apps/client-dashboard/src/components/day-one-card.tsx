@@ -2,7 +2,12 @@
 // of the tenant's life — the "holy shit, it's already working" moment.
 // Server Component — receives the package as a prop from the dashboard.
 
-import type { DayOnePackage, GbpAuditSummary, FaqGap } from "@/lib/server-queries";
+import type {
+  DayOnePackage,
+  GbpAuditSummary,
+  FaqGap,
+  DemoTranscript,
+} from "@/lib/server-queries";
 import { FaqGapApproveButton } from "./faq-gap-approve-button";
 
 interface Props {
@@ -91,12 +96,141 @@ export function DayOneCard({ pkg }: Props) {
           subtitle='Customer asked: "Is the restaurant open tonight? My wife and I want to celebrate our anniversary."'
         />
         {pkg.gbp_audit && <GbpAuditBlock audit={pkg.gbp_audit} />}
+        {pkg.demo_transcript && pkg.demo_transcript.turns.length >= 4 && (
+          <DemoTranscriptBlock transcript={pkg.demo_transcript} />
+        )}
         {pkg.faq_gaps && pkg.faq_gaps.length > 0 && (
           <FaqGapsBlock gaps={pkg.faq_gaps} />
         )}
         <SocialBlock posts={pkg.social_posts} />
       </div>
     </section>
+  );
+}
+
+function DemoTranscriptBlock({ transcript }: { transcript: DemoTranscript }) {
+  return (
+    <article
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 6,
+        padding: 20,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        gridColumn: "1 / -1",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        § G · the preview
+      </span>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, serif",
+          fontWeight: 400,
+          fontSize: 20,
+          lineHeight: 1.15,
+          color: "var(--paper-ink, #1d1c18)",
+          margin: 0,
+        }}
+      >
+        What your AI actually does, end to end
+      </h3>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          marginTop: 4,
+          marginBottom: 2,
+        }}
+      >
+        <p
+          style={{
+            fontSize: 12,
+            color: "var(--paper-mut, #837c69)",
+            fontStyle: "italic",
+            margin: 0,
+          }}
+        >
+          <strong>Scenario:</strong> {transcript.scenario}
+        </p>
+        <p
+          style={{
+            fontSize: 12,
+            color: "var(--paper-mut, #837c69)",
+            fontStyle: "italic",
+            margin: 0,
+          }}
+        >
+          <strong>Outcome:</strong> {transcript.resolution}
+        </p>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          padding: 14,
+          background: "#ebebd9",
+          borderRadius: 8,
+          marginTop: 6,
+        }}
+      >
+        {transcript.turns.map((turn, i) => {
+          const isAgent = turn.speaker === "agent";
+          return (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                justifyContent: isAgent ? "flex-end" : "flex-start",
+              }}
+            >
+              <div
+                style={{
+                  maxWidth: "78%",
+                  padding: "8px 12px",
+                  borderRadius: 12,
+                  borderTopLeftRadius: isAgent ? 12 : 4,
+                  borderTopRightRadius: isAgent ? 4 : 12,
+                  background: isAgent ? "#dcf8c6" : "#ffffff",
+                  border: `1px solid ${isAgent ? "#c4e29c" : "#e0e0d2"}`,
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                  color: "var(--paper-ink, #1d1c18)",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: 9,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "var(--paper-mut, #837c69)",
+                    display: "block",
+                    marginBottom: 2,
+                  }}
+                >
+                  {isAgent ? "agent" : "customer"}
+                </span>
+                {turn.text}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </article>
   );
 }
 

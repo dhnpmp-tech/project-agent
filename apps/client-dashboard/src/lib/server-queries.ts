@@ -227,6 +227,9 @@ export interface DayOnePackage {
   // FAQ gaps: top 5 customer questions the tenant's site doesn't answer.
   // Same gracefully-hide-when-empty pattern as gbp_audit.
   faq_gaps?: FaqGap[];
+  // Full simulated WhatsApp conversation showing what the agent will actually
+  // do before any real customer arrives. Renders as a chat-bubble preview.
+  demo_transcript?: DemoTranscript | null;
 }
 
 export interface GbpAuditSummary {
@@ -244,6 +247,17 @@ export interface FaqGap {
   // True after the owner has clicked "approve" on the dashboard — the Q&A
   // has been promoted to business_knowledge.faq.
   approved?: boolean;
+}
+
+export interface DemoTranscriptTurn {
+  speaker: "customer" | "agent";
+  text: string;
+}
+
+export interface DemoTranscript {
+  scenario: string;
+  resolution: string;
+  turns: DemoTranscriptTurn[];
 }
 
 export async function getDayOnePackage(): Promise<DayOnePackage | null> {
