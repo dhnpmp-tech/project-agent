@@ -4782,6 +4782,134 @@ async def web_social_pulse(req: _SocialPulseRequest):
 
 
 # ----------------------------------------------------------------------------
+# Schema.org JSON-LD generation — agent emits correct rich-result
+# markup based on what's missing from a tenant's site. The teardown's
+# SchemaAudit section identifies the gaps; this endpoint generates the
+# actual <script type="application/ld+json"> blocks ready to paste
+# into the tenant's <head>. Replaces "your agent will fix this" with
+# "here's the code, ship it."
+# ----------------------------------------------------------------------------
+
+
+class _GenerateSchemaRequest(BaseModel):
+    business_name: str
+    url: str
+    types: list[str]                       # the @types we want to generate
+    business_context: str                  # the crawl corpus
+    country: Optional[str] = "AE"
+    # Optional overrides — grounded facts we already extracted from
+    # crawl or Places. The model uses these instead of inventing.
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    hours: Optional[list[str]] = None
+    rating: Optional[float] = None
+    rating_count: Optional[int] = None
+    image_url: Optional[str] = None
+
+
+@app.post("/web/generate-schema")
+async def web_generate_schema(req: _GenerateSchemaRequest):
+    """Generate ready-to-paste Schema.org JSON-LD blocks for the
+    requested @types. Returns one <script type="application/ld+json">
+    string per type, all grounded in the supplied context.
+
+    The owner copies the script tags into their site <head> and
+    instantly becomes eligible for the rich results Google surfaces
+    for that category (star snippets, FAQ accordions, menu items,
+    business hours panels).
+    """
+    if not req.types:
+        return {"error": "no_types_requested"}
+
+    # Build the grounding block — same pattern the rest of the
+    # teardown uses. Schema must be FACT-grounded; we explicitly tell
+    # the model not to invent prices, certifications, or claims.
+    facts: list[str] = [
+        f"Business name: {req.business_name}",
+        f"URL: {req.url}",
+        f"Country: {'United Arab Emirates' if req.country == 'AE' else 'Saudi Arabia'}",
+    ]
+    if req.address:
+        facts.append(f"Address (verified): {req.address}")
+    if req.phone:
+        facts.append(f"Phone (verified): {req.phone}")
+    if req.hours:
+        facts.append("Hours (verified): " + "; ".join(req.hours))
+    if req.rating is not None and req.rating_count:
+        facts.append(f"Public rating: {req.rating} across {req.rating_count} reviews")
+    if req.image_url:
+        facts.append(f"Hero image URL: {req.image_url}")
+
+    types_csv = ", ".join(req.types)
+    prompt = f"""You are generating production-ready Schema.org JSON-LD markup for a {req.country or 'UAE'} business. The owner will paste this directly into their site <head>.
+
+VERIFIED FACTS (use only these — do not invent):
+{chr(10).join(facts)}
+
+ADDITIONAL CONTEXT FROM THEIR SITE (verbatim):
+{req.business_context[:6000]}
+
+TASK: Generate ONE complete <script type="application/ld+json"> block for EACH of these @types: {types_csv}.
+
+Rules:
+- Use the verified facts above. Do NOT invent prices, certifications, awards, or hours.
+- For FAQPage: extract 4-6 real Q&As from the site content. Don't fabricate.
+- For Restaurant/LocalBusiness: include @id, name, url, address (PostalAddress sub-object), telephone, openingHoursSpecification (OpeningHoursSpecification array — one per day), aggregateRating (if rating given).
+- For Menu: surface 4-6 menu items mentioned in the site content with name + (optional) description.
+- For Review: skip if no rating/review data provided.
+- Each script must be valid, parseable JSON. Use https://schema.org as @context.
+- Wrap each in <script type="application/ld+json"> ... </script> tags ready to paste.
+
+Output STRICT JSON only:
+{{
+  "blocks": [
+    {{"type": "...", "html": "<script type=\\"application/ld+json\\">...</script>"}},
+    ...
+  ],
+  "summary": "1-2 sentences for the owner: what these blocks unlock in Google's SERP (star snippets, FAQ accordion, etc.)"
+}}"""
+
+    try:
+        text = await _inference_module.chat(
+            "rami_research",
+            [{"role": "user", "content": prompt}],
+            max_tokens=4000,
+            json_mode=True,
+        )
+    except Exception as e:
+        return {"error": f"llm_failed: {type(e).__name__}: {str(e)[:150]}"}
+
+    import re as _re
+    m = _re.search(r"\{[\s\S]*\}", text or "")
+    if not m:
+        return {"error": "parse_failed", "raw": (text or "")[:500]}
+    try:
+        parsed = json.loads(m.group(0))
+    except Exception as e:
+        return {"error": f"json_parse: {str(e)[:120]}", "raw": (text or "")[:500]}
+
+    blocks_raw = parsed.get("blocks") or []
+    blocks_out = []
+    for b in blocks_raw[:8]:
+        if not isinstance(b, dict):
+            continue
+        t = b.get("type")
+        h = b.get("html")
+        if not isinstance(t, str) or not isinstance(h, str):
+            continue
+        if "<script" not in h.lower() or "ld+json" not in h.lower():
+            continue
+        blocks_out.append({"type": t.strip()[:60], "html": h.strip()[:6000]})
+
+    return {
+        "ok": True,
+        "blocks": blocks_out,
+        "summary": str(parsed.get("summary") or "").strip()[:400],
+        "types_requested": req.types,
+    }
+
+
+# ----------------------------------------------------------------------------
 # Image cleanup — rembg-powered background removal. Used by the dashboard
 # when an owner uploads a phone-snap of a dish/product and wants a clean
 # cutout for social posts. One quick call: in→png, no AI needed.
