@@ -55,6 +55,52 @@ export interface BrandVoiceMirror {
   whatsapp_greeting: string;
 }
 
+export interface ReviewSentiment {
+  five: number;
+  four: number;
+  three: number;
+  two: number;
+  one: number;
+  total: number;
+}
+
+export interface ReviewComplaint {
+  theme: string;
+  count: number;
+  sample_quote: string;
+  draft_response: string;
+}
+
+export interface ReviewMining {
+  sentiment: ReviewSentiment;
+  avg_rating: number | null;
+  top_praise: string[];
+  top_complaints: ReviewComplaint[];
+  summary: string;
+  sources: { platform: string; url: string; reviews_found: number }[];
+}
+
+export interface Badge {
+  emoji: string;
+  label: string;
+  detail: string;
+}
+
+export interface ScoreBreakdown {
+  discovery: number;
+  content: number;
+  reviews: number;
+  conversion: number;
+  presence: number;
+}
+
+export interface AgentScore {
+  overall: number;
+  grade: "A+" | "A" | "B" | "C" | "D" | "F";
+  breakdown: ScoreBreakdown;
+  percentile_blurb: string;
+}
+
 export interface TeardownPackage {
   business_name: string;
   url: string;
@@ -74,7 +120,21 @@ export interface TeardownPackage {
   directory_strategy?: DirectoryStrategy;
   quick_wins?: QuickWin[];
   brand_mirror?: BrandVoiceMirror | null;
+  // NEW: visual hero + measurement + scoring fields
+  screenshot_url?: string | null;
+  reviews?: ReviewMining | null;
+  agent_score?: AgentScore | null;
+  badges?: Badge[];
 }
+
+const GRADE_PALETTE: Record<AgentScore["grade"], { fg: string; bg: string; ring: string }> = {
+  "A+": { fg: "#1e6d3d", bg: "#dfeede", ring: "#2d8e7d" },
+  A: { fg: "#1e6d3d", bg: "#dfeede", ring: "#2d8e7d" },
+  B: { fg: "#5d8a4a", bg: "#e9f0dd", ring: "#7ab063" },
+  C: { fg: "#a07232", bg: "#f4e4cb", ring: "#c89a4f" },
+  D: { fg: "#a07232", bg: "#fdf3e3", ring: "#d4a460" },
+  F: { fg: "#a83a2b", bg: "#f4d6cf", ring: "#c95c4b" },
+};
 
 const STATUS_COLORS: Record<SeoFinding["status"], { fg: string; bg: string; label: string }> = {
   good: { fg: "#1e6d3d", bg: "#dfeede", label: "good" },
@@ -92,14 +152,21 @@ const CATEGORY_EMOJI: Record<QuickWin["category"], string> = {
 
 export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
   return (
-    <section
-      style={{
-        background: "var(--paper-card, #fbfaf4)",
-        border: "1px solid var(--paper-line, #d8d2bf)",
-        borderRadius: 8,
-        padding: 28,
-      }}
-    >
+    <>
+      {(pkg.agent_score || pkg.screenshot_url) && <VisualHero pkg={pkg} />}
+      {pkg.badges && pkg.badges.length > 0 && <BadgeRow badges={pkg.badges} />}
+      {pkg.reviews && pkg.reviews.sentiment?.total > 0 && (
+        <ReviewsSection reviews={pkg.reviews} />
+      )}
+      <section
+        style={{
+          background: "var(--paper-card, #fbfaf4)",
+          border: "1px solid var(--paper-line, #d8d2bf)",
+          borderRadius: 8,
+          padding: 28,
+          marginTop: 20,
+        }}
+      >
       <Block
         eyebrow="§ A · the read"
         title="Sharp first impression"
@@ -463,6 +530,528 @@ export function TeardownReport({ pkg }: { pkg: TeardownPackage }) {
           </a>
         </p>
       </div>
+      </section>
+    </>
+  );
+}
+
+// ============================================================================
+// VISUAL HERO — screenshot + grade gauge + score breakdown
+// ============================================================================
+
+function VisualHero({ pkg }: { pkg: TeardownPackage }) {
+  const score = pkg.agent_score;
+  return (
+    <section
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 8,
+        padding: 24,
+        marginBottom: 20,
+        display: "grid",
+        gridTemplateColumns: pkg.screenshot_url ? "minmax(0, 1fr) 280px" : "1fr",
+        gap: 20,
+      }}
+    >
+      {pkg.screenshot_url && (
+        <a
+          href={pkg.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "block",
+            borderRadius: 6,
+            overflow: "hidden",
+            border: "1px solid var(--paper-line, #d8d2bf)",
+            background: "var(--paper, #f6f3eb)",
+            aspectRatio: "16 / 10",
+            maxHeight: 340,
+          }}
+        >
+          <img
+            src={pkg.screenshot_url}
+            alt={`${pkg.business_name} homepage`}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "top center",
+              display: "block",
+            }}
+          />
+        </a>
+      )}
+      {score && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <ScoreGauge score={score} />
+          <p
+            style={{
+              fontSize: 12.5,
+              lineHeight: 1.55,
+              color: "var(--paper-mut, #514c40)",
+              margin: 0,
+              fontStyle: "italic",
+            }}
+          >
+            {score.percentile_blurb}
+          </p>
+          <ScoreBreakdownBars breakdown={score.breakdown} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ScoreGauge({ score }: { score: AgentScore }) {
+  const palette = GRADE_PALETTE[score.grade];
+  // SVG ring gauge — 0-100 → 0-360°
+  const radius = 56;
+  const stroke = 10;
+  const C = 2 * Math.PI * radius;
+  const offset = C - (score.overall / 100) * C;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <circle
+          cx="70"
+          cy="70"
+          r={radius}
+          fill="none"
+          stroke="var(--paper-line, #d8d2bf)"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx="70"
+          cy="70"
+          r={radius}
+          fill="none"
+          stroke={palette.ring}
+          strokeWidth={stroke}
+          strokeDasharray={C}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform="rotate(-90 70 70)"
+        />
+        <text
+          x="70"
+          y="74"
+          textAnchor="middle"
+          style={{
+            fontFamily: "Instrument Serif, Georgia, serif",
+            fontSize: 36,
+            fontWeight: 400,
+            fill: palette.fg,
+          }}
+        >
+          {score.overall}
+        </text>
+        <text
+          x="70"
+          y="92"
+          textAnchor="middle"
+          style={{
+            fontFamily: "var(--mono, ui-monospace)",
+            fontSize: 9,
+            letterSpacing: "0.14em",
+            fill: "var(--paper-mut, #837c69)",
+          }}
+        >
+          AGENT SCORE
+        </text>
+      </svg>
+      <div>
+        <span
+          style={{
+            display: "inline-block",
+            padding: "6px 16px",
+            background: palette.bg,
+            color: palette.fg,
+            borderRadius: 6,
+            fontFamily: "Instrument Serif, Georgia, serif",
+            fontSize: 32,
+            lineHeight: 1,
+            letterSpacing: "0.04em",
+          }}
+        >
+          {score.grade}
+        </span>
+        <p
+          style={{
+            fontSize: 11,
+            margin: "6px 0 0",
+            fontFamily: "var(--mono, ui-monospace)",
+            color: "var(--paper-mut, #837c69)",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+          }}
+        >
+          weighted across 5 axes
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ScoreBreakdownBars({ breakdown }: { breakdown: ScoreBreakdown }) {
+  const axes: { key: keyof ScoreBreakdown; label: string }[] = [
+    { key: "discovery", label: "Discovery" },
+    { key: "content", label: "Content" },
+    { key: "reviews", label: "Reviews" },
+    { key: "conversion", label: "Conversion" },
+    { key: "presence", label: "Presence" },
+  ];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {axes.map(({ key, label }) => {
+        const v = breakdown[key] ?? 0;
+        const color = v >= 80 ? "#2d8e7d" : v >= 60 ? "#7ab063" : v >= 40 ? "#c89a4f" : "#c95c4b";
+        return (
+          <div key={key}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 11,
+                fontFamily: "var(--mono, ui-monospace)",
+                color: "var(--paper-mut, #514c40)",
+                marginBottom: 2,
+              }}
+            >
+              <span style={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+              <span>{v}</span>
+            </div>
+            <div
+              style={{
+                height: 6,
+                background: "var(--paper, #f6f3eb)",
+                borderRadius: 3,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  width: `${v}%`,
+                  height: "100%",
+                  background: color,
+                  borderRadius: 3,
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BadgeRow({ badges }: { badges: Badge[] }) {
+  return (
+    <section
+      style={{
+        marginBottom: 20,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+        }}
+      >
+        {badges.map((b, i) => (
+          <div
+            key={i}
+            title={b.detail}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 14px",
+              background: "#fbfaf4",
+              border: "1px solid var(--paper-line, #d8d2bf)",
+              borderRadius: 999,
+              cursor: "help",
+            }}
+          >
+            <span style={{ fontSize: 18, lineHeight: 1 }}>{b.emoji}</span>
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--paper-ink, #1d1c18)",
+              }}
+            >
+              {b.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
+// REVIEWS — sentiment distribution + verbatim praise + draft responses to complaints
+// ============================================================================
+
+function ReviewsSection({ reviews }: { reviews: ReviewMining }) {
+  const s = reviews.sentiment;
+  const total = s.total || 1;
+  return (
+    <section
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 8,
+        padding: 24,
+        marginBottom: 20,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 10,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+        }}
+      >
+        § review intelligence · {s.total.toLocaleString()} reviews across {reviews.sources.length} platforms
+      </span>
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, Georgia, serif",
+          fontSize: 28,
+          fontWeight: 400,
+          margin: "6px 0 16px",
+          lineHeight: 1.1,
+        }}
+      >
+        What your customers <em style={{ color: "#2d8e7d" }}>actually</em> say
+      </h3>
+
+      {/* Sentiment distribution bars */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) auto",
+          gap: 20,
+          alignItems: "center",
+          marginBottom: 18,
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {[
+            { label: "5★", value: s.five, color: "#2d8e7d" },
+            { label: "4★", value: s.four, color: "#7ab063" },
+            { label: "3★", value: s.three, color: "#c89a4f" },
+            { label: "2★", value: s.two, color: "#d4805a" },
+            { label: "1★", value: s.one, color: "#c95c4b" },
+          ].map(({ label, value, color }) => {
+            const pct = (value / total) * 100;
+            return (
+              <div key={label} style={{ display: "grid", gridTemplateColumns: "32px 1fr 50px", gap: 8, alignItems: "center" }}>
+                <span style={{ fontFamily: "var(--mono, ui-monospace)", fontSize: 11, color: "var(--paper-mut, #514c40)" }}>
+                  {label}
+                </span>
+                <div
+                  style={{
+                    height: 10,
+                    background: "var(--paper, #f6f3eb)",
+                    borderRadius: 3,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div style={{ width: `${pct}%`, height: "100%", background: color }} />
+                </div>
+                <span
+                  style={{
+                    fontFamily: "var(--mono, ui-monospace)",
+                    fontSize: 11,
+                    color: "var(--paper-mut, #514c40)",
+                    textAlign: "right",
+                  }}
+                >
+                  {value.toLocaleString()}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {reviews.avg_rating != null && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: 16,
+              background: "var(--paper, #f6f3eb)",
+              borderRadius: 8,
+              border: "1px solid var(--paper-line, #d8d2bf)",
+              minWidth: 120,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "Instrument Serif, Georgia, serif",
+                fontSize: 48,
+                lineHeight: 1,
+                color: "#2d8e7d",
+              }}
+            >
+              {reviews.avg_rating.toFixed(1)}
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--mono, ui-monospace)",
+                fontSize: 9,
+                color: "var(--paper-mut, #837c69)",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                marginTop: 4,
+              }}
+            >
+              avg ★ across {reviews.sources.length} sources
+            </div>
+          </div>
+        )}
+      </div>
+
+      {reviews.summary && (
+        <p
+          style={{
+            fontSize: 14,
+            lineHeight: 1.6,
+            margin: "0 0 18px",
+            padding: 14,
+            background: "var(--paper, #f6f3eb)",
+            borderRadius: 6,
+            borderLeft: "3px solid #2d8e7d",
+          }}
+        >
+          {reviews.summary}
+        </p>
+      )}
+
+      {/* Top praise (verbatim) */}
+      {reviews.top_praise.length > 0 && (
+        <div style={{ marginBottom: 22 }}>
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "#1e6d3d",
+            }}
+          >
+            what they love — verbatim
+          </span>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: 10,
+              marginTop: 8,
+            }}
+          >
+            {reviews.top_praise.map((q, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: 12,
+                  background: "#eef5e9",
+                  border: "1px solid #bdd7af",
+                  borderRadius: 4,
+                  fontFamily: "Instrument Serif, Georgia, serif",
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  fontStyle: "italic",
+                  color: "var(--paper-ink, #1d1c18)",
+                }}
+              >
+                &ldquo;{q}&rdquo;
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Top complaints with draft owner responses */}
+      {reviews.top_complaints.length > 0 && (
+        <div>
+          <span
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "#a83a2b",
+            }}
+          >
+            friction points — with draft responses your agent will send
+          </span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+            {reviews.top_complaints.map((c, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: 14,
+                  background: "#fdf3e3",
+                  border: "1px solid #e6c98b",
+                  borderRadius: 6,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    gap: 8,
+                    marginBottom: 6,
+                  }}
+                >
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{c.theme}</span>
+                  <span
+                    style={{
+                      fontFamily: "var(--mono, ui-monospace)",
+                      fontSize: 11,
+                      color: "var(--paper-mut, #837c69)",
+                    }}
+                  >
+                    ~{c.count} mentions
+                  </span>
+                </div>
+                <p
+                  style={{
+                    fontSize: 12.5,
+                    fontStyle: "italic",
+                    color: "var(--paper-mut, #514c40)",
+                    margin: "0 0 8px",
+                    paddingLeft: 10,
+                    borderLeft: "2px solid var(--paper-line, #d8d2bf)",
+                  }}
+                >
+                  &ldquo;{c.sample_quote}&rdquo;
+                </p>
+                <div>
+                  <span
+                    style={{
+                      fontFamily: "var(--mono, ui-monospace)",
+                      fontSize: 9,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: "#1e6d3d",
+                    }}
+                  >
+                    your agent will reply
+                  </span>
+                  <p style={{ fontSize: 13, lineHeight: 1.55, margin: "4px 0 0" }}>{c.draft_response}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

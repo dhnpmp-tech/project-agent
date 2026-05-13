@@ -3926,6 +3926,42 @@ async def _fetch_via_firecrawl(url: str) -> Optional[str]:
         return None
 
 
+async def _fetch_screenshot_via_firecrawl(url: str) -> Optional[str]:
+    """Capture a screenshot of the URL via Firecrawl. Returns the URL to
+    the hosted screenshot or None on failure. Firecrawl returns a public
+    URL we can directly <img src> in the report hero.
+    """
+    if not _FIRECRAWL_API_KEY:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            r = await client.post(
+                "https://api.firecrawl.dev/v1/scrape",
+                headers={
+                    "Authorization": f"Bearer {_FIRECRAWL_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "url": url,
+                    "formats": ["screenshot"],
+                    "onlyMainContent": False,
+                },
+            )
+            if r.status_code != 200:
+                return None
+            data = r.json()
+            # Firecrawl returns either "screenshot" or "screenshotUrl" depending on plan.
+            screenshot = (data.get("data") or {}).get("screenshot")
+            if isinstance(screenshot, str) and screenshot.startswith("http"):
+                return screenshot
+            url_field = (data.get("data") or {}).get("screenshotUrl")
+            if isinstance(url_field, str) and url_field.startswith("http"):
+                return url_field
+            return None
+    except Exception:
+        return None
+
+
 async def _fetch_page(_client: Any, url: str) -> Optional[str]:
     """Two-stage fetch: Firecrawl first if a key is set (handles JS,
     Cloudflare, anti-bot, gives cleaner content), curl fallback for
@@ -4061,6 +4097,11 @@ Only include real data. Empty arrays/strings where missing."""
         f"=== {p['path']} ===\n{p['text']}" for p in pages
     )[:30_000]
 
+    # Best-effort screenshot. Doesn't block the response if Firecrawl
+    # screenshot mode fails — we just return null and the renderer hides
+    # the visual hero gracefully.
+    screenshot_url = await _fetch_screenshot_via_firecrawl(base)
+
     return {
         "businessDescription": llm_data.get("businessDescription") or meta.get("og:description") or meta.get("description") or "",
         "services": llm_data.get("services") or [],
@@ -4076,6 +4117,7 @@ Only include real data. Empty arrays/strings where missing."""
         "jobListings": llm_data.get("jobListings") or [],
         "pagesScanned": [f"{base}{p['path']}" for p in pages],
         "pagesText": pages_text,
+        "screenshotUrl": screenshot_url,
     }
 
 
@@ -4205,12 +4247,17 @@ async def _check_listing(business_name: str, entry: dict) -> tuple[dict, Optiona
         return entry, None
 
     search_q = entry.get("search_query") or f"site:{match_host}"
-    query = f'"{business_name}" {search_q}'
-    results = await _firecrawl_search(query, limit=4)
-    for r in results:
-        url = (r.get("url") or "").lower()
-        if match_host in url:
-            return entry, r.get("url")
+    # Two query variations tried in order. Limit bumped to 8 to handle
+    # the case where the platform listing isn't in the top 4 results.
+    # First: exact-quoted name + site filter. Second: unquoted name + site
+    # filter (catches misspellings / extra branding in the platform's
+    # title tag like "Arabian Tea House Restaurant & Cafe").
+    for query_template in [f'"{business_name}" {search_q}', f"{business_name} {search_q}"]:
+        results = await _firecrawl_search(query_template, limit=8)
+        for r in results:
+            url = (r.get("url") or "").lower()
+            if match_host in url:
+                return entry, r.get("url")
     return entry, None
 
 
@@ -4377,6 +4424,226 @@ Include EVERY platform from both lists. Match platform names EXACTLY as given ab
         "confirmed": _merge(confirmed, enriched_data.get("confirmed", [])),
         "missing": _merge(missing, enriched_data.get("missing", [])),
     }
+
+
+# ----------------------------------------------------------------------------
+# Review mining — scrape the platform URLs we already verified in
+# directory_strategy.confirmed and distill into structured 1★/3★/5★
+# review signal. Owners can't see their bad reviews aggregated anywhere
+# else; this is the highest-leverage section we offer.
+# ----------------------------------------------------------------------------
+
+
+class _MineReviewsRequest(BaseModel):
+    business_name: str
+    platform_urls: list[dict]  # [{platform: "TripAdvisor", url: "..."}]
+
+
+async def _scrape_url_text(url: str) -> Optional[str]:
+    """Single-page scrape via Firecrawl for review extraction. Returns the
+    markdown content (cleaner than HTML for LLM digestion) or None.
+    """
+    if not _FIRECRAWL_API_KEY:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=45) as client:
+            r = await client.post(
+                "https://api.firecrawl.dev/v1/scrape",
+                headers={
+                    "Authorization": f"Bearer {_FIRECRAWL_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={"url": url, "formats": ["markdown"], "onlyMainContent": True},
+            )
+            if r.status_code != 200:
+                return None
+            data = r.json()
+            md = (data.get("data") or {}).get("markdown")
+            if not md or len(md) < 100:
+                return None
+            return md[:20_000]
+    except Exception:
+        return None
+
+
+@app.post("/web/mine-reviews")
+async def web_mine_reviews(req: _MineReviewsRequest):
+    """For each platform URL passed in (TripAdvisor, Zomato, Talabat, etc.),
+    scrape the page and ask the LLM to extract real customer reviews with
+    star ratings + sentiment. Then aggregate into a unified shape:
+
+      {
+        sentiment: { five: N, four: N, three: N, two: N, one: N, total: N },
+        avg_rating: 4.6,
+        top_praise: [ "...", "...", "..." ],     # 3-5 verbatim 5★ quotes
+        top_complaints: [                          # 3 critical insights
+          { theme: "Slow service", count: 4, sample_quote: "...", draft_response: "..." },
+        ],
+        sources: [ { platform: "...", url: "...", reviews_found: N } ]
+      }
+    """
+    sources = []
+    raw_blobs = []
+    for entry in req.platform_urls[:6]:  # cap to 6 platforms = 6 Firecrawl scrapes
+        platform = entry.get("platform") or ""
+        url = entry.get("url") or ""
+        if not url:
+            continue
+        md = await _scrape_url_text(url)
+        if not md:
+            sources.append({"platform": platform, "url": url, "reviews_found": 0, "error": "scrape_failed"})
+            continue
+        raw_blobs.append(f"=== {platform} · {url} ===\n{md[:8000]}\n")
+        sources.append({"platform": platform, "url": url, "reviews_found": -1})  # filled by LLM
+
+    if not raw_blobs:
+        return {
+            "sentiment": {"five": 0, "four": 0, "three": 0, "two": 0, "one": 0, "total": 0},
+            "avg_rating": None,
+            "top_praise": [],
+            "top_complaints": [],
+            "sources": sources,
+            "error": "no_scrapable_pages",
+        }
+
+    corpus = "\n\n".join(raw_blobs)[:18_000]
+    prompt = f"""You are mining customer reviews of "{req.business_name}" from multiple platforms.
+
+RAW REVIEW PAGE CONTENT (from Zomato, TripAdvisor, Talabat, etc.):
+{corpus}
+
+TASK: Extract and aggregate the real customer reviews. Be HONEST about what's there — surface complaints even if subtle.
+
+Output STRICT JSON only:
+{{
+  "sentiment": {{"five": N, "four": N, "three": N, "two": N, "one": N, "total": N}},
+  "avg_rating": 4.X,
+  "top_praise": ["verbatim 5★ quote 1", "verbatim 5★ quote 2", "verbatim 5★ quote 3"],
+  "top_complaints": [
+    {{"theme": "Short label of the complaint pattern", "count": N, "sample_quote": "verbatim complaint quote", "draft_response": "warm owner response 2-3 sentences"}},
+    ... up to 3 complaints
+  ],
+  "summary": "1 paragraph (max 400 chars) — what the reviews ACTUALLY say about this business. Honest, not marketing."
+}}
+
+Rules:
+- "sentiment" counts: count visible review stars per tier. If you can't tell, estimate from sentiment.
+- "avg_rating": float between 1.0 and 5.0
+- "top_praise": EXACT QUOTES, not paraphrases. Pick the 3 most specific (mention a dish, a staff name, a moment).
+- "top_complaints": REAL friction patterns from 1-3★ reviews. If reviews are universally positive, surface the SUBTLE patterns (e.g. "tourists mention pricing surprises"). draft_response is what the AI agent would write back — warm, takes responsibility, offers next step.
+- Never invent. If you can't find 1★ reviews, say "no critical reviews found" in summary."""
+
+    try:
+        text = await _inference_module.chat(
+            "rami_research",
+            [{"role": "user", "content": prompt}],
+            max_tokens=3000,
+            json_mode=True,
+        )
+    except Exception as e:
+        print(f"[mine-reviews] LLM failed: {type(e).__name__}: {str(e)[:150]}")
+        return {"sentiment": {}, "avg_rating": None, "top_praise": [], "top_complaints": [], "sources": sources, "error": "llm_failed"}
+
+    import re as _re
+    m = _re.search(r"\{[\s\S]*\}", text or "")
+    if not m:
+        return {"sentiment": {}, "avg_rating": None, "top_praise": [], "top_complaints": [], "sources": sources, "error": "parse_failed"}
+    try:
+        parsed = json.loads(m.group(0))
+    except Exception:
+        return {"sentiment": {}, "avg_rating": None, "top_praise": [], "top_complaints": [], "sources": sources, "error": "parse_failed"}
+
+    # Mark sources as having reviews (we don't have per-source counts cleanly)
+    for s in sources:
+        if s.get("reviews_found") == -1:
+            s["reviews_found"] = parsed.get("sentiment", {}).get("total", 0) // max(len(raw_blobs), 1)
+
+    return {
+        "sentiment": parsed.get("sentiment") or {},
+        "avg_rating": parsed.get("avg_rating"),
+        "top_praise": parsed.get("top_praise") or [],
+        "top_complaints": parsed.get("top_complaints") or [],
+        "summary": parsed.get("summary") or "",
+        "sources": sources,
+    }
+
+
+# ----------------------------------------------------------------------------
+# Page speed — Google PageSpeed Insights wrapper. Free public endpoint
+# (no key needed but rate-limited; sign up for one in production).
+# Returns Core Web Vitals + Lighthouse scores objectively measured.
+# ----------------------------------------------------------------------------
+
+
+class _PageSpeedRequest(BaseModel):
+    url: str
+
+
+@app.post("/web/page-speed")
+async def web_page_speed(req: _PageSpeedRequest):
+    """Wraps Google PageSpeed Insights API. Free endpoint — no API key
+    required but rate-limited. Production should set PAGESPEED_API_KEY
+    for higher quotas.
+
+    Returns Lighthouse Performance / Accessibility / Best-Practices / SEO
+    scores + the three Core Web Vitals (LCP, INP, CLS).
+    """
+    url = (req.url or "").strip()
+    if not url:
+        return {"error": "url_required"}
+    api_key = os.environ.get("PAGESPEED_API_KEY", "")
+    params = {"url": url, "strategy": "mobile",
+              "category": "performance"}
+    # PSI supports up to 5 categories per call. We do all 4 + perf separately.
+    cats = ["performance", "accessibility", "best-practices", "seo"]
+    try:
+        async with httpx.AsyncClient(timeout=45) as client:
+            # PSI accepts repeated `category` params
+            psi_url = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+            qs = {"url": url, "strategy": "mobile"}
+            if api_key:
+                qs["key"] = api_key
+            # category= is appended manually because httpx serializes lists weirdly
+            full_url = psi_url + "?" + "&".join([f"{k}={httpx.URL('').params._dict if False else _quote(v)}" for k, v in qs.items()] + [f"category={c}" for c in cats])
+            r = await client.get(full_url)
+            if r.status_code != 200:
+                return {"error": f"pagespeed_http_{r.status_code}"}
+            d = r.json()
+    except Exception as e:
+        return {"error": f"pagespeed_failed: {type(e).__name__}"}
+
+    cats_result = (d.get("lighthouseResult") or {}).get("categories") or {}
+    audits = (d.get("lighthouseResult") or {}).get("audits") or {}
+
+    def _score(key: str) -> Optional[int]:
+        s = (cats_result.get(key) or {}).get("score")
+        return int(round(s * 100)) if isinstance(s, (int, float)) else None
+
+    def _audit_metric(key: str) -> Optional[float]:
+        return (audits.get(key) or {}).get("numericValue")
+
+    return {
+        "scores": {
+            "performance": _score("performance"),
+            "accessibility": _score("accessibility"),
+            "best_practices": _score("best-practices"),
+            "seo": _score("seo"),
+        },
+        "vitals": {
+            "lcp_ms": _audit_metric("largest-contentful-paint"),
+            "cls": _audit_metric("cumulative-layout-shift"),
+            "inp_ms": _audit_metric("interaction-to-next-paint"),
+            "fcp_ms": _audit_metric("first-contentful-paint"),
+            "ttfb_ms": _audit_metric("server-response-time"),
+        },
+        "url": url,
+    }
+
+
+def _quote(s: str) -> str:
+    """URL-encode safely."""
+    from urllib.parse import quote as _q
+    return _q(str(s), safe="")
 
 
 @app.get("/clients/active")

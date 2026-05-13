@@ -47,6 +47,7 @@ interface CrawlResult {
   socialProfiles?: Record<string, string>;
   reviewSources?: { platform: string; url: string }[];
   testimonials?: { quote: string; author?: string }[];
+  screenshotUrl?: string | null;
 }
 
 interface FaqGap {
@@ -85,6 +86,52 @@ interface DirectoryStrategy {
   enriched: boolean;
 }
 
+interface ReviewSentiment {
+  five: number;
+  four: number;
+  three: number;
+  two: number;
+  one: number;
+  total: number;
+}
+
+interface ReviewComplaint {
+  theme: string;
+  count: number;
+  sample_quote: string;
+  draft_response: string;
+}
+
+interface ReviewMining {
+  sentiment: ReviewSentiment;
+  avg_rating: number | null;
+  top_praise: string[];
+  top_complaints: ReviewComplaint[];
+  summary: string;
+  sources: { platform: string; url: string; reviews_found: number }[];
+}
+
+interface Badge {
+  emoji: string;
+  label: string;
+  detail: string;          // 1-line explanation of why this badge is awarded
+}
+
+interface ScoreBreakdown {
+  discovery: number;    // 0-100, platform presence + GBP
+  content: number;      // 0-100, SEO + FAQ coverage + brand voice clarity
+  reviews: number;      // 0-100, avg rating + volume + sentiment balance
+  conversion: number;   // 0-100, booking flow + CTAs + WhatsApp readiness
+  presence: number;     // 0-100, social profiles + testimonials + photo signals
+}
+
+interface AgentScore {
+  overall: number;        // 0-100 weighted
+  grade: "A+" | "A" | "B" | "C" | "D" | "F";
+  breakdown: ScoreBreakdown;
+  percentile_blurb: string;  // "you beat 73% of similar businesses" — encouraging or honest
+}
+
 interface QuickWin {
   category: "marketing" | "seo" | "ads" | "ops" | "social";
   action: string;           // imperative: "Add a WhatsApp Click-to-Chat link to your hero"
@@ -121,6 +168,12 @@ interface TeardownPackage {
   directory_strategy?: DirectoryStrategy;
   quick_wins: QuickWin[];
   brand_mirror: BrandVoiceMirror | null;
+
+  // NEW visual + measured fields
+  screenshot_url?: string | null;
+  reviews?: ReviewMining | null;
+  agent_score?: AgentScore | null;
+  badges?: Badge[];
 }
 
 interface TeardownBody {
@@ -287,6 +340,230 @@ function inferCategory(crawl: CrawlResult): "restaurant" | "beauty" | "default" 
   if (restaurantHits >= 2 && restaurantHits >= beautyHits) return "restaurant";
   if (beautyHits >= 2) return "beauty";
   return "default";
+}
+
+async function fetchReviews(
+  businessName: string,
+  confirmedListings: DirectoryEntry[],
+): Promise<ReviewMining | null> {
+  // Filter to platforms that actually host reviews. Skip transactional /
+  // partner platforms where the LISTING URL won't surface review content.
+  const reviewHosts = new Set([
+    "TripAdvisor", "Zomato UAE", "Time Out Dubai", "OpenTable",
+    "Visit Dubai", "Talabat", "Deliveroo UAE", "Careem",
+  ]);
+  const candidates = confirmedListings
+    .filter((c) => reviewHosts.has(c.platform) && c.evidence_url)
+    .slice(0, 5)
+    .map((c) => ({ platform: c.platform, url: c.evidence_url! }));
+
+  if (candidates.length === 0) return null;
+
+  try {
+    const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/mine-reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        business_name: businessName,
+        platform_urls: candidates,
+      }),
+    });
+    if (!res.ok) {
+      console.error(`[teardown] mine-reviews HTTP ${res.status}`);
+      return null;
+    }
+    const data = await res.json();
+    if (data?.error && (data?.sentiment?.total ?? 0) === 0) {
+      return null;
+    }
+    return data as ReviewMining;
+  } catch (e) {
+    console.error("[teardown] mine-reviews failed:", e);
+    return null;
+  }
+}
+
+function computeAgentScore(
+  crawl: CrawlResult,
+  directory: DirectoryStrategy | null,
+  reviews: ReviewMining | null,
+  seoFindings: SeoFinding[],
+  faqGaps: FaqGap[],
+): AgentScore {
+  // DISCOVERY: directory presence ratio + GBP signal
+  let discovery = 30; // baseline
+  if (directory && directory.checked > 0) {
+    const ratio = directory.confirmed.length / directory.checked;
+    discovery = Math.round(30 + ratio * 60);
+    if (directory.confirmed.some((c) => /google/i.test(c.platform))) {
+      discovery = Math.min(100, discovery + 10);
+    }
+  }
+
+  // CONTENT: SEO health + FAQ depth + brand voice signal
+  const seoGood = seoFindings.filter((f) => f.status === "good").length;
+  const seoMissing = seoFindings.filter((f) => f.status === "missing").length;
+  const seoScore = seoFindings.length > 0
+    ? Math.round(((seoGood * 100 + (seoFindings.length - seoMissing - seoGood) * 60) / seoFindings.length))
+    : 50;
+  const faqFloor = (crawl.faq?.length ?? 0) >= 5 ? 80 : (crawl.faq?.length ?? 0) >= 2 ? 60 : 30;
+  const content = Math.round((seoScore * 0.6) + (faqFloor * 0.4));
+
+  // REVIEWS: avg rating + volume + sentiment balance
+  let reviewsScore = 50; // baseline (unknown)
+  if (reviews?.sentiment && reviews.sentiment.total > 0) {
+    const avg = reviews.avg_rating ?? 0;
+    const total = reviews.sentiment.total;
+    const fiveRatio = (reviews.sentiment.five || 0) / total;
+    // 50% from rating, 30% from volume (log-scaled), 20% from 5-star ratio
+    const ratingScore = Math.max(0, Math.min(100, (avg - 2) * 33.33)); // 5★=100, 2★=0
+    const volumeScore = Math.min(100, Math.log10(total + 1) * 50); // 100 reviews→100, 10→50
+    reviewsScore = Math.round(ratingScore * 0.5 + volumeScore * 0.3 + fiveRatio * 100 * 0.2);
+  }
+
+  // CONVERSION: booking signals + WhatsApp + low FAQ gaps
+  let conversion = 30;
+  const corpus = (crawl.pagesText || "").toLowerCase();
+  if (/whatsapp|wa\.me|api\.whatsapp/.test(corpus)) conversion += 30;
+  if (/book|reservation|reserve|order online/.test(corpus)) conversion += 20;
+  if (faqGaps.length <= 3) conversion += 10;
+  if (crawl.contactInfo?.phone) conversion += 10;
+  conversion = Math.min(100, conversion);
+
+  // PRESENCE: social profiles + testimonials + photos
+  const socials = Object.keys(crawl.socialProfiles || {}).length;
+  const tests = (crawl.testimonials?.length || 0);
+  let presence = 30 + socials * 12 + (tests >= 3 ? 20 : tests * 5);
+  presence = Math.min(100, presence);
+
+  // Weighted overall (discovery + reviews matter most for conversion)
+  const overall = Math.round(
+    discovery * 0.25 +
+    content * 0.20 +
+    reviewsScore * 0.25 +
+    conversion * 0.15 +
+    presence * 0.15
+  );
+
+  const grade: AgentScore["grade"] =
+    overall >= 92 ? "A+" :
+    overall >= 85 ? "A" :
+    overall >= 75 ? "B" :
+    overall >= 65 ? "C" :
+    overall >= 50 ? "D" : "F";
+
+  // Percentile blurb — encouraging or honest depending on score
+  let percentile_blurb: string;
+  if (overall >= 85) {
+    percentile_blurb = `You beat ~${Math.min(95, overall + 5)}% of similar businesses we've audited. Top-quartile.`;
+  } else if (overall >= 70) {
+    percentile_blurb = `You're in the upper half of similar businesses — but the ${100 - overall} points you're missing are where your competitors are eating your lunch.`;
+  } else if (overall >= 50) {
+    percentile_blurb = `Mid-pack. The good news: every section below has a specific lever you haven't pulled yet.`;
+  } else {
+    percentile_blurb = `Big opportunity. The agent picks the low-hanging fruit first — most owners see 20+ points in the first month.`;
+  }
+
+  return {
+    overall,
+    grade,
+    breakdown: { discovery, content, reviews: reviewsScore, conversion, presence },
+    percentile_blurb,
+  };
+}
+
+function computeBadges(
+  businessName: string,
+  crawl: CrawlResult,
+  directory: DirectoryStrategy | null,
+  reviews: ReviewMining | null,
+): Badge[] {
+  const badges: Badge[] = [];
+  const corpus = (crawl.pagesText || "").toLowerCase();
+
+  // Heritage: extract a 4-digit year ≥ 1900 ≤ 2015 mentioned alongside "since" or "established"
+  const heritageMatch = corpus.match(/(?:since|established|founded|est\.?)\s+(?:in\s+)?(19\d{2}|20[01]\d)/i);
+  if (heritageMatch) {
+    const year = parseInt(heritageMatch[1], 10);
+    const age = 2026 - year;
+    if (age >= 10) {
+      badges.push({
+        emoji: "🏛️",
+        label: `${age}-year heritage`,
+        detail: `In business since ${year} — institutional credibility you can lean on.`,
+      });
+    }
+  }
+
+  // 5-star champion
+  if (reviews?.avg_rating && reviews.avg_rating >= 4.5 && reviews.sentiment.total >= 50) {
+    badges.push({
+      emoji: "⭐",
+      label: `${reviews.avg_rating.toFixed(1)}★ champion`,
+      detail: `${reviews.avg_rating.toFixed(1)} avg across ${reviews.sentiment.total.toLocaleString()} reviews — exceptional.`,
+    });
+  }
+
+  // Omnipresent
+  const confirmedCount = directory?.confirmed.length ?? 0;
+  if (confirmedCount >= 5) {
+    badges.push({
+      emoji: "🌐",
+      label: "Omnipresent",
+      detail: `Verified live on ${confirmedCount} platforms — you're where your customers look.`,
+    });
+  }
+
+  // Tourism approved
+  if (directory?.confirmed.some((c) => /visit dubai|saudi tourism|tripadvisor/i.test(c.platform))) {
+    badges.push({
+      emoji: "🛫",
+      label: "Tourism approved",
+      detail: "Listed on official tourism surfaces — institutional traffic flowing your way.",
+    });
+  }
+
+  // Multi-channel (social presence)
+  const socialCount = Object.keys(crawl.socialProfiles || {}).length;
+  if (socialCount >= 3) {
+    badges.push({
+      emoji: "📱",
+      label: "Multi-channel",
+      detail: `Active on ${socialCount} social platforms — you don't live on one channel.`,
+    });
+  }
+
+  // Review volume
+  if (reviews?.sentiment?.total && reviews.sentiment.total >= 500) {
+    badges.push({
+      emoji: "🗣️",
+      label: `${reviews.sentiment.total.toLocaleString()}+ voices`,
+      detail: `${reviews.sentiment.total.toLocaleString()} customers have written about you publicly — that's a moat.`,
+    });
+  }
+
+  // Community loved (high % of 5★ + photos)
+  if (reviews?.sentiment?.total) {
+    const fiveRatio = (reviews.sentiment.five || 0) / reviews.sentiment.total;
+    if (fiveRatio >= 0.7) {
+      badges.push({
+        emoji: "💚",
+        label: "Community loved",
+        detail: `${Math.round(fiveRatio * 100)}% of reviewers left 5★ — your customers fight your fights for you.`,
+      });
+    }
+  }
+
+  // WhatsApp ready
+  if (/whatsapp|wa\.me|api\.whatsapp/.test(corpus)) {
+    badges.push({
+      emoji: "💬",
+      label: "WhatsApp-ready",
+      detail: "WhatsApp link present on your site — your agent will plug in immediately.",
+    });
+  }
+
+  return badges.slice(0, 6);
 }
 
 async function fetchDirectoryStrategy(
@@ -757,6 +1034,28 @@ Output STRICT JSON only:
     }
   }
 
+  // Second-stage: mine real reviews from the verified platform listings.
+  // Runs sequentially after directoryStrategy is known (we need the
+  // confirmed evidence_urls). One LLM call, capped to 5 platforms,
+  // returns sentiment distribution + verbatim praise + top complaints
+  // with draft responses. Skipped if no review-bearing platforms are
+  // confirmed.
+  const reviews = directoryStrategy?.confirmed?.length
+    ? await fetchReviews(businessName, directoryStrategy.confirmed)
+    : null;
+
+  // Compute the gamified score + grade + badges from everything we know.
+  // These are pure functions over the data already collected — no extra
+  // LLM cost, no extra latency.
+  const agent_score = computeAgentScore(
+    crawl,
+    directoryStrategy,
+    reviews,
+    seo_findings,
+    faq_gaps,
+  );
+  const badges = computeBadges(businessName, crawl, directoryStrategy, reviews);
+
   const pkg: TeardownPackage = {
     business_name: businessName,
     url,
@@ -771,6 +1070,10 @@ Output STRICT JSON only:
     directory_strategy: directoryStrategy ?? undefined,
     quick_wins,
     brand_mirror,
+    screenshot_url: crawl.screenshotUrl || null,
+    reviews,
+    agent_score,
+    badges,
   };
 
   // Persist + slug. Retry slug collision up to 3 times (extremely
