@@ -17,9 +17,11 @@ const nextConfig = {
       { source: "/app/:path*", destination: `${DASHBOARD_HOST}/app/:path*` },
       // Public teardown surface — clean URL on the marketing host that
       // proxies into the dashboard project so prospects don't see the
-      // /app/* path. Both the form page and the API live there.
+      // /app/* path. Both the form page, the API, and the [slug]
+      // permalinks live there.
       { source: "/teardown", destination: `${DASHBOARD_HOST}/app/teardown` },
       { source: "/teardown/", destination: `${DASHBOARD_HOST}/app/teardown` },
+      { source: "/teardown/:slug", destination: `${DASHBOARD_HOST}/app/teardown/:slug` },
       { source: "/api/teardown", destination: `${DASHBOARD_HOST}/app/api/teardown` },
     ];
   },

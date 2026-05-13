@@ -3,19 +3,24 @@
 // Public, unauthenticated endpoint that runs a slimmer version of the
 // /api/onboarding/day-one analysis against any UAE/Saudi SMB website
 // URL. Returns the 4 highest-impact artifacts (insight, FAQ gaps, social
-// posts, sample WhatsApp reply) inline so the caller can render them on
-// the same page. No DB persistence in this version — pure stateless
-// analysis. A persistent shareable /teardown/[slug] variant comes next.
+// posts, sample WhatsApp reply) AND persists the result to
+// public_teardowns so the same URL gets a permalink at /teardown/[slug].
 //
 // This is the viral wedge: any prospect can paste their URL and get a
-// $5K-of-consulting analysis for free in ~30 seconds. Rami's outbound DM
-// strategy then becomes "type your URL into agents.dcp.sa/teardown —
-// see exactly how my AI would think about your business."
+// $5K-of-consulting analysis for free in ~30 seconds, then share the
+// permalink. Rami's outbound DM strategy then becomes "type your URL
+// into agents.dcp.sa/teardown — see exactly how my AI would think
+// about your business" + a follow-up link to a prospect's persisted
+// teardown.
 //
-// Rate-limited by IP to keep the LLM bill bounded. Single-shot, no
-// queueing — the request completes within Vercel's function budget.
+// Idempotency: if the same URL was teared down in the last 24h, return
+// the cached package instead of re-running the LLM tasks. Saves LLM cost
+// and keeps the shareable URL stable.
+//
+// Rate-limited by IP (5 generations per IP per hour) to bound LLM spend.
 
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
 // 4 parallel inference calls + 1 crawl. Fits comfortably under 300s
@@ -57,6 +62,30 @@ interface TeardownBody {
   // Optional country hint. The model otherwise infers from URL TLD +
   // crawl content.
   country?: "AE" | "SA" | null;
+  // Force regeneration even if a cached teardown exists for this URL.
+  // Mostly for the "refresh" button on /teardown/[slug].
+  refresh?: boolean;
+}
+
+// 24-hour cache window: same URL inside this window returns the existing
+// teardown instead of regenerating. Saves LLM cost + keeps the permalink
+// stable for sharing.
+const CACHE_WINDOW_HOURS = 24;
+// Per-IP rate limit: 5 fresh generations per hour. Reads of cached
+// teardowns don't count.
+const IP_RATE_LIMIT = 5;
+const IP_WINDOW_HOURS = 1;
+
+// 8-char alphanumeric slug. Avoids confusing chars (0/O, 1/l).
+function generateSlug(seedName: string): string {
+  const alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
+  const prefix = (seedName.toLowerCase().replace(/[^a-z0-9]/g, "") || "site")
+    .slice(0, 12);
+  let rand = "";
+  for (let i = 0; i < 6; i++) {
+    rand += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return `${prefix}-${rand}`;
 }
 
 // ---- Crawl ----------------------------------------------------------------
@@ -214,10 +243,57 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_url" }, { status: 400 });
   }
 
+  const sql = db();
+
+  // 1a. Cache check — return existing teardown if generated within the window.
+  if (!body.refresh) {
+    const cached = await sql<
+      { slug: string; package: TeardownPackage; created_at: string }[]
+    >`
+      SELECT slug, package, created_at
+      FROM public_teardowns
+      WHERE url = ${url}
+        AND created_at > NOW() - (${CACHE_WINDOW_HOURS} || ' hours')::interval
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (cached.length > 0) {
+      return NextResponse.json({
+        ok: true,
+        cached: true,
+        slug: cached[0].slug,
+        package: cached[0].package,
+      });
+    }
+  }
+
+  // 1b. Rate limit fresh generations per IP.
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+    req.headers.get("x-real-ip") ||
+    null;
+  if (ip) {
+    const recent = await sql<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n
+      FROM public_teardowns
+      WHERE source_ip = ${ip}::inet
+        AND created_at > NOW() - (${IP_WINDOW_HOURS} || ' hours')::interval
+    `;
+    if (recent[0]?.n >= IP_RATE_LIMIT) {
+      return NextResponse.json(
+        {
+          error: "rate_limited",
+          detail: `Up to ${IP_RATE_LIMIT} teardowns per hour. Try again later or sign up for unlimited.`,
+        },
+        { status: 429 },
+      );
+    }
+  }
+
   const country = inferCountry(url, body.country);
   const businessName = deriveBusinessName(url);
 
-  // 1. Crawl the site
+  // 1c. Crawl the site
   const crawl = await callCrawl(url, req);
   if (!crawl) {
     return NextResponse.json(
@@ -330,5 +406,31 @@ Exactly five objects. question max 120 chars, draft_answer max 280 chars.`,
     brand_voice: crawl.brandVoice || "",
   };
 
-  return NextResponse.json({ ok: true, package: pkg });
+  // Persist + slug. Retry slug collision up to 3 times (extremely
+  // unlikely given the 6-char random suffix).
+  let slug: string | null = null;
+  for (let attempt = 0; attempt < 3 && !slug; attempt++) {
+    const candidate = generateSlug(businessName);
+    try {
+      const inserted = await sql<{ slug: string }[]>`
+        INSERT INTO public_teardowns
+          (slug, url, business_name, country, package, source_ip)
+        VALUES
+          (${candidate}, ${url}, ${businessName}, ${country},
+           ${sql.json(pkg as never)}, ${ip ? ip : null}::inet)
+        RETURNING slug
+      `;
+      slug = inserted[0]?.slug ?? null;
+    } catch (e) {
+      // Unique violation → loop and try a new random suffix.
+      console.warn("[teardown] slug insert retry:", e);
+    }
+  }
+  if (!slug) {
+    // Persistence failed but we still have a valid package — return it
+    // without a permalink. The caller can re-submit to retry.
+    return NextResponse.json({ ok: true, package: pkg, slug: null });
+  }
+
+  return NextResponse.json({ ok: true, cached: false, slug, package: pkg });
 }
