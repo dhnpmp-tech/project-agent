@@ -38,11 +38,47 @@ interface CrawlResult {
   brandVoice: string;
   industryKeywords: string[];
   pagesScanned: string[];
+  // The actual crawled markdown/text (added when crawl is via Firecrawl
+  // or when /web/crawl exposes it). Used to ground the LLM tasks so they
+  // can cite evidence rather than hallucinate generic gaps. Optional —
+  // the route degrades gracefully when missing.
+  pagesText?: string;
+  contactInfo?: { phone?: string; email?: string; address?: string };
+  socialProfiles?: Record<string, string>;
+  reviewSources?: { platform: string; url: string }[];
+  testimonials?: { quote: string; author?: string }[];
 }
 
 interface FaqGap {
   question: string;
   draft_answer: string;
+  evidence: string;  // why this is a gap — quote of what IS on site, or "no coverage found"
+}
+
+interface SeoFinding {
+  area: string;     // "Title tag", "Meta description", "Schema markup", "Mobile viewport"
+  status: "good" | "weak" | "missing";
+  detail: string;   // 1-line specific observation
+  action: string;   // 1-line concrete fix
+}
+
+interface DirectoryGap {
+  platform: string;        // "Zomato", "TheFork UAE", "Talabat", "TripAdvisor"
+  why_it_matters: string;  // 1 sentence on why this platform matters for this business type
+  signup_url: string;      // direct signup/claim URL
+}
+
+interface QuickWin {
+  category: "marketing" | "seo" | "ads" | "ops" | "social";
+  action: string;           // imperative: "Add a WhatsApp Click-to-Chat link to your hero"
+  rationale: string;        // 1 sentence — what specifically you observed on the site that triggers this
+  estimated_impact: string; // honest range: "+30% inbound DMs in 30 days" or "small win, ~2-3 bookings/mo"
+}
+
+interface BrandVoiceMirror {
+  owner_voice: string;       // a paragraph as the founder would write
+  customer_review: string;   // a 3-line review in a real customer's voice
+  whatsapp_greeting: string; // first message the agent would send
 }
 
 interface TeardownPackage {
@@ -50,11 +86,17 @@ interface TeardownPackage {
   url: string;
   generated_at: string;
   pages_scanned: number;
+  brand_voice: string;
+  // The original 4 artifacts
   insight: string;
   sample_reply: string;
   social_posts: string[];
   faq_gaps: FaqGap[];
-  brand_voice: string;
+  // 4 new richer sections (grounded in actual crawl content)
+  seo_findings: SeoFinding[];
+  directory_gaps: DirectoryGap[];
+  quick_wins: QuickWin[];
+  brand_mirror: BrandVoiceMirror | null;
 }
 
 interface TeardownBody {
@@ -207,13 +249,45 @@ function buildContext(crawl: CrawlResult, businessName: string, country: "AE" | 
   if (crawl.brandVoice) parts.push(`Brand voice: ${crawl.brandVoice}`);
   if (crawl.businessHours) parts.push(`Hours: ${crawl.businessHours}`);
   if (crawl.services?.length) parts.push(`Services: ${crawl.services.slice(0, 8).join(", ")}`);
+  if (crawl.contactInfo?.phone) parts.push(`Phone: ${crawl.contactInfo.phone}`);
+  if (crawl.contactInfo?.address) parts.push(`Address: ${crawl.contactInfo.address}`);
+  if (crawl.socialProfiles && Object.keys(crawl.socialProfiles).length) {
+    parts.push("Social profiles found: " + Object.keys(crawl.socialProfiles).join(", "));
+  }
   if (crawl.faq?.length) {
     parts.push(
-      "Sample FAQ already on site:\n" +
-        crawl.faq.slice(0, 3).map((f) => `Q: ${f.question}\nA: ${f.answer}`).join("\n\n"),
+      "FAQ topics already on the site:\n- " + crawl.faq.slice(0, 12).map((f) => f.question).join("\n- "),
+    );
+  } else {
+    parts.push("FAQ topics already on the site: (no FAQ section found on the crawled pages)");
+  }
+  if (crawl.testimonials?.length) {
+    parts.push(
+      "Customer testimonials embedded on the site:\n" +
+        crawl.testimonials.slice(0, 6).map((t) => `- "${t.quote.slice(0, 200)}"${t.author ? ` — ${t.author}` : ""}`).join("\n"),
     );
   }
   return parts.join("\n\n");
+}
+
+function buildFullCorpus(crawl: CrawlResult): string {
+  // If the crawl exposed the raw page text, surface a generous slice so
+  // downstream LLM tasks can quote real content as evidence. Caps at
+  // ~12k chars to keep prompt budgets sane on MiniMax.
+  if (crawl.pagesText && crawl.pagesText.length > 100) {
+    return crawl.pagesText.slice(0, 12000);
+  }
+  // Fallback: synthesize from structured fields. Less rich but still
+  // grounded in real data.
+  const parts: string[] = [];
+  if (crawl.businessDescription) parts.push(crawl.businessDescription);
+  if (crawl.services?.length) parts.push("Services: " + crawl.services.join(", "));
+  if (crawl.faq?.length) {
+    parts.push(
+      crawl.faq.map((f) => `Q: ${f.question}\nA: ${f.answer}`).join("\n\n"),
+    );
+  }
+  return parts.join("\n\n").slice(0, 12000);
 }
 
 function deriveBusinessName(url: string): string {
@@ -306,61 +380,184 @@ export async function POST(req: NextRequest) {
     );
   }
   const context = buildContext(crawl, businessName, country);
+  const corpus = buildFullCorpus(crawl);
 
-  const existingFaqStr =
-    crawl.faq?.length
-      ? crawl.faq.slice(0, 20).map((f) => f.question).join("\n- ")
-      : "(no FAQ found on the website)";
-
-  // 2. Four parallel inference tasks
-  const [insight, postsRaw, replyRaw, faqGapsRaw] = await Promise.all([
-    inferenceChat(
-      "rami_research",
-      `You are a UAE/Saudi SMB consultant looking at this business for the first time.
-
+  // The grounding block — every task gets the real page text + structured
+  // metadata, with explicit instructions to cite evidence and not invent.
+  const groundingBlock = `BUSINESS CONTEXT
+================
 ${context}
 
-Pages scanned: ${crawl.pagesScanned?.length || 0}
+ACTUAL SITE CONTENT (verbatim crawl)
+====================================
+${corpus}
 
-Write ONE paragraph (4–6 sentences) — your sharp first impression of this business. What's distinctive? What's the strongest reason a customer chooses them over a competitor? What's the biggest risk in their positioning? Be specific, name real things from the site, no marketing fluff. Output the paragraph only — no preamble, no headings.`,
+GROUNDING RULES — apply to ALL output below:
+- Quote or paraphrase ONLY what's in the site content above.
+- If you can't find evidence for a claim, say "(not verified on site)".
+- Never invent prices, hours, certifications, awards, or testimonials.
+- This is for a ${country === "AE" ? "UAE" : "Saudi Arabia"} market.`;
+
+  // 8 parallel inference tasks — 4 original + 4 new richer sections
+  const [
+    insight,
+    postsRaw,
+    replyRaw,
+    faqGapsRaw,
+    seoFindingsRaw,
+    directoryGapsRaw,
+    quickWinsRaw,
+    brandMirrorRaw,
+  ] = await Promise.all([
+    // --- Original 4 (grounded prompts) ---
+    inferenceChat(
+      "rami_research",
+      `${groundingBlock}
+
+TASK: Write ONE paragraph (4-6 sentences) — your sharp first impression of this business.
+
+Cover, with evidence from the site content:
+- What's distinctive about them (cite a specific dish, service, location detail, or claim from the content above)
+- The strongest reason a customer chooses them over a competitor
+- The biggest risk in their positioning (be honest)
+
+No marketing fluff. No "discover" / "experience" / "unparalleled". Output the paragraph only.`,
+      { maxTokens: 800 },
     ),
     inferenceChat(
       "content_draft",
-      `You are a social-content writer for ${businessName}, a ${country === "AE" ? "UAE" : "Saudi"} SMB.
+      `${groundingBlock}
 
-${context}
+TASK: Draft THREE Instagram captions for this business — each 2-4 sentences, no hashtags.
 
-Draft THREE Instagram captions for this business. Each caption: 2–4 sentences, no hashtags, brand-voice consistent, written so a real customer would want to visit/book. Vary the angles — one about quality, one about atmosphere, one about a specific signature offering.
+Each caption MUST reference something specific from the actual site content above (a real dish, a real location, a real claim from their copy). Vary the angles: one about a specific signature offering, one about atmosphere, one about quality/service.
 
-Output as three captions separated by exactly "---" on its own line. No numbering, no headings, no extra commentary.`,
+Output as three captions separated by exactly "---" on its own line. No numbering, no headings, no preamble.`,
       { maxTokens: 1200 },
     ),
     inferenceChat(
       "customer_response_en",
-      `You are the AI WhatsApp concierge for ${businessName}.
+      `${groundingBlock}
 
-${context}
+A first-time customer just messaged on WhatsApp: "Hi, I'd like to learn more — are you open this weekend and what makes you different?"
 
-A first-time customer just messaged: "Hi, I'd like to learn more — are you open this weekend and what makes you different?"
-
-Reply on-brand, warm, confident, with one clear next step. 2–4 sentences. Output the reply only — no preamble.`,
+TASK: Reply on-brand, 2-4 sentences. Reference specific things from the site (a signature dish, a location, a real differentiator from the content above). End with one clear next step. Output the reply only.`,
+      { maxTokens: 400 },
     ),
     inferenceJsonChat(
       "rami_research",
-      `You are auditing the customer-question coverage of a ${country === "AE" ? "UAE" : "Saudi"} SMB.
+      `${groundingBlock}
 
-${context}
+TASK: Audit customer-question coverage. Identify FIVE questions a real customer would ask via WhatsApp that the site DOES NOT clearly answer.
 
-Existing FAQ topics covered on their website:
-- ${existingFaqStr}
-
-Identify FIVE realistic customer questions this business almost-certainly receives over WhatsApp that are NOT yet covered. Focus on the buying questions (booking, hours, parking, prices, allergies/halal, delivery, kids welcome, group bookings, payment methods, location/directions). For each gap, draft a short on-brand answer (1–3 sentences). If you can't infer one, write a question back to the owner like "(Owner: please confirm — do you accept Tabby?)".
+For each gap, do all three:
+1. State the QUESTION as a real customer would type it (not corporate phrasing)
+2. Draft an on-brand ANSWER (1-3 sentences) — grounded in the site content where possible. If you can't infer, say "(Owner: please confirm — ...)"
+3. Cite EVIDENCE: quote the closest thing on the site and say what's missing, OR write "no coverage found in crawled pages"
 
 Output STRICT JSON only:
-[{"question":"...","draft_answer":"..."}, ...]
+[{"question":"...","draft_answer":"...","evidence":"..."}, ...]
 
-Exactly five objects. question max 120 chars, draft_answer max 280 chars.`,
+Exactly five objects. question max 120 chars, draft_answer max 280 chars, evidence max 240 chars.
+
+Focus on real buying questions (booking, hours per day-of-week, parking, prices/value, halal certification, allergens, kids welcome, group bookings, payment methods including Tabby/Tamara, delivery zones, dress code, alcohol policy, location detail). Skip generic questions every site answers.`,
+      { maxTokens: 2000 },
+    ),
+
+    // --- NEW: SEO + technical audit ---
+    inferenceJsonChat(
+      "rami_research",
+      `${groundingBlock}
+
+TASK: Audit the site's technical + SEO setup based ONLY on what you can see in the crawled content.
+
+Identify 5-7 specific findings across these areas (skip areas you can't assess from crawled content):
+- Title tag (presence, length, keyword fit)
+- Meta description (presence, length, sells the value)
+- H1 / heading structure (one H1, descriptive)
+- Schema.org markup (Restaurant, LocalBusiness, FAQPage, Review schema)
+- Image alt text (sampled — present?)
+- Internal link clarity (CTA placement, booking link, WhatsApp link)
+- Mobile-friendly meta viewport
+- Page-level keyword targeting for their category
+
+For each finding:
+- "area" (max 40 chars)
+- "status" — exactly one of "good", "weak", "missing"
+- "detail" — 1-line specific observation citing actual content (max 180 chars)
+- "action" — 1-line concrete fix the owner can apply this week (max 200 chars)
+
+Output STRICT JSON only:
+[{"area":"...","status":"good|weak|missing","detail":"...","action":"..."}, ...]`,
+      { maxTokens: 2000 },
+    ),
+
+    // --- NEW: Directory & listing gaps ---
+    inferenceJsonChat(
+      "rami_research",
+      `${groundingBlock}
+
+TASK: Identify directory + platform listings this business is likely NOT on but should be, for the ${country === "AE" ? "UAE" : "Saudi"} market. Use your knowledge of the local landscape:
+
+${country === "AE"
+  ? "UAE relevant directories per category — Restaurants: Zomato UAE, TheFork UAE, TripAdvisor, Talabat, Deliveroo, Carriage, Google Business Profile, Time Out Dubai. Beauty: Fresha, Booksy, Gulf News service. Real estate: Bayut, Dubizzle, Property Finder. Health/clinic: Aetna, Daman provider lists, Vezeeta, Wellness."
+  : "Saudi relevant directories per category — Restaurants: Hungerstation, Jahez, Mrsool, ToYou, Talabat, Google Business Profile, FoodAndBeverage. Beauty: Fresha, Treatwell, Glamera. Real estate: Aqar, Bayut SA, Wakane. Health/clinic: Vezeeta, Cura, Altibbi, Nala."}
+
+Surface only platforms NOT clearly referenced in the site content above. Skip platforms they obviously already use.
+
+Output 4-6 entries STRICT JSON only:
+[{"platform":"...","why_it_matters":"...","signup_url":"..."}, ...]
+
+- "platform" max 50 chars — proper brand name
+- "why_it_matters" — 1 sentence on the specific revenue/discovery lift for THIS business type (max 200 chars)
+- "signup_url" — the real claim/signup URL for that platform`,
       { maxTokens: 1800 },
+    ),
+
+    // --- NEW: Quick-wins playbook ---
+    inferenceJsonChat(
+      "rami_research",
+      `${groundingBlock}
+
+TASK: Surface 5 specific quick-wins this business can ship THIS WEEK. Be aggressive, specific, and grounded in what you saw on the site. No generic marketing advice.
+
+Each win MUST:
+- Reference what you observed (or didn't) on the site as the rationale
+- Be a single action the owner can complete in <2 hours
+- Give an honest impact estimate (not hype)
+
+Categories — pick the highest-leverage 5 across:
+- "marketing" (offers, campaigns, on-site content)
+- "seo" (specific schema, internal links, page title rewrites)
+- "ads" (Google/Meta/Tabby ads with a hook from this business)
+- "ops" (booking flow, WhatsApp Click-to-Chat, response time)
+- "social" (Reels angles, posting cadence, UGC mining from their site testimonials)
+
+Output STRICT JSON only:
+[{"category":"...","action":"...","rationale":"...","estimated_impact":"..."}, ...]
+
+Exactly 5 objects. category from the allowed set. action max 160 chars (imperative). rationale max 200 chars. estimated_impact max 120 chars.`,
+      { maxTokens: 2000 },
+    ),
+
+    // --- NEW: Brand voice mirror ---
+    inferenceJsonChat(
+      "rami_research",
+      `${groundingBlock}
+
+TASK: Show the owner what their brand voice sounds like in three different contexts. ALL three must read as if grounded in the actual site content above — reference real dishes, locations, claims.
+
+Output STRICT JSON only:
+{
+  "owner_voice": "...",
+  "customer_review": "...",
+  "whatsapp_greeting": "..."
+}
+
+- "owner_voice" — 4-6 sentences as the founder would write a personal LinkedIn or X post about the business. Confident, specific, slightly imperfect (not corporate). Max 600 chars.
+- "customer_review" — a 3-4 sentence first-person review as a real customer would write after a visit, citing specific things. Max 400 chars.
+- "whatsapp_greeting" — the very first WhatsApp message the AI agent would send to a new customer who DMs hello. Warm, on-brand, soft-CTA. Max 240 chars.`,
+      { maxTokens: 1500 },
     ),
   ]);
 
@@ -371,12 +568,12 @@ Exactly five objects. question max 120 chars, draft_answer max 280 chars.`,
     .filter((p) => p.length > 20)
     .slice(0, 3);
 
-  // 4. Parse FAQ gaps JSON
+  // 4. Parse FAQ gaps JSON (now with evidence field)
   let faq_gaps: FaqGap[] = [];
-  const sliced = jsonSliceOrNull(faqGapsRaw);
-  if (sliced) {
+  const faqSliced = jsonSliceOrNull(faqGapsRaw);
+  if (faqSliced) {
     try {
-      const parsed = JSON.parse(sliced);
+      const parsed = JSON.parse(faqSliced);
       if (Array.isArray(parsed)) {
         faq_gaps = parsed
           .filter(
@@ -391,10 +588,122 @@ Exactly five objects. question max 120 chars, draft_answer max 280 chars.`,
           .map((g) => ({
             question: g.question.trim().slice(0, 200),
             draft_answer: g.draft_answer.trim().slice(0, 400),
+            evidence: typeof g.evidence === "string" ? g.evidence.trim().slice(0, 280) : "",
           }));
       }
     } catch {
       // Drop silently — card-side renders empty state.
+    }
+  }
+
+  // 5. Parse SEO findings JSON
+  let seo_findings: SeoFinding[] = [];
+  const seoSliced = jsonSliceOrNull(seoFindingsRaw);
+  if (seoSliced) {
+    try {
+      const parsed = JSON.parse(seoSliced);
+      if (Array.isArray(parsed)) {
+        seo_findings = parsed
+          .filter(
+            (f): f is SeoFinding =>
+              f &&
+              typeof f.area === "string" &&
+              typeof f.detail === "string" &&
+              typeof f.action === "string" &&
+              (f.status === "good" || f.status === "weak" || f.status === "missing"),
+          )
+          .slice(0, 8)
+          .map((f) => ({
+            area: f.area.trim().slice(0, 60),
+            status: f.status,
+            detail: f.detail.trim().slice(0, 240),
+            action: f.action.trim().slice(0, 260),
+          }));
+      }
+    } catch {
+      // empty
+    }
+  }
+
+  // 6. Parse directory gaps JSON
+  let directory_gaps: DirectoryGap[] = [];
+  const dirSliced = jsonSliceOrNull(directoryGapsRaw);
+  if (dirSliced) {
+    try {
+      const parsed = JSON.parse(dirSliced);
+      if (Array.isArray(parsed)) {
+        directory_gaps = parsed
+          .filter(
+            (d): d is DirectoryGap =>
+              d &&
+              typeof d.platform === "string" &&
+              typeof d.why_it_matters === "string" &&
+              typeof d.signup_url === "string" &&
+              d.platform.trim().length > 0,
+          )
+          .slice(0, 8)
+          .map((d) => ({
+            platform: d.platform.trim().slice(0, 80),
+            why_it_matters: d.why_it_matters.trim().slice(0, 260),
+            signup_url: d.signup_url.trim().slice(0, 240),
+          }));
+      }
+    } catch {
+      // empty
+    }
+  }
+
+  // 7. Parse quick-wins JSON
+  let quick_wins: QuickWin[] = [];
+  const winsSliced = jsonSliceOrNull(quickWinsRaw);
+  if (winsSliced) {
+    try {
+      const parsed = JSON.parse(winsSliced);
+      if (Array.isArray(parsed)) {
+        const allowedCats: QuickWin["category"][] = ["marketing", "seo", "ads", "ops", "social"];
+        quick_wins = parsed
+          .filter(
+            (w): w is QuickWin =>
+              w &&
+              typeof w.action === "string" &&
+              typeof w.rationale === "string" &&
+              typeof w.estimated_impact === "string" &&
+              typeof w.category === "string" &&
+              (allowedCats as string[]).includes(w.category),
+          )
+          .slice(0, 7)
+          .map((w) => ({
+            category: w.category,
+            action: w.action.trim().slice(0, 200),
+            rationale: w.rationale.trim().slice(0, 240),
+            estimated_impact: w.estimated_impact.trim().slice(0, 160),
+          }));
+      }
+    } catch {
+      // empty
+    }
+  }
+
+  // 8. Parse brand mirror JSON
+  let brand_mirror: BrandVoiceMirror | null = null;
+  const mirrorSliced = jsonSliceOrNull(brandMirrorRaw);
+  if (mirrorSliced) {
+    try {
+      const parsed = JSON.parse(mirrorSliced);
+      if (
+        parsed &&
+        typeof parsed.owner_voice === "string" &&
+        typeof parsed.customer_review === "string" &&
+        typeof parsed.whatsapp_greeting === "string"
+      ) {
+        brand_mirror = {
+          owner_voice: parsed.owner_voice.trim().slice(0, 800),
+          customer_review: parsed.customer_review.trim().slice(0, 500),
+          whatsapp_greeting: parsed.whatsapp_greeting.trim().slice(0, 320),
+        };
+      }
+    } catch {
+      // null
     }
   }
 
@@ -403,11 +712,15 @@ Exactly five objects. question max 120 chars, draft_answer max 280 chars.`,
     url,
     generated_at: new Date().toISOString(),
     pages_scanned: crawl.pagesScanned?.length || 0,
+    brand_voice: crawl.brandVoice || "",
     insight: insight.trim(),
     sample_reply: replyRaw.trim(),
     social_posts,
     faq_gaps,
-    brand_voice: crawl.brandVoice || "",
+    seo_findings,
+    directory_gaps,
+    quick_wins,
+    brand_mirror,
   };
 
   // Persist + slug. Retry slug collision up to 3 times (extremely

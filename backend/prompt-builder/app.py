@@ -3927,13 +3927,20 @@ async def _fetch_via_firecrawl(url: str) -> Optional[str]:
 
 
 async def _fetch_page(_client: Any, url: str) -> Optional[str]:
-    """Two-stage fetch: curl first (fast, 95% success), Firecrawl on
-    miss (handles JS / Cloudflare / anti-bot).
+    """Two-stage fetch: Firecrawl first if a key is set (handles JS,
+    Cloudflare, anti-bot, gives cleaner content), curl fallback for
+    speed + cost when Firecrawl isn't configured or rate-limits us.
+
+    Firecrawl as primary is the right call once a key lands — it
+    delivers cleaner main-content extraction (drops navs/ads/footers)
+    which directly improves downstream LLM quality. Curl stays as the
+    fallback so the system degrades gracefully if Firecrawl is down.
     """
-    html = await _fetch_via_curl(url)
-    if html:
-        return html
-    return await _fetch_via_firecrawl(url)
+    if _FIRECRAWL_API_KEY:
+        html = await _fetch_via_firecrawl(url)
+        if html:
+            return html
+    return await _fetch_via_curl(url)
 
 
 @app.post("/web/crawl")
@@ -4047,6 +4054,13 @@ Only include real data. Empty arrays/strings where missing."""
             out.append(entry)
         return out
 
+    # Concatenated text from every crawled page, capped. The teardown
+    # endpoint uses this to ground LLM tasks in real site content (lets
+    # the model cite evidence rather than hallucinate generic gaps).
+    pages_text = "\n\n".join(
+        f"=== {p['path']} ===\n{p['text']}" for p in pages
+    )[:30_000]
+
     return {
         "businessDescription": llm_data.get("businessDescription") or meta.get("og:description") or meta.get("description") or "",
         "services": llm_data.get("services") or [],
@@ -4061,6 +4075,7 @@ Only include real data. Empty arrays/strings where missing."""
         "industryKeywords": llm_data.get("industryKeywords") or [],
         "jobListings": llm_data.get("jobListings") or [],
         "pagesScanned": [f"{base}{p['path']}" for p in pages],
+        "pagesText": pages_text,
     }
 
 
