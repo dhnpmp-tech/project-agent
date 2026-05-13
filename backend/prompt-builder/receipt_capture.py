@@ -3,7 +3,8 @@
 Owner sends a receipt image to the owner-channel WhatsApp number.
 We:
   1. Pull the media URL from the Kapso webhook payload
-  2. Hit Claude Sonnet 4.6 with the image and a strict JSON schema
+  2. Route the image through `inference.chat("receipt_ocr", …)` with a
+     strict JSON schema — provider/model chosen by the inference router.
   3. Parse vendor / amount / currency / VAT / category / date
   4. Write to `expenses` (status=pending_review)
   5. Reply to the owner with a one-tap confirm/edit message
@@ -22,12 +23,11 @@ from typing import Any
 
 import httpx
 import supa  # post-Supabase shim (routes _SUPA_URL → asyncpg)
+import inference  # central role-to-model router (DCP-first when models served)
 
 _SUPA_URL = os.environ.get("SUPABASE_URL", "https://sybzqktipimbmujtowoz.supabase.co")
 _SUPA_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-_ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 _KAPSO_KEY = os.environ.get("KAPSO_PLATFORM_API_KEY", "")
-_VISION_MODEL = os.environ.get("VISION_MODEL", "claude-sonnet-4-6")
 
 _SUPA_HEADERS = {
     "apikey": _SUPA_KEY,
@@ -127,7 +127,9 @@ def _build_expense_record(
         "raw_text": extracted.get("line_items_summary"),
         "extracted_meta": {
             "confidence": extracted.get("confidence"),
-            "model": _VISION_MODEL,
+            # Inference router decides the model — record the role here so
+            # we don't have to update this column when routing changes.
+            "role": "receipt_ocr",
         },
         "status": "pending_review",
         "created_by_phone": owner_phone,
@@ -137,52 +139,41 @@ def _build_expense_record(
 # ─── Vision call ─────────────────────────────────────────────────────────
 
 async def _extract_with_vision(image_bytes: bytes) -> dict[str, Any]:
-    """Call Claude Sonnet 4.6 with the image and parse strict JSON."""
-    if not _ANTHROPIC_KEY:
-        return {}
-    encoded = base64.standard_b64encode(image_bytes).decode("ascii")
+    """Route the receipt image through the central inference router.
 
-    payload = {
-        "model": _VISION_MODEL,
-        "max_tokens": 800,
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": _guess_media_type(image_bytes),
-                            "data": encoded,
-                        },
+    Uses the `receipt_ocr` role — see `inference.ROUTING` for the model
+    in production. Image content is encoded as an OpenAI-format
+    `image_url` data URI so the same call works against any of the
+    OpenAI-compatible providers (OpenRouter, DCP gateway when it adds
+    vision, etc.) and the call site stops caring about which vendor
+    serves vision in the future.
+    """
+    encoded = base64.standard_b64encode(image_bytes).decode("ascii")
+    media_type = _guess_media_type(image_bytes)
+    messages: list[dict[str, Any]] = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": EXTRACTION_PROMPT},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{media_type};base64,{encoded}",
                     },
-                    {"type": "text", "text": EXTRACTION_PROMPT},
-                ],
-            }
-        ],
-    }
-    try:
-        async with supa.client(timeout=30) as http:
-            r = await http.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": _ANTHROPIC_KEY,
-                    "anthropic-version": "2023-06-01",
-                    "Content-Type": "application/json",
                 },
-                json=payload,
-            )
-            if r.status_code != 200:
-                return {}
-            data = r.json()
-            text = "".join(
-                block.get("text", "")
-                for block in data.get("content", [])
-                if block.get("type") == "text"
-            )
-            return _parse_json_response(text)
-    except (httpx.HTTPError, json.JSONDecodeError):
+            ],
+        },
+    ]
+    try:
+        text = await inference.chat(
+            role="receipt_ocr",
+            messages=messages,
+            # Vision needs more room than the 600-token role default.
+            max_tokens=800,
+            temperature=0.0,
+        )
+        return _parse_json_response(text)
+    except (inference.InferenceError, httpx.HTTPError, json.JSONDecodeError):
         return {}
 
 
