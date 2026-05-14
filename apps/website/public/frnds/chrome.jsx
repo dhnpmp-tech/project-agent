@@ -49,14 +49,30 @@ function CursorFollower() {
 }
 
 // ---------- Reveal on scroll ----------
+// Observes .reveal elements and adds .in once they intersect. Uses a
+// MutationObserver so new .reveal nodes inserted by React (e.g. menu
+// items when switching tabs) also get picked up — otherwise the items
+// stay opacity-0 forever because useEffect's initial querySelectorAll
+// runs once at mount and misses anything added later.
 function useReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll(".reveal");
     const io = new IntersectionObserver((entries) => {
       entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }});
     }, { threshold: 0.12 });
-    els.forEach(el => io.observe(el));
-    return () => io.disconnect();
+
+    const observeAll = () => {
+      document.querySelectorAll(".reveal:not(.in)").forEach(el => io.observe(el));
+    };
+    observeAll();
+
+    // Catch nodes inserted later (tab switches, async chunks).
+    const mo = new MutationObserver(() => observeAll());
+    mo.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      io.disconnect();
+      mo.disconnect();
+    };
   }, []);
 }
 
