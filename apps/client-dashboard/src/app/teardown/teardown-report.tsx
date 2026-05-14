@@ -221,6 +221,7 @@ export interface TeardownPackage {
   agent_persona?: AgentPersona | null;
   agent_notes?: AgentMarginNote[];
   metrics?: ReportMetrics;
+  platform_demo?: PlatformDemo | null;
 }
 
 export interface AgentMarginNote {
@@ -258,7 +259,8 @@ export interface SchemaAudit {
 
 import { SchemaEmitButton } from "./schema-emit-button";
 import { EmployeePersona, type AgentPersona } from "./employee-persona";
-export type { AgentPersona };
+import { PlatformDemoSections, type PlatformDemo } from "./platform-demo";
+export type { AgentPersona, PlatformDemo };
 
 const GRADE_PALETTE: Record<AgentScore["grade"], { fg: string; bg: string; ring: string }> = {
   "A+": { fg: "#1e6d3d", bg: "#dfeede", ring: "#2d8e7d" },
@@ -700,6 +702,9 @@ export function TeardownReport({ pkg, slug }: { pkg: TeardownPackage; slug?: str
         </p>
       </div>
       </section>
+      {pkg.platform_demo && pkg.agent_persona && (
+        <PlatformDemoSections demo={pkg.platform_demo} persona={pkg.agent_persona} />
+      )}
       {pkg.agent_persona && <EmployeePersona persona={pkg.agent_persona} />}
       <ReportFooter pkg={pkg} slug={slug} />
     </>
