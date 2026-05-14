@@ -357,6 +357,9 @@ interface VoiceNoteDemo {
 interface B2BLead {
   target_name: string;
   target_type: string;
+  // Verified URL when the lead came from real Firecrawl research.
+  // Null when the LLM imagined the target (older permalinks).
+  target_url?: string | null;
   why_fit: string;
   channel: "email" | "linkedin" | "instagram_dm" | "whatsapp";
   drafted_message: string;
@@ -985,6 +988,97 @@ KEEP IT SHORT. KEEP IT SPECIFIC. NO GENERIC ADVICE.`;
   }
 }
 
+interface RealB2BTarget {
+  name: string;
+  url: string;
+  snippet: string;
+  category: string;
+  host?: string;
+}
+
+// discoverRealB2BTargets — two-step real research:
+//   1. Ask an LLM to generate 5-7 target CATEGORIES specific to this
+//      business type + city + persona backstory.
+//   2. Call /web/research-b2b-targets (Firecrawl /v1/search-backed) to
+//      find real organisations in each category.
+// Returns an empty list on any failure — the platform-demo prompt still
+// runs and falls back to its LLM-imagined targets in that case.
+async function discoverRealB2BTargets(args: {
+  persona: AgentPersona;
+  businessName: string;
+  country: "AE" | "SA";
+  category: "restaurant" | "beauty" | "default";
+}): Promise<RealB2BTarget[]> {
+  const { persona, businessName, country, category } = args;
+  const city = country === "AE" ? "Dubai" : "Riyadh";
+  const businessType =
+    category === "restaurant"
+      ? "restaurant / lounge / venue"
+      : category === "beauty"
+        ? "salon / spa / beauty venue"
+        : "consumer venue";
+
+  // Step 1 — LLM picks the categories.
+  const catPrompt = `BUSINESS: ${businessName} — a ${businessType} in ${city}.
+PERSONA WHO WILL DO THE OUTREACH:
+- Name: ${persona.name}
+- Origin: ${persona.origin}
+- Backstory: ${persona.backstory}
+
+TASK: List 6-8 specific TYPES of B2B targets in ${city} this business should be reaching out to for group bookings, events, or partnerships. Be CONCRETE — name the kind of organisation in 2-4 words. NOT a generic category.
+
+Good examples:
+- "Japanese cultural club" (not "cultural clubs")
+- "Marina 5-star hotel concierge" (not "hotels")
+- "Dubai corporate event planner" (not "event planners")
+- "wedding planning agency" (not "weddings")
+- "private banking concierge" (not "banks")
+- "food creator agency" (not "creators")
+- "tech startup CEO breakfast" (not "tech")
+- "expat women community" (not "expats")
+
+Output ONLY a JSON array of strings. No preamble. Max 8.`;
+
+  let categories: string[] = [];
+  try {
+    const raw = await inferenceJsonChat("rami_research", catPrompt, { maxTokens: 400 });
+    const sliced = jsonSliceOrNull(raw);
+    if (!sliced) return [];
+    const parsed = JSON.parse(sliced);
+    if (!Array.isArray(parsed)) return [];
+    categories = parsed
+      .filter((s: unknown): s is string => typeof s === "string" && s.length >= 3 && s.length <= 60)
+      .slice(0, 8);
+  } catch {
+    return [];
+  }
+
+  if (categories.length === 0) return [];
+
+  // Step 2 — Firecrawl-backed research.
+  try {
+    const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/research-b2b-targets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        business_name: businessName,
+        business_type: businessType,
+        city,
+        target_categories: categories,
+        max_per_category: 2,
+        total_max: 6,
+      }),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { targets?: RealB2BTarget[]; error?: string };
+    if (data.error) return [];
+    return Array.isArray(data.targets) ? data.targets : [];
+  } catch (e) {
+    console.error("[teardown] B2B research failed:", e);
+    return [];
+  }
+}
+
 // generatePlatformDemo — produces the eight-section "demonstration of
 // platform surface area" payload. One big LLM call, grounded in the
 // business context + persona + verified facts. Each section maps to a
@@ -1000,8 +1094,9 @@ async function generatePlatformDemo(args: {
   gbp: GbpData | null;
   reviews: ReviewMining | null;
   social_pulse: SocialPulse | null;
+  realTargets: RealB2BTarget[];
 }): Promise<PlatformDemo | null> {
-  const { persona, businessName, country, groundingBlock, insight, gbp, reviews, social_pulse } = args;
+  const { persona, businessName, country, groundingBlock, insight, gbp, reviews, social_pulse, realTargets } = args;
   if (!persona) return null;
 
   const firstName = persona.name.split(/\s+/)[0] || persona.name;
@@ -1038,6 +1133,20 @@ PERSONA YOU ARE DESIGNING THIS DEMO FOR:
     .filter(Boolean)
     .join("\n");
 
+  // Pre-formatted real-targets block. When this is present, the LLM
+  // MUST use these exact names + URLs in b2b_pipeline. When empty,
+  // the LLM falls back to imagining plausible targets — flagged so the
+  // prospect knows the difference.
+  const realTargetsBlock =
+    realTargets && realTargets.length > 0
+      ? realTargets
+          .map(
+            (t, i) =>
+              `${i + 1}. ${t.name}\n   URL: ${t.url}\n   Category: ${t.category}\n   Snippet: ${t.snippet || "(no snippet)"}`,
+          )
+          .join("\n\n")
+      : "(no real targets — fall back to plausible imagined entities, but say so in the why_fit text)";
+
   const prompt = `${groundingBlock}
 
 ${personaSummary}
@@ -1049,6 +1158,10 @@ YOUR INSIGHT (already shipped to the prospect):
 """
 ${insight.trim().slice(0, 1200)}
 """
+
+RESEARCHED B2B TARGETS (from a live Firecrawl web search just now):
+=================================================================
+${realTargetsBlock}
 
 TASK — Produce a SINGLE JSON object with EIGHT sections that demonstrate what living with ${firstName} on the team is like. Each section is concrete, grounded in this specific business, and feels like a working system not a brochure.
 
@@ -1098,15 +1211,16 @@ EXACT SHAPE (every key required):
   "b2b_pipeline": {
     "leads": [
       {
-        "target_name": "Specific NAMED organisation in ${city} (cultural club, corporate planner, hotel concierge desk, tour operator, expat community, agency). Make 3-5 of these be plausibly real — names that exist or could exist in ${city}.",
-        "target_type": "Short tag (e.g. 'Cultural club · 1,200 members' or 'Hotel concierge · Marina')",
-        "why_fit": "ONE sentence referencing the persona's backstory or the business's distinguishing trait + this target's likely need.",
+        "target_name": "Use the EXACT name from the RESEARCHED B2B TARGETS list above. Do not invent — copy the title field. If the list is empty/missing, only then imagine a plausible org and add '(no verified URL)' to the snippet.",
+        "target_type": "Short tag derived from the category + a one-word descriptor (e.g. 'Cultural club · Japanese expats' or 'Hotel concierge · Marina')",
+        "target_url": "Use the EXACT URL from the researched target. If imagined, output null.",
+        "why_fit": "ONE sentence referencing the persona's backstory or the business's distinguishing trait + this target's likely need. Reference a detail from the target's snippet if useful.",
         "channel": "email | linkedin | instagram_dm | whatsapp",
-        "drafted_message": "MULTI-LINE message in ${firstName}'s voice. 60-100 words. Personal. References both the brand and the target group. Includes the offer below.",
+        "drafted_message": "MULTI-LINE message in ${firstName}'s voice. 60-100 words. Personal. References both the brand and the target group (use their actual name). Includes the offer below.",
         "offer": "Specific incentive (e.g. '30% off first booking for groups of 8+', or 'Comp tasting menu for 2 in exchange for a feature')"
       }
     ],
-    "monday_action": "One sentence: '${firstName} sends these N pitches Monday 10am — you approve once.'"
+    "monday_action": "One sentence: '${firstName} sends these ${realTargets?.length || 5} pitches Monday 10am — you approve once.'"
   },
 
   "seven_day_plan": {
@@ -2353,10 +2467,11 @@ Output STRICT JSON only:
     insight,
   });
 
-  // Fifth + sixth stage in parallel: margin scribbles + the eight-section
-  // platform demonstration. Both depend on the persona but are otherwise
-  // independent — running them together saves ~6-10s vs sequential.
-  const [agent_notes, platform_demo] = await Promise.all([
+  // Fifth stage — live B2B target research (Firecrawl-backed) runs in
+  // parallel with margin notes. We need the real targets BEFORE the
+  // platform-demo prompt so the LLM can draft outreach grounded in real
+  // organisations rather than inventing them.
+  const [agent_notes, realB2BTargets] = await Promise.all([
     generateMarginNotes({
       persona: agent_persona,
       businessName,
@@ -2366,17 +2481,29 @@ Output STRICT JSON only:
       hasGbp: !!gbp,
       hasSocial: !!social_pulse,
     }),
-    generatePlatformDemo({
-      persona: agent_persona,
-      businessName,
-      country,
-      groundingBlock,
-      insight,
-      gbp,
-      reviews,
-      social_pulse,
-    }),
+    agent_persona
+      ? discoverRealB2BTargets({
+          persona: agent_persona,
+          businessName,
+          country,
+          category,
+        })
+      : Promise.resolve<RealB2BTarget[]>([]),
   ]);
+
+  // Sixth stage — the eight-section platform demo, now fed REAL targets
+  // from the research step above (when available).
+  const platform_demo = await generatePlatformDemo({
+    persona: agent_persona,
+    businessName,
+    country,
+    groundingBlock,
+    insight,
+    gbp,
+    reviews,
+    social_pulse,
+    realTargets: realB2BTargets,
+  });
 
   // Compute the gamified score + grade + badges from everything we know.
   // These are pure functions over the data already collected — no extra

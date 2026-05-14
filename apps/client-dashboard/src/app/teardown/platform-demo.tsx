@@ -53,6 +53,7 @@ export interface VoiceNoteDemo {
 export interface B2BLead {
   target_name: string;
   target_type: string;
+  target_url?: string | null;
   why_fit: string;
   channel: "email" | "linkedin" | "instagram_dm" | "whatsapp";
   drafted_message: string;
@@ -794,14 +795,43 @@ export function B2BPipelineCard({
               <div style={{ flex: "1 1 240px" }}>
                 <div
                   style={{
-                    fontFamily: SERIF,
-                    fontSize: 20,
-                    fontWeight: 400,
-                    lineHeight: 1.2,
-                    color: "var(--paper-ink, #1d1c18)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
                   }}
                 >
-                  {lead.target_name}
+                  <div
+                    style={{
+                      fontFamily: SERIF,
+                      fontSize: 20,
+                      fontWeight: 400,
+                      lineHeight: 1.2,
+                      color: "var(--paper-ink, #1d1c18)",
+                    }}
+                  >
+                    {lead.target_name}
+                  </div>
+                  {lead.target_url && (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "2px 8px",
+                        background: "#dfeede",
+                        color: "#1e6d3d",
+                        borderRadius: 4,
+                        fontFamily: MONO,
+                        fontSize: 9,
+                        letterSpacing: "0.14em",
+                        textTransform: "uppercase",
+                        fontWeight: 700,
+                      }}
+                    >
+                      ● verified
+                    </span>
+                  )}
                 </div>
                 <div
                   style={{
@@ -814,6 +844,28 @@ export function B2BPipelineCard({
                 >
                   {lead.target_type}
                 </div>
+                {lead.target_url && (
+                  <a
+                    href={lead.target_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-block",
+                      marginTop: 4,
+                      fontFamily: MONO,
+                      fontSize: 11,
+                      color: "#2d8e7d",
+                      textDecoration: "underline",
+                      textDecorationColor: "rgba(45,142,125,0.4)",
+                      textUnderlineOffset: 2,
+                      maxWidth: "100%",
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    {lead.target_url.replace(/^https?:\/\//, "").replace(/\/$/, "").slice(0, 60)}
+                    {lead.target_url.length > 60 ? "…" : ""}
+                  </a>
+                )}
               </div>
               <span
                 style={{

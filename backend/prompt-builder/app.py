@@ -4706,6 +4706,102 @@ async def web_find_instagram(req: _FindInstagramRequest):
     return {"error": "not_found"}
 
 
+class _ResearchB2BRequest(BaseModel):
+    business_name: str
+    business_type: str  # "shisha lounge", "coffee shop", "salon"
+    city: str  # "Dubai" / "Riyadh" / "Abu Dhabi"
+    target_categories: list[str]  # e.g. ["Japanese cultural club", "5-star hotel concierge"]
+    max_per_category: int = 2
+    total_max: int = 6
+
+
+# Hosts to skip in B2B research results — social, maps, generic listings.
+_B2B_SKIP_HOSTS = (
+    "facebook.com", "instagram.com", "twitter.com", "x.com",
+    "google.com/maps", "google.com/search", "yelp.com", "tripadvisor.com",
+    "youtube.com", "linkedin.com/posts", "wikipedia.org", "wiki",
+)
+
+
+@app.post("/web/research-b2b-targets")
+async def web_research_b2b_targets(req: _ResearchB2BRequest):
+    """Find REAL B2B prospects for the agent's outbound pipeline.
+
+    For each target category (e.g. "Japanese cultural club", "Marina hotel
+    concierge"), runs Firecrawl /v1/search scoped to the city, keeps the
+    first plausibly relevant result per category (filtering out social
+    profiles and generic directories), and returns a flat list of real
+    organisations the LLM can then draft outreach FOR.
+
+    Each target carries: name (from search title), url, snippet, category.
+    This is the difference between "LLM imagined 5 plausible orgs" and
+    "the agent already researched 5 real ones for you to approve".
+    """
+    if not _FIRECRAWL_API_KEY:
+        return {"error": "no_firecrawl_key", "targets": []}
+    if not req.target_categories:
+        return {"error": "no_categories", "targets": []}
+
+    city = (req.city or "").strip() or "Dubai"
+    targets: list[dict] = []
+    seen_hosts: set[str] = set()
+
+    import re as _re
+    from urllib.parse import urlparse
+
+    for category in req.target_categories[:8]:
+        if len(targets) >= req.total_max:
+            break
+        # Two query shapes per category — first more specific, second broader.
+        queries = [
+            f'"{category}" {city}',
+            f"{category} {city}",
+        ]
+        per_cat_added = 0
+        for q in queries:
+            if per_cat_added >= req.max_per_category:
+                break
+            results = await _firecrawl_search(q, limit=6)
+            for r in results:
+                url = (r.get("url") or "").strip()
+                title = (r.get("title") or "").strip()
+                snippet = (r.get("description") or r.get("snippet") or "").strip()
+                if not url or not title:
+                    continue
+                low = url.lower()
+                if any(h in low for h in _B2B_SKIP_HOSTS):
+                    continue
+                try:
+                    host = urlparse(url).netloc.lower().lstrip("www.")
+                except Exception:
+                    continue
+                if not host or host in seen_hosts:
+                    continue
+                # Light relevance check — title or snippet should mention the
+                # city OR the category seed. Avoids returning the search
+                # engine's "people also ask" pages.
+                category_seed = _re.split(r"\s+", category.lower())[0]
+                blob = (title + " " + snippet).lower()
+                if city.lower() not in blob and category_seed not in blob:
+                    continue
+
+                seen_hosts.add(host)
+                targets.append({
+                    "name": title[:120],
+                    "url": url,
+                    "snippet": snippet[:280],
+                    "category": category,
+                    "host": host,
+                })
+                per_cat_added += 1
+                if per_cat_added >= req.max_per_category:
+                    break
+                if len(targets) >= req.total_max:
+                    break
+
+    return {"targets": targets[: req.total_max], "city": city}
+
+
 @app.post("/web/social-pulse")
 async def web_social_pulse(req: _SocialPulseRequest):
     """Three parallel signals: Instagram profile freshness, TikTok UGC
