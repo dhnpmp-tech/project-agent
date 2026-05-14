@@ -1,7 +1,7 @@
 // FRNDS — root app
 /* global React, ReactDOM, CursorFollower, Nav, Hero, Marquee, Intro, Menu,
   NightBrunch, Shisha, Gallery, Press, Reservation, ReserveModal, Footer,
-  useReveal, FrndsTweaks */
+  useReveal, FrndsTweaks, LegalModal */
 const { useState, useEffect } = React;
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -14,12 +14,19 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 function App() {
   useReveal();
   const [modal, setModal] = useState(null);
+  const [legalKind, setLegalKind] = useState(null); // "privacy" | "terms" | null
   const [voiceKey, setVoiceKey] = useState(window.__FRNDS_VOICE || "sultry");
 
   useEffect(() => {
     const onVoice = (e) => setVoiceKey(e.detail);
     window.addEventListener("frnds:voice", onVoice);
-    return () => window.removeEventListener("frnds:voice", onVoice);
+    // Expose a global opener so any component (including legacy footer
+    // anchors) can trigger the modal without prop-drilling.
+    window.FRNDS_OPEN_LEGAL = (kind) => setLegalKind(kind);
+    return () => {
+      window.removeEventListener("frnds:voice", onVoice);
+      delete window.FRNDS_OPEN_LEGAL;
+    };
   }, []);
 
   // re-run reveal observer when section content changes (voice swap, menu tab)
@@ -55,6 +62,7 @@ function App() {
       <Reservation openModal={(data) => setModal(data)} />
       <Footer />
       {modal && <ReserveModal data={modal} onClose={() => setModal(null)} />}
+      {legalKind && <LegalModal kind={legalKind} onClose={() => setLegalKind(null)} />}
       <FrndsTweaks />
     </>
   );

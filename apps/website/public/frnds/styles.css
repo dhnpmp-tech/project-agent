@@ -1455,3 +1455,202 @@ body.density-spacious .section { padding: 180px 0; }
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ──────────────────────────────────────────────────────────────────
+ * Legal modals (Terms / Privacy) — UAE PDPL compliant content
+ * ────────────────────────────────────────────────────────────────── */
+
+.legal-modal-backdrop {
+  background: rgba(10, 8, 7, 0.86);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.legal-modal-card {
+  max-width: 720px;
+  width: calc(100% - 32px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  padding: 48px 44px 36px;
+  background: linear-gradient(180deg, var(--ink-2) 0%, var(--smoke) 100%);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  position: relative;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.62);
+}
+.legal-modal-card .modal-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: none;
+  border: none;
+  color: var(--parchment-dim);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 6px 10px;
+  transition: color 200ms;
+}
+.legal-modal-card .modal-close:hover { color: var(--gold); }
+.legal-modal-card .eyebrow { display: block; margin-bottom: 14px; }
+.legal-modal-card h3 {
+  font-family: var(--f-display);
+  font-size: clamp(28px, 4vw, 38px);
+  font-weight: 300;
+  margin: 0 0 28px;
+  line-height: 1.1;
+  color: var(--parchment);
+}
+.legal-modal-card h3 em { font-style: italic; color: var(--gold); }
+.legal-body {
+  color: var(--parchment-dim);
+  font-family: var(--f-ui);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.legal-body strong { color: var(--parchment); font-weight: 500; }
+.legal-body a {
+  color: var(--gold);
+  text-decoration: underline;
+  text-decoration-color: rgba(201, 164, 76, 0.4);
+  text-underline-offset: 3px;
+}
+.legal-body a:hover { color: var(--gold-bright); }
+.legal-lede {
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--parchment);
+  line-height: 1.5;
+  margin: 0 0 28px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.legal-block { margin: 20px 0; }
+.legal-block h4 {
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 8px;
+  font-weight: 500;
+}
+.legal-block > div, .legal-block > p { margin: 0; }
+.legal-block + .legal-block {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px dashed var(--hairline-soft);
+}
+.legal-list {
+  margin: 8px 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+.legal-list li {
+  position: relative;
+  padding-left: 16px;
+  margin: 6px 0;
+}
+.legal-list li::before {
+  content: "·";
+  position: absolute;
+  left: 4px;
+  top: -3px;
+  color: var(--gold);
+  font-size: 18px;
+  line-height: 1;
+}
+.legal-meta {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline-soft);
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  color: var(--ash);
+  text-transform: uppercase;
+}
+.legal-meta a { text-transform: none; letter-spacing: 0; }
+.legal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 32px;
+  padding-top: 22px;
+  border-top: 1px solid var(--hairline);
+}
+.legal-stamp {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+.legal-ack {
+  padding: 11px 22px;
+  font-size: 12px;
+}
+
+/* Consent checkbox under the reservation form */
+.reserve-consent {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 14px 0 22px;
+  padding: 14px 16px;
+  background: rgba(201, 164, 76, 0.04);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--f-ui);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--parchment-dim);
+  transition: border-color 200ms;
+}
+.reserve-consent:hover { border-color: var(--hairline); }
+.reserve-consent input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  border-radius: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 2px 0 0;
+  position: relative;
+  transition: all 200ms;
+}
+.reserve-consent input[type="checkbox"]:checked {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.reserve-consent input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.reserve-consent input[type="checkbox"]:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+}
+.reserve-consent a {
+  color: var(--gold);
+  text-decoration: underline;
+  text-decoration-color: rgba(201, 164, 76, 0.4);
+  text-underline-offset: 2px;
+}
+.reserve-consent a:hover { color: var(--gold-bright); }

@@ -75,14 +75,24 @@ function Press() {
 function Reservation({ openModal }) {
   const [form, setForm] = useState({
     name: "", phone: "", date: "", time: "20:00", party: 2,
-    occasion: "—", notes: ""
+    occasion: "—", notes: "", consent: false
   });
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = (e) => {
     e.preventDefault();
+    if (!form.consent) {
+      // Native HTML5 validation handles the required checkbox; this is a
+      // belt-and-braces guard in case the browser bypasses it.
+      return;
+    }
     openModal(form);
+  };
+
+  const openLegal = (kind) => (e) => {
+    e.preventDefault();
+    if (window.FRNDS_OPEN_LEGAL) window.FRNDS_OPEN_LEGAL(kind);
   };
 
   const phoneNum = "+971564223990";
@@ -219,6 +229,23 @@ function Reservation({ openModal }) {
               />
             </div>
 
+            <label className="reserve-consent">
+              <input
+                type="checkbox"
+                required
+                checked={form.consent}
+                onChange={(e) => update("consent", e.target.checked)}
+              />
+              <span>
+                I agree to FRNDS&apos;s{" "}
+                <a href="#" onClick={openLegal("terms")}>Terms</a>{" "}
+                and consent to my information being processed to confirm
+                this reservation, in line with the{" "}
+                <a href="#" onClick={openLegal("privacy")}>Privacy Notice</a>{" "}
+                (UAE PDPL · Federal Decree-Law No. 45 of 2021).
+              </span>
+            </label>
+
             <div className="reserve-actions">
               <button type="submit" className="btn-gold">
                 Request booking <span className="arrow"></span>
@@ -323,8 +350,14 @@ function Footer() {
           <span>© FRNDS Dubai · {new Date().getFullYear()}</span>
           <div className="right">
             <a href="#top">Back to top ↑</a>
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); window.FRNDS_OPEN_LEGAL && window.FRNDS_OPEN_LEGAL("privacy"); }}
+            >Privacy</a>
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); window.FRNDS_OPEN_LEGAL && window.FRNDS_OPEN_LEGAL("terms"); }}
+            >Terms</a>
           </div>
         </div>
       </div>

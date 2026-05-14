@@ -11,8 +11,114 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Archivo:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Inline loader · paints immediately, before fonts/styles/JS load.
+       Stays visible until React mounts into #root (or 12s safety fallback). -->
+  <style>
+    #frnds-loader {
+      position: fixed;
+      inset: 0;
+      background: #0a0807;
+      color: #c9a44c;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transition: opacity 700ms ease-out;
+      pointer-events: none;
+    }
+    #frnds-loader.frnds-loader-hide { opacity: 0; }
+    .frnds-loader-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      text-align: center;
+      padding: 24px;
+    }
+    .frnds-loader-flourish {
+      display: block;
+      width: 120px;
+      height: 12px;
+      opacity: 0.85;
+    }
+    .frnds-loader-mark {
+      font-family: "Cormorant Garamond", "Times New Roman", Georgia, serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(56px, 9vw, 104px);
+      letter-spacing: 0.26em;
+      color: #c9a44c;
+      line-height: 1;
+      margin-left: 0.26em; /* optical compensation for trailing letter-spacing */
+      animation: frnds-fade-in 1200ms ease-out 80ms both;
+    }
+    .frnds-loader-sub {
+      font-family: "JetBrains Mono", ui-monospace, "Menlo", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.36em;
+      text-transform: uppercase;
+      color: #8a7038;
+      margin-top: -4px;
+      animation: frnds-fade-in 1400ms ease-out 320ms both;
+    }
+    .frnds-loader-bar {
+      display: block;
+      width: clamp(220px, 28vw, 320px);
+      height: 1px;
+      background: rgba(201, 164, 76, 0.18);
+      position: relative;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .frnds-loader-bar-fill {
+      display: block;
+      position: absolute;
+      top: 0;
+      height: 100%;
+      width: 32%;
+      background: linear-gradient(90deg, transparent 0%, rgba(217, 184, 96, 0.9) 50%, transparent 100%);
+      animation: frnds-scan 2.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+    }
+    .frnds-loader-status {
+      font-family: "JetBrains Mono", ui-monospace, "Menlo", monospace;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(184, 172, 148, 0.45);
+      margin-top: 2px;
+      animation: frnds-blink 2.4s ease-in-out infinite;
+    }
+    @keyframes frnds-fade-in {
+      0% { opacity: 0; transform: translateY(4px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes frnds-scan {
+      0% { left: -32%; }
+      100% { left: 100%; }
+    }
+    @keyframes frnds-blink {
+      0%, 100% { opacity: 0.45; }
+      50% { opacity: 1; }
+    }
+  </style>
 </head>
 <body>
+  <div id="frnds-loader" aria-hidden="true">
+    <div class="frnds-loader-inner">
+      <svg class="frnds-loader-flourish" viewBox="0 0 120 12" fill="none" aria-hidden="true">
+        <line x1="0" y1="6" x2="42" y2="6" stroke="#c9a44c" stroke-width="0.7" />
+        <circle cx="60" cy="6" r="2.4" fill="#d9b860" />
+        <line x1="78" y1="6" x2="120" y2="6" stroke="#c9a44c" stroke-width="0.7" />
+      </svg>
+      <span class="frnds-loader-mark">FRNDS</span>
+      <span class="frnds-loader-sub">Modern French &times; Japanese</span>
+      <span class="frnds-loader-bar"><span class="frnds-loader-bar-fill"></span></span>
+      <span class="frnds-loader-status">Setting the table</span>
+    </div>
+  </div>
+
   <div id="root"></div>
 
   <!-- React + Babel -->
@@ -27,6 +133,41 @@
   <script type="text/babel" src="chrome.jsx"></script>
   <script type="text/babel" src="sections.jsx"></script>
   <script type="text/babel" src="reserve.jsx"></script>
+  <script type="text/babel" src="legal.jsx"></script>
   <script type="text/babel" src="app.jsx"></script>
+
+  <!-- Loader · hide once React mounts. Min-show keeps the loader visible
+       long enough to read; safety timeout hides it if mount stalls. -->
+  <script>
+    (function () {
+      var loader = document.getElementById("frnds-loader");
+      var root = document.getElementById("root");
+      if (!loader || !root) return;
+      var minShowMs = 900;
+      var t0 = performance.now();
+      function hide() {
+        loader.classList.add("frnds-loader-hide");
+        setTimeout(function () { if (loader && loader.parentNode) loader.parentNode.removeChild(loader); }, 800);
+      }
+      function readyAndHide() {
+        var elapsed = performance.now() - t0;
+        var wait = Math.max(0, minShowMs - elapsed);
+        setTimeout(hide, wait);
+      }
+      function isMounted() {
+        return root.children && root.children.length > 0;
+      }
+      if (isMounted()) {
+        readyAndHide();
+      } else {
+        var mo = new MutationObserver(function () {
+          if (isMounted()) { mo.disconnect(); readyAndHide(); }
+        });
+        mo.observe(root, { childList: true });
+        // Safety fallback — never leave the loader stuck.
+        setTimeout(function () { mo.disconnect(); hide(); }, 14000);
+      }
+    })();
+  </script>
 </body>
 </html>
