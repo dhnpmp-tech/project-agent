@@ -1596,6 +1596,29 @@ body.density-spacious .section { padding: 180px 0; }
   font-size: 12px;
 }
 
+@media (max-width: 720px) {
+  .legal-modal-card {
+    padding: 36px 22px 26px;
+    max-height: calc(100vh - 24px);
+    width: calc(100% - 16px);
+    border-radius: 4px;
+  }
+  .legal-modal-card h3 {
+    margin-bottom: 22px;
+  }
+  .legal-lede {
+    font-size: 16px;
+    padding-bottom: 18px;
+  }
+  .legal-body { font-size: 13.5px; }
+  .legal-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    text-align: center;
+  }
+  .legal-ack { width: 100%; }
+}
+
 /* Consent checkbox under the reservation form */
 .reserve-consent {
   display: flex;
