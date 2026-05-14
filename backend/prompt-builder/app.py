@@ -4639,6 +4639,73 @@ class _SocialPulseRequest(BaseModel):
     tiktok_filter_keywords: Optional[list[str]] = None
 
 
+class _FindInstagramRequest(BaseModel):
+    business_name: str
+    country: Optional[str] = "AE"  # "AE" or "SA" — biases the search context
+
+
+# Reserved Instagram path segments that look like handles but aren't.
+_IG_RESERVED = {
+    "p", "reel", "reels", "stories", "explore", "tv", "directory",
+    "accounts", "developer", "about", "press", "help", "support",
+    "privacy", "terms", "legal", "blog", "fb", "facebook", "share",
+}
+
+
+@app.post("/web/find-instagram")
+async def web_find_instagram(req: _FindInstagramRequest):
+    """Find the Instagram handle for a business when the website doesn't
+    expose it. Strategy:
+
+      1. Firecrawl /v1/search for `site:instagram.com "<biz>" <city>`
+      2. Walk results; extract /handle/ segment from first non-reserved URL
+      3. Return handle on success, error on failure
+
+    No-op when FIRECRAWL_API_KEY isn't set.
+    """
+    if not _FIRECRAWL_API_KEY:
+        return {"error": "no_firecrawl_key"}
+    name = (req.business_name or "").strip()
+    if len(name) < 2:
+        return {"error": "business_name_required"}
+
+    city = "Dubai" if (req.country or "").upper() == "AE" else "Riyadh"
+    # Two query variants — direct site: filter, then broader fallback.
+    queries = [
+        f'site:instagram.com "{name}" {city}',
+        f'"{name}" instagram',
+    ]
+    import re as _re
+    for q in queries:
+        results = await _firecrawl_search(q, limit=6)
+        for r in results:
+            url = (r.get("url") or "").lower()
+            # Match instagram.com/<handle>/ — handle is alphanumeric + dot + underscore.
+            m = _re.search(r"instagram\.com/(?:@?)([a-z0-9_.]+)(?:/|$|\?)", url)
+            if not m:
+                continue
+            handle = m.group(1).strip(".")
+            if not handle or len(handle) < 2:
+                continue
+            if handle in _IG_RESERVED:
+                continue
+            # Optional sanity: the brand seed (first 4 chars normalized)
+            # should appear in the handle or in the result title/description.
+            brand_seed = _re.sub(r"[^a-z0-9]", "", name.lower())[:4]
+            handle_norm = _re.sub(r"[^a-z0-9]", "", handle.lower())
+            blob = (
+                (r.get("title") or "")
+                + " "
+                + (r.get("description") or "")
+                + " "
+                + handle_norm
+            ).lower()
+            if brand_seed and brand_seed not in blob:
+                continue
+            return {"handle": handle, "source_url": r.get("url")}
+    return {"error": "not_found"}
+
+
 @app.post("/web/social-pulse")
 async def web_social_pulse(req: _SocialPulseRequest):
     """Three parallel signals: Instagram profile freshness, TikTok UGC

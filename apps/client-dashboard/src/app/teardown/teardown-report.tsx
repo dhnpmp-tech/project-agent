@@ -256,7 +256,6 @@ export interface SchemaAudit {
   automation: string;
 }
 
-import { TeardownVideoPlayer } from "./teardown-video";
 import { SchemaEmitButton } from "./schema-emit-button";
 import { EmployeePersona, type AgentPersona } from "./employee-persona";
 export type { AgentPersona };
@@ -290,7 +289,8 @@ export function TeardownReport({ pkg, slug }: { pkg: TeardownPackage; slug?: str
   return (
     <>
       <AgentGreeting pkg={pkg} />
-      <TeardownVideoPlayer pkg={pkg} />
+      {/* Video composition pulled — overlapping layers + clipped badges
+          made it read low-craft. Will return when re-composed properly. */}
       {(pkg.agent_score || pkg.screenshot_url) && <VisualHero pkg={pkg} />}
       {pkg.badges && pkg.badges.length > 0 && <BadgeRow badges={pkg.badges} />}
       <AgentNote sectionKey="score" notes={notes} agentName={agentName} />
@@ -998,7 +998,13 @@ function ScoreRadar({ breakdown }: { breakdown: ScoreBreakdown }) {
   const polygon = points.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
-    <svg width="220" height="220" viewBox="0 0 220 220" style={{ display: "block", margin: "0 auto" }}>
+    <svg
+      width="100%"
+      height="240"
+      viewBox="-40 -10 300 240"
+      preserveAspectRatio="xMidYMid meet"
+      style={{ display: "block", margin: "0 auto", maxWidth: 360 }}
+    >
       {/* Grid rings */}
       {rings.map((pts, i) => (
         <polygon

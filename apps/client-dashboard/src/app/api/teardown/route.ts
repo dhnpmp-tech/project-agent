@@ -928,6 +928,175 @@ async function fetchGbp(
   }
 }
 
+// enrichGbpFromProse — when the site clearly mentions multiple outlets
+// but Places returned only the flagship, extract the venue names from
+// the crawl content and query Places for each. Merge into outlets[] and
+// recompute aggregate. Fixes the common Dubai-restaurant case where the
+// site says "Dubai Mall + Marina + Sports Lounge" but Places only finds
+// one of them by brand-seed.
+async function enrichGbpFromProse(
+  gbp: GbpData,
+  businessName: string,
+  country: "AE" | "SA",
+  corpus: string,
+  locationHint: string,
+): Promise<GbpData> {
+  // Already have ≥2 outlets — trust what Places gave us.
+  if ((gbp.outlets?.length ?? 0) >= 2) return gbp;
+  if (!corpus || corpus.length < 200) return gbp;
+
+  // Extract venue/location names from corpus via LLM.
+  const prompt = `BUSINESS: ${businessName}
+
+CRAWLED SITE CONTENT (verbatim):
+${corpus.slice(0, 7000)}
+
+TASK: List every distinct OUTLET, BRANCH, or VENUE this business operates as a short location name suitable for a Google Maps search.
+
+Good examples (UAE/Saudi venue tags): "Dubai Mall", "Dubai Marina", "Mercato", "Sports Lounge", "Burj Khalifa", "Jumeirah Beach", "Al Fahidi", "Al Khobar Mall", "Riyadh Park".
+
+Rules:
+- Output a JSON array of short location names (1-4 words each, no full address, no "branch", no marketing words).
+- Skip the parent city alone if more specific venues exist.
+- Skip generic mentions ("our locations", "various branches").
+- Output [] if the business operates only one outlet.
+- Max 8 entries.
+
+JSON only.`;
+
+  let names: string[] = [];
+  try {
+    const raw = await inferenceJsonChat("rami_research", prompt, { maxTokens: 400 });
+    const sliced = jsonSliceOrNull(raw);
+    if (!sliced) return gbp;
+    const parsed = JSON.parse(sliced);
+    if (!Array.isArray(parsed)) return gbp;
+    names = (parsed as unknown[])
+      .filter((n): n is string => typeof n === "string" && n.length >= 3 && n.length <= 40)
+      .slice(0, 8);
+  } catch {
+    return gbp;
+  }
+
+  if (names.length === 0) return gbp;
+
+  // For each extracted name, query Places with "<biz> <name>" and collect
+  // any place_ids not already in outlets[].
+  const existing = new Set<string>(
+    (gbp.outlets ?? [gbp]).map((o) => o.place_id || "").filter(Boolean),
+  );
+  const found: GbpOutlet[] = [];
+
+  for (const name of names) {
+    try {
+      const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/places-lookup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_name: `${businessName} ${name}`,
+          location_hint: locationHint,
+          country,
+        }),
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as GbpData | { error: string };
+      if ("error" in data) continue;
+
+      // The response itself is the primary outlet; sub-results in outlets[].
+      const candidates: GbpOutlet[] = [
+        data as GbpOutlet,
+        ...((data as GbpData).outlets ?? []),
+      ];
+      for (const c of candidates) {
+        if (c.place_id && !existing.has(c.place_id)) {
+          existing.add(c.place_id);
+          found.push(c);
+        }
+      }
+    } catch (e) {
+      console.warn(`[teardown] enrichGbp lookup failed for "${name}":`, e);
+    }
+  }
+
+  if (found.length === 0) return gbp;
+
+  // Merge primary + existing outlets + newly found, dedupe by place_id.
+  const primary: GbpOutlet = {
+    place_id: gbp.place_id,
+    name: gbp.name,
+    address: gbp.address,
+    phone: gbp.phone,
+    website: gbp.website,
+    maps_url: gbp.maps_url,
+    rating: gbp.rating,
+    user_ratings_total: gbp.user_ratings_total,
+    price_level: gbp.price_level,
+    hours: gbp.hours,
+    photos_count: gbp.photos_count,
+    business_status: gbp.business_status,
+    lat: gbp.lat,
+    lng: gbp.lng,
+  };
+  const merged: GbpOutlet[] = [];
+  const seen = new Set<string>();
+  for (const o of [primary, ...(gbp.outlets ?? []), ...found]) {
+    if (o.place_id && !seen.has(o.place_id)) {
+      seen.add(o.place_id);
+      merged.push(o);
+    }
+  }
+  merged.sort((a, b) => (b.user_ratings_total ?? 0) - (a.user_ratings_total ?? 0));
+
+  const total_reviews = merged.reduce((acc, o) => acc + (o.user_ratings_total ?? 0), 0);
+  const weightedSum = merged.reduce(
+    (acc, o) => acc + (o.rating ?? 0) * (o.user_ratings_total ?? 0),
+    0,
+  );
+  const weighted_avg_rating =
+    total_reviews > 0 ? Number((weightedSum / total_reviews).toFixed(2)) : null;
+  const total_photos = merged.reduce((acc, o) => acc + (o.photos_count ?? 0), 0);
+
+  // Promote the most-reviewed outlet to flagship.
+  const flagship = merged[0];
+  return {
+    ...flagship,
+    outlets: merged,
+    aggregate: {
+      outlet_count: merged.length,
+      total_reviews,
+      weighted_avg_rating,
+      total_photos,
+    },
+  };
+}
+
+// discoverInstagramHandle — when the site doesn't expose an IG link, try
+// to find one via the prompt-builder /web/find-instagram endpoint (which
+// uses Firecrawl /v1/search to query site:instagram.com "<biz>"). Returns
+// the handle string or undefined. Most Dubai businesses HAVE Instagram,
+// they just don't always link it from the homepage.
+async function discoverInstagramHandle(
+  businessName: string,
+  country: "AE" | "SA",
+  existingHandle: string | undefined,
+): Promise<string | undefined> {
+  if (existingHandle) return existingHandle;
+  try {
+    const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/find-instagram`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ business_name: businessName, country }),
+    });
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as { handle?: string; error?: string };
+    if (data.error) return undefined;
+    return data.handle && data.handle.length >= 2 ? data.handle : undefined;
+  } catch (e) {
+    console.warn("[teardown] find-instagram failed:", e);
+    return undefined;
+  }
+}
+
 async function fetchCompetitors(
   gbp: GbpData,
   category: "restaurant" | "beauty" | "default",
@@ -1766,13 +1935,35 @@ Output STRICT JSON only:
   // Both gracefully return null when their preconditions fail (no
   // confirmed listings / no Places API key).
   const locationHint = crawl.contactInfo?.address || "";
-  const [reviews, gbp, social_pulse] = await Promise.all([
+
+  // Discover Instagram handle BEFORE social-pulse so we can pass it
+  // explicitly. Many Dubai businesses have IG but no homepage link.
+  const igHandleFromCrawl = (crawl.socialProfiles?.instagram || "").match(
+    /instagram\.com\/(?:@?)([A-Za-z0-9_.]+)/,
+  )?.[1];
+  const discoveredIg = await discoverInstagramHandle(businessName, country, igHandleFromCrawl);
+  const augmentedSocialProfiles = {
+    ...(crawl.socialProfiles || {}),
+    ...(discoveredIg && !crawl.socialProfiles?.instagram
+      ? { instagram: `https://instagram.com/${discoveredIg}` }
+      : {}),
+  };
+
+  const [reviews, gbpInitial, social_pulse] = await Promise.all([
     directoryStrategy?.confirmed?.length
       ? fetchReviews(businessName, directoryStrategy.confirmed)
       : Promise.resolve(null),
     fetchGbp(businessName, country, locationHint),
-    fetchSocialPulse(businessName, crawl.socialProfiles, country, category),
+    fetchSocialPulse(businessName, augmentedSocialProfiles, country, category),
   ]);
+
+  // Multi-outlet enrichment from prose. When the site advertises multiple
+  // venues but Places only returned one (e.g. brand-seed filter misses),
+  // we LLM-extract venue names and re-query each. No-op when we already
+  // have 2+ outlets.
+  const gbp = gbpInitial
+    ? await enrichGbpFromProse(gbpInitial, businessName, country, corpus, locationHint)
+    : null;
 
   // Third-stage: competitor radar — needs the GBP lat/lng. Same
   // graceful-skip pattern.
