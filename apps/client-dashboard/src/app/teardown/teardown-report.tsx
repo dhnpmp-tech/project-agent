@@ -219,6 +219,33 @@ export interface TeardownPackage {
   social_pulse?: SocialPulse | null;
   schema_audit?: SchemaAudit | null;
   agent_persona?: AgentPersona | null;
+  agent_notes?: AgentMarginNote[];
+  metrics?: ReportMetrics;
+}
+
+export interface AgentMarginNote {
+  section:
+    | "insight"
+    | "reply"
+    | "faq"
+    | "social"
+    | "reviews"
+    | "gbp"
+    | "directory"
+    | "competitors"
+    | "schema"
+    | "score";
+  note: string;
+}
+
+export interface ReportMetrics {
+  elapsed_seconds: number;
+  ai_tasks: number;
+  pages_crawled: number;
+  reviews_mined: number;
+  outlets_found: number;
+  competitors_plotted: number;
+  signals_pulled: number;
 }
 
 export interface SchemaAudit {
@@ -258,21 +285,45 @@ const CATEGORY_EMOJI: Record<QuickWin["category"], string> = {
 };
 
 export function TeardownReport({ pkg, slug }: { pkg: TeardownPackage; slug?: string }) {
+  const notes = pkg.agent_notes;
+  const agentName = pkg.agent_persona?.name;
   return (
     <>
       <AgentGreeting pkg={pkg} />
       <TeardownVideoPlayer pkg={pkg} />
       {(pkg.agent_score || pkg.screenshot_url) && <VisualHero pkg={pkg} />}
       {pkg.badges && pkg.badges.length > 0 && <BadgeRow badges={pkg.badges} />}
-      {pkg.gbp && <GbpPanel gbp={pkg.gbp} />}
-      {pkg.social_pulse && <SocialPulseSection pulse={pkg.social_pulse} />}
+      <AgentNote sectionKey="score" notes={notes} agentName={agentName} />
+      {pkg.gbp && (
+        <>
+          <AgentNote sectionKey="gbp" notes={notes} agentName={agentName} />
+          <GbpPanel gbp={pkg.gbp} />
+        </>
+      )}
+      {pkg.social_pulse && (
+        <>
+          <AgentNote sectionKey="social" notes={notes} agentName={agentName} />
+          <SocialPulseSection pulse={pkg.social_pulse} />
+        </>
+      )}
       {pkg.competitor_radar && pkg.competitor_radar.competitors.length > 0 && (
-        <CompetitorSection radar={pkg.competitor_radar} ownRating={pkg.gbp?.rating ?? null} />
+        <>
+          <AgentNote sectionKey="competitors" notes={notes} agentName={agentName} />
+          <CompetitorSection radar={pkg.competitor_radar} ownRating={pkg.gbp?.rating ?? null} />
+        </>
       )}
       {pkg.reviews && pkg.reviews.sentiment?.total > 0 && (
-        <ReviewsSection reviews={pkg.reviews} />
+        <>
+          <AgentNote sectionKey="reviews" notes={notes} agentName={agentName} />
+          <ReviewsSection reviews={pkg.reviews} />
+        </>
       )}
-      {pkg.schema_audit && <SchemaAuditSection audit={pkg.schema_audit} slug={slug} />}
+      {pkg.schema_audit && (
+        <>
+          <AgentNote sectionKey="schema" notes={notes} agentName={agentName} />
+          <SchemaAuditSection audit={pkg.schema_audit} slug={slug} />
+        </>
+      )}
       <section
         style={{
           background: "var(--paper-card, #fbfaf4)",
@@ -282,12 +333,14 @@ export function TeardownReport({ pkg, slug }: { pkg: TeardownPackage; slug?: str
           marginTop: 20,
         }}
       >
+      <AgentNote sectionKey="insight" notes={notes} agentName={agentName} />
       <Block
         eyebrow="§ A · the read"
         title="Sharp first impression"
         body={pkg.insight || "(insight unavailable — try a different URL)"}
       />
 
+      <AgentNote sectionKey="reply" notes={notes} agentName={agentName} />
       <Block
         eyebrow="§ B · a real reply"
         title="Sample WhatsApp response"
@@ -319,6 +372,7 @@ export function TeardownReport({ pkg, slug }: { pkg: TeardownPackage; slug?: str
           >
             {pkg.faq_gaps.length} customer questions your site doesn&apos;t answer yet
           </h3>
+          <AgentNote sectionKey="faq" notes={notes} agentName={agentName} />
           <div
             style={{
               display: "grid",
@@ -647,6 +701,7 @@ export function TeardownReport({ pkg, slug }: { pkg: TeardownPackage; slug?: str
       </div>
       </section>
       {pkg.agent_persona && <EmployeePersona persona={pkg.agent_persona} />}
+      <ReportFooter pkg={pkg} slug={slug} />
     </>
   );
 }
@@ -1759,6 +1814,235 @@ function SocialStatCard({
     </a>
   ) : (
     <div style={baseStyle}>{content}</div>
+  );
+}
+
+// AgentNote — persona-voiced margin scribble next to a section. Renders
+// nothing when there's no note for that section, so we can sprinkle it
+// liberally without worrying about empty containers.
+function AgentNote({
+  sectionKey,
+  notes,
+  agentName,
+}: {
+  sectionKey: AgentMarginNote["section"];
+  notes?: AgentMarginNote[];
+  agentName?: string;
+}) {
+  const note = notes?.find((n) => n.section === sectionKey);
+  if (!note) return null;
+  const initial = (agentName?.split(/\s+/)[0] || "A").slice(0, 1).toUpperCase();
+  return (
+    <div
+      style={{
+        margin: "8px 0 16px",
+        padding: "10px 14px 10px 12px",
+        background: "rgba(45,142,125,0.06)",
+        borderLeft: "2px solid #2d8e7d",
+        borderRadius: "0 6px 6px 0",
+        display: "flex",
+        gap: 10,
+        alignItems: "flex-start",
+      }}
+    >
+      <span
+        style={{
+          flexShrink: 0,
+          width: 22,
+          height: 22,
+          borderRadius: "50%",
+          background: "#2d8e7d",
+          color: "#fbfaf4",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Instrument Serif, serif",
+          fontSize: 13,
+          fontStyle: "italic",
+          marginTop: 1,
+        }}
+      >
+        {initial}
+      </span>
+      <em
+        style={{
+          fontFamily: "Instrument Serif, Georgia, serif",
+          fontSize: 15,
+          lineHeight: 1.45,
+          color: "var(--paper-ink, #1d1c18)",
+        }}
+      >
+        {note.note}
+      </em>
+    </div>
+  );
+}
+
+// ReportFooter — receipt-style summary + one-tap share to WhatsApp. Sits
+// at the very bottom of the teardown after the persona finale.
+function ReportFooter({
+  pkg,
+  slug,
+}: {
+  pkg: TeardownPackage;
+  slug?: string;
+}) {
+  const m = pkg.metrics;
+  const firstName = pkg.agent_persona?.name?.split(/\s+/)[0] || "your agent";
+  const permalink = slug ? `https://agents.dcp.sa/teardown/${slug}/` : "";
+  const shareText = permalink
+    ? `My AI just analyzed ${pkg.business_name} — ${firstName} wants to be hired. Read the teardown: ${permalink}`
+    : "";
+  const waLink = shareText ? `https://wa.me/?text=${encodeURIComponent(shareText)}` : "";
+
+  return (
+    <section
+      style={{
+        marginTop: 28,
+        marginBottom: 20,
+        padding: "20px 22px",
+        background: "var(--paper, #f6f3eb)",
+        border: "1px dashed var(--paper-line, #d8d2bf)",
+        borderRadius: 8,
+        display: "flex",
+        flexDirection: "column",
+        gap: 18,
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          fontSize: 11,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+          display: "flex",
+          justifyContent: "space-between",
+          paddingBottom: 12,
+          borderBottom: "1px dashed var(--paper-line, #d8d2bf)",
+        }}
+      >
+        <span>· receipt ·</span>
+        <span>agents.dcp.sa</span>
+      </div>
+      {m && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            rowGap: 6,
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            fontSize: 13,
+            color: "var(--paper-ink, #1d1c18)",
+          }}
+        >
+          <ReceiptRow k="time spent analyzing" v={`${m.elapsed_seconds}s`} />
+          <ReceiptRow k="pages crawled" v={String(m.pages_crawled)} />
+          <ReceiptRow k="AI tasks run" v={String(m.ai_tasks)} />
+          {m.reviews_mined > 0 && (
+            <ReceiptRow k="reviews mined" v={m.reviews_mined.toLocaleString()} />
+          )}
+          {m.outlets_found > 0 && (
+            <ReceiptRow k="outlets verified" v={String(m.outlets_found)} />
+          )}
+          {m.competitors_plotted > 0 && (
+            <ReceiptRow k="competitors plotted" v={String(m.competitors_plotted)} />
+          )}
+          {m.signals_pulled > 0 && (
+            <ReceiptRow k="external signals pulled" v={String(m.signals_pulled)} />
+          )}
+          <ReceiptRow k="badges earned" v={String(pkg.badges?.length ?? 0)} />
+          <div
+            style={{
+              gridColumn: "1 / -1",
+              marginTop: 8,
+              paddingTop: 10,
+              borderTop: "1px dashed var(--paper-line, #d8d2bf)",
+              display: "flex",
+              justifyContent: "space-between",
+              fontWeight: 600,
+            }}
+          >
+            <span>your cost</span>
+            <span style={{ color: "#1e6d3d" }}>$0.00</span>
+          </div>
+        </div>
+      )}
+
+      {waLink && (
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            flexWrap: "wrap",
+            paddingTop: 4,
+          }}
+        >
+          <a
+            href={waLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 18px",
+              background: "#075e54",
+              color: "#fff",
+              fontFamily: "Instrument Serif, serif",
+              fontSize: 16,
+              fontStyle: "italic",
+              borderRadius: 999,
+              textDecoration: "none",
+            }}
+          >
+            <ShareWaIcon />
+            Send this to your partner
+          </a>
+          <span
+            style={{
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: 11,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--paper-mut, #837c69)",
+            }}
+          >
+            opens WhatsApp · message pre-written
+          </span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ReceiptRow({ k, v }: { k: string; v: string }) {
+  return (
+    <>
+      <span style={{ color: "var(--paper-mut, #837c69)" }}>{k}</span>
+      <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{v}</span>
+    </>
+  );
+}
+
+function ShareWaIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 18 18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0 }}
+    >
+      <path d="M3 9 C3 5.5 5.5 3 9 3 C12.5 3 15 5.5 15 9 C15 11.5 13 13.5 11 14 L9 16 L8 14 C5 13.5 3 11.5 3 9 Z" />
+      <line x1="6.5" y1="8.5" x2="11.5" y2="8.5" />
+      <line x1="6.5" y1="10.5" x2="9.5" y2="10.5" />
+    </svg>
   );
 }
 

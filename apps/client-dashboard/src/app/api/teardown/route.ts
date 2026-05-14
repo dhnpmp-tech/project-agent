@@ -296,6 +296,11 @@ interface TeardownPackage {
   // cultural fit, languages, full skill matrix (inbound / proactive /
   // outbound B2B), day-in-the-life, salary comparison.
   agent_persona?: AgentPersona | null;
+  // Persona-voiced margin scribbles attached to specific sections of
+  // the report — makes the doc feel like a colleague read along.
+  agent_notes?: AgentMarginNote[];
+  // Receipt-style footer showing real work done in real time.
+  metrics?: ReportMetrics;
 }
 
 interface AgentSkill {
@@ -321,6 +326,35 @@ interface AgentPersona {
     salary_aed: number;
     benefits_aed: number;
   };
+  // Hand-written P.S. at the bottom of the report — one personal line
+  // in the persona's voice, signed.
+  ps_note?: string;
+}
+
+interface AgentMarginNote {
+  // Section key the note attaches to. Renderer matches on these.
+  section:
+    | "insight"
+    | "reply"
+    | "faq"
+    | "social"
+    | "reviews"
+    | "gbp"
+    | "directory"
+    | "competitors"
+    | "schema"
+    | "score";
+  note: string;
+}
+
+interface ReportMetrics {
+  elapsed_seconds: number;
+  ai_tasks: number;
+  pages_crawled: number;
+  reviews_mined: number;
+  outlets_found: number;
+  competitors_plotted: number;
+  signals_pulled: number;
 }
 
 interface TeardownBody {
@@ -648,7 +682,8 @@ OUTPUT FORMAT — a single JSON object with these EXACT keys:
     "title": "Restaurant Host + Marketing Coordinator + B2B Sales Rep",
     "salary_aed": 18000,
     "benefits_aed": 4500
-  }
+  },
+  "ps_note": "A short hand-written P.S. — one sentence in your voice, intimate, the kind of thing you'd scribble at the bottom of a hire letter. Reference something specific you noticed about the business. End with your first name."
 }
 
 SKILLS REQUIREMENTS — at least 9, covering all 3 categories:
@@ -732,10 +767,103 @@ Output ONLY the JSON. No preamble, no markdown fence.`;
             ? parsed.human_equivalent.benefits_aed
             : 3000,
       },
+      ps_note: parsed.ps_note ? String(parsed.ps_note).slice(0, 320) : undefined,
     };
   } catch (e) {
     console.error("[teardown] persona generation failed:", e);
     return null;
+  }
+}
+
+// generateMarginNotes — short persona-voiced asides attached to specific
+// sections of the report. Renders in the margins next to the section
+// header so the doc feels like a colleague is reading along with you.
+//
+// One LLM call produces all the notes at once (cheap vs one-per-section).
+// Section keys map to renderer markers via <AgentNote sectionKey="...">.
+async function generateMarginNotes(args: {
+  persona: AgentPersona | null;
+  businessName: string;
+  insight: string;
+  faqGapsCount: number;
+  hasReviews: boolean;
+  hasGbp: boolean;
+  hasSocial: boolean;
+}): Promise<AgentMarginNote[]> {
+  const { persona, businessName, insight, faqGapsCount, hasReviews, hasGbp, hasSocial } = args;
+  if (!persona) return [];
+
+  const firstName = persona.name.split(/\s+/)[0] || persona.name;
+  const availableSections = [
+    "insight",
+    "reply",
+    "faq",
+    hasSocial ? "social" : null,
+    hasReviews ? "reviews" : null,
+    hasGbp ? "gbp" : null,
+    "directory",
+    "score",
+  ].filter(Boolean) as AgentMarginNote["section"][];
+
+  const prompt = `You are ${persona.name}, age ${persona.age}, from ${persona.origin}.
+You speak: ${persona.languages.join(", ")}.
+Your signature line is: "${persona.signature_line}"
+
+You are leaving short MARGIN SCRIBBLES on a teardown report being read by the owner of ${businessName}. The kind of things a senior consultant would scribble in pencil next to specific paragraphs — sharp, opinionated, specific. NOT marketing copy.
+
+You have already read the report. Your sharp first-impression read was:
+"""
+${insight.trim().slice(0, 1200)}
+"""
+
+TASK: write ONE margin scribble for EACH of these sections — short (one sentence each, max 18 words). Write in YOUR voice — first person, sometimes a question, sometimes a quick observation, sometimes a recommendation. Each should reference something you'd genuinely notice about THIS business.
+
+Sections you must cover (use the exact section key):
+${availableSections.map((s) => `- "${s}"`).join("\n")}
+
+Output ONLY a JSON array — no preamble, no fence:
+[
+  { "section": "insight", "note": "..." },
+  { "section": "faq", "note": "..." }
+]
+
+Tone examples (your voice — first person, ${firstName.toLowerCase()}-flavored):
+- "↳ I'd push this one to your Friday menu drop — it converts."
+- "↳ Your customers ask this on WhatsApp 3-4× a day already. I'd answer all of them by Tuesday."
+- "↳ Mercato is the laggard here. I'd start by drafting replies to its complaints first."
+- "↳ Hmm — your IG drought aligns with your slowest Tuesdays. Worth fixing first."
+- "↳ This is the line I'd use in DMs to Russian Cultural Centre next week."
+
+KEEP IT SHORT. KEEP IT SPECIFIC. NO GENERIC ADVICE.`;
+
+  try {
+    const raw = await inferenceJsonChat("rami_research", prompt, { maxTokens: 900 });
+    const sliced = jsonSliceOrNull(raw);
+    if (!sliced) return [];
+    const parsed = JSON.parse(sliced);
+    if (!Array.isArray(parsed)) return [];
+    const valid: AgentMarginNote[] = parsed
+      .filter(
+        (n: unknown) =>
+          n !== null &&
+          typeof n === "object" &&
+          typeof (n as { section?: unknown }).section === "string" &&
+          typeof (n as { note?: unknown }).note === "string" &&
+          availableSections.includes(
+            (n as { section: AgentMarginNote["section"] }).section,
+          ),
+      )
+      .map((n) => {
+        const obj = n as { section: AgentMarginNote["section"]; note: string };
+        // Trim and ensure single-sentence-ish length.
+        let note = obj.note.trim();
+        if (!/^[↳→»]/.test(note)) note = `↳ ${note}`;
+        return { section: obj.section, note: note.slice(0, 220) };
+      });
+    return valid;
+  } catch (e) {
+    console.error("[teardown] margin notes failed:", e);
+    return [];
   }
 }
 
@@ -1267,6 +1395,7 @@ function deriveBusinessName(url: string): string {
 // ---- Handler --------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
+  const t0 = performance.now();
   const body = (await req.json().catch(() => ({}))) as TeardownBody;
   const rawUrl = (body.url || "").trim();
   if (!rawUrl || rawUrl.length < 4) {
@@ -1664,6 +1793,18 @@ Output STRICT JSON only:
     insight,
   });
 
+  // Fifth-stage: persona-voiced margin scribbles attached to specific
+  // sections — makes the report feel like a colleague read along with you.
+  const agent_notes = await generateMarginNotes({
+    persona: agent_persona,
+    businessName,
+    insight,
+    faqGapsCount: faq_gaps.length,
+    hasReviews: !!reviews,
+    hasGbp: !!gbp,
+    hasSocial: !!social_pulse,
+  });
+
   // Compute the gamified score + grade + badges from everything we know.
   // These are pure functions over the data already collected — no extra
   // LLM cost, no extra latency.
@@ -1704,6 +1845,28 @@ Output STRICT JSON only:
       businessName,
     ),
     agent_persona,
+    agent_notes,
+    metrics: {
+      elapsed_seconds: Math.round((performance.now() - t0) / 1000),
+      // Stage-1 LLM calls + verify-listings + persona + notes. Static
+      // count avoids the cost of plumbing a counter through the helper.
+      ai_tasks:
+        8 +
+        (directoryStrategy ? 1 : 0) +
+        (reviews ? 1 : 0) +
+        (agent_persona ? 1 : 0) +
+        (agent_notes.length > 0 ? 1 : 0),
+      pages_crawled: crawl.pagesScanned?.length || 0,
+      reviews_mined: reviews?.sentiment?.total ?? 0,
+      outlets_found: gbp?.aggregate?.outlet_count ?? (gbp ? 1 : 0),
+      competitors_plotted: competitor_radar?.competitors?.length ?? 0,
+      signals_pulled:
+        (social_pulse?.instagram ? 1 : 0) +
+        (social_pulse?.tiktok ? 1 : 0) +
+        (social_pulse?.reddit ? 1 : 0) +
+        (gbp ? 1 : 0) +
+        (reviews ? 1 : 0),
+    },
   };
 
   // Persist + slug. Retry slug collision up to 3 times (extremely

@@ -38,6 +38,7 @@ export interface AgentPersona {
     salary_aed: number;
     benefits_aed: number;
   };
+  ps_note?: string;
 }
 
 /* ─── Component ─── */
@@ -180,6 +181,15 @@ export function EmployeePersona({ persona }: { persona: AgentPersona }) {
           2-minute setup · pay AED 3,000 once + AED {persona.agent_cost_aed.toLocaleString()}/mo · cancel anytime
         </span>
       </div>
+
+      {/* Hand-written P.S. — the personal touch at the bottom of the hire letter. */}
+      {persona.ps_note && (
+        <div style={SX.psWrap}>
+          <span style={SX.psLabel}>P.S.</span>
+          <p style={SX.psNote}>{persona.ps_note}</p>
+          <span style={SX.psSignature}>— {firstName}</span>
+        </div>
+      )}
     </section>
   );
 }
@@ -618,5 +628,41 @@ const SX: Record<string, React.CSSProperties> = {
     letterSpacing: "0.06em",
     color: "var(--paper-mut, #837c69)",
     textAlign: "center",
+  },
+
+  /* P.S. — handwriting-style aside at the very bottom */
+  psWrap: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTop: "1px dashed var(--paper-line, #d8d2bf)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    transform: "rotate(-0.4deg)",
+  },
+  psLabel: {
+    fontFamily: SERIF,
+    fontSize: 18,
+    fontStyle: "italic",
+    color: "#2d8e7d",
+    fontWeight: 600,
+  },
+  psNote: {
+    fontFamily: SERIF,
+    fontSize: 18,
+    fontStyle: "italic",
+    lineHeight: 1.55,
+    color: "var(--paper-ink, #1d1c18)",
+    margin: 0,
+    maxWidth: "62ch",
+  },
+  psSignature: {
+    fontFamily: SERIF,
+    fontSize: 22,
+    fontStyle: "italic",
+    color: "#2d8e7d",
+    transform: "rotate(-1.5deg)",
+    transformOrigin: "left center",
+    marginTop: 4,
   },
 };
