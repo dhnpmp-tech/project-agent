@@ -24,6 +24,11 @@ const nextConfig = {
       { source: "/teardown/:slug", destination: `${DASHBOARD_HOST}/app/teardown/:slug` },
       { source: "/teardown/:slug/og", destination: `${DASHBOARD_HOST}/app/teardown/:slug/og` },
       { source: "/api/teardown", destination: `${DASHBOARD_HOST}/app/api/teardown` },
+      // FRNDS standalone microsite — static HTML in public/frnds/. We
+      // map the directory URL to the entry index.html so users can hit
+      // /frnds without typing the filename.
+      { source: "/frnds", destination: "/frnds/index.html" },
+      { source: "/frnds/", destination: "/frnds/index.html" },
     ];
   },
 };
