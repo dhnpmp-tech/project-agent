@@ -43,8 +43,19 @@ export interface AgentPersona {
 
 /* ─── Component ─── */
 
-export function EmployeePersona({ persona }: { persona: AgentPersona }) {
+export function EmployeePersona({
+  persona,
+  slug,
+}: {
+  persona: AgentPersona;
+  slug?: string;
+}) {
   const firstName = persona.name.split(/\s+/)[0] || persona.name;
+  // Carry the teardown slug into onboarding so the wizard pre-fills the
+  // business + persona instead of starting blank.
+  const hireHref = slug
+    ? `/app/onboarding?from=${encodeURIComponent(slug)}`
+    : "/app/onboarding";
   const inbound = persona.skills.filter((s) => s.category === "inbound");
   const proactive = persona.skills.filter((s) => s.category === "proactive");
   const outbound = persona.skills.filter((s) => s.category === "outbound");
@@ -174,7 +185,7 @@ export function EmployeePersona({ persona }: { persona: AgentPersona }) {
 
       {/* CTA */}
       <div style={SX.ctaWrap}>
-        <a href="/app/onboarding" style={SX.cta}>
+        <a href={hireHref} style={SX.cta}>
           Hire {firstName} →
         </a>
         <span style={SX.ctaSub}>

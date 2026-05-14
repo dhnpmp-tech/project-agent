@@ -705,7 +705,7 @@ export function TeardownReport({ pkg, slug }: { pkg: TeardownPackage; slug?: str
       {pkg.platform_demo && pkg.agent_persona && (
         <PlatformDemoSections demo={pkg.platform_demo} persona={pkg.agent_persona} />
       )}
-      {pkg.agent_persona && <EmployeePersona persona={pkg.agent_persona} />}
+      {pkg.agent_persona && <EmployeePersona persona={pkg.agent_persona} slug={slug} />}
       <ReportFooter pkg={pkg} slug={slug} />
     </>
   );

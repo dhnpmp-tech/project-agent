@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StepCompanyProfile, type CompanyProfileData } from "@/components/onboarding/step-company-profile";
 import { StepWebsiteCrawl, type CrawlData } from "@/components/onboarding/step-website-crawl";
 import { StepKnowledgeReview, type KnowledgeOverrides } from "@/components/onboarding/step-knowledge-review";
@@ -9,6 +9,16 @@ import { StepIndustrySetup, type IndustryConfig } from "@/components/onboarding/
 import { OnboardingTutorial } from "@/components/onboarding/onboarding-tutorial";
 import { AGENT_DISPLAY_NAMES, type AgentType } from "@project-agent/shared-types";
 import { apiUrl } from "@/lib/api-url";
+import type { TeardownPackage } from "@/app/teardown/teardown-report";
+
+// When a prospect lands here via the teardown "Hire <FirstName>" CTA,
+// the URL carries ?from=<slug>. We fetch that teardown's package and
+// pre-fill the wizard so they don't redo the work the agent already did.
+interface TeardownPrefill {
+  business_name: string;
+  url: string;
+  package: TeardownPackage;
+}
 
 const STEPS = [
   "Company Profile",
@@ -50,6 +60,9 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Teardown context that bootstrapped this onboarding session, if any.
+  const [prefill, setPrefill] = useState<TeardownPrefill | null>(null);
+  const [prefillLoading, setPrefillLoading] = useState(false);
 
   const [companyData, setCompanyData] = useState<CompanyProfileData>({
     companyName: "",
@@ -103,6 +116,90 @@ export default function OnboardingPage() {
     notifyOnHighValueLead: true,
     googleBusinessUrl: "",
   });
+
+  // Pre-fill from a teardown when ?from=<slug> is present in the URL.
+  // Skip the tutorial in that case (the prospect already saw a full
+  // analysis of their business and is ready to convert).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const slug = new URLSearchParams(window.location.search).get("from");
+    if (!slug) return;
+    setShowTutorial(false);
+    setPrefillLoading(true);
+    fetch(apiUrl(`/api/teardown/${slug}`))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: TeardownPrefill | null) => {
+        if (!data || !data.package) return;
+        setPrefill(data);
+        const pkg = data.package;
+        const country: "AE" | "SA" =
+          /\.sa(\b|\/)|riyadh|jeddah|dammam|saudi/i.test(data.url) ? "SA" : "AE";
+        setCompanyData((prev) => ({
+          ...prev,
+          companyName: prev.companyName || data.business_name || "",
+          businessDescription: prev.businessDescription || pkg.insight || "",
+          contactPhone: prev.contactPhone || pkg.gbp?.phone || "",
+          country,
+        }));
+        setWebsiteUrl((prev) => prev || data.url);
+        // Seed CrawlData from the teardown package so the Knowledge Base
+        // step has something to render. The user can still re-crawl via
+        // step 2 if they want fresh data.
+        setCrawlData((prev) => {
+          if (prev) return prev;
+          return {
+            businessDescription: pkg.insight || "",
+            services: [],
+            faq: (pkg.faq_gaps || []).slice(0, 8).map((g) => ({
+              question: g.question || "",
+              answer: g.draft_answer || "",
+            })),
+            businessHours: pkg.gbp?.hours?.join("\n") || "",
+            contactInfo: {
+              phone: pkg.gbp?.phone || undefined,
+              address: pkg.gbp?.address || undefined,
+            },
+            teamMembers: [],
+            socialProfiles: pkg.social_pulse?.instagram?.profile_url
+              ? { instagram: pkg.social_pulse.instagram.profile_url }
+              : {},
+            reviewSources:
+              pkg.directory_strategy?.confirmed?.map((c) => ({
+                platform: c.platform,
+                url: c.evidence_url || "",
+              })) || [],
+            brandVoice: pkg.brand_voice || "",
+            industryKeywords: [],
+            jobListings: [],
+            pagesScanned: [],
+          };
+        });
+        // Pre-fill the knowledge overrides too — these are the fields the
+        // crawl step would normally populate.
+        setKnowledgeOverrides((prev) => ({
+          ...prev,
+          businessDescription: prev.businessDescription || pkg.insight || "",
+          brandVoice: prev.brandVoice || pkg.brand_voice || "",
+          contactPhone: prev.contactPhone || pkg.gbp?.phone || "",
+          contactAddress: prev.contactAddress || pkg.gbp?.address || "",
+        }));
+        // Pre-fill industry hints from GBP when present.
+        if (pkg.gbp) {
+          setIndustryConfig((prev) => ({
+            ...prev,
+            googleMapsPlaceId: prev.googleMapsPlaceId || pkg.gbp?.place_id || "",
+            googleBusinessUrl: prev.googleBusinessUrl || pkg.gbp?.maps_url || "",
+            ownerName:
+              prev.ownerName || (pkg.agent_persona?.name?.split(/\s+/)[0] ?? ""),
+          }));
+        }
+        // Skip "Scan Website" since the teardown already did it. Jump to
+        // the Knowledge Base review so they confirm what we found.
+        setCurrentStep(2);
+      })
+      .catch((e) => console.warn("[onboarding] prefill failed:", e))
+      .finally(() => setPrefillLoading(false));
+  }, []);
 
   function handleNext() {
     setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1));
@@ -308,6 +405,54 @@ export default function OnboardingPage() {
             />
           ))}
         </div>
+
+        {/* Prefill banner — shown when the user arrived from a teardown.
+            Confirms what we pre-loaded so the prospect doesn't get
+            disoriented when fields are already filled in. */}
+        {prefill && (
+          <div
+            className="mb-8 rounded border px-4 py-3"
+            style={{
+              background: "rgba(45, 142, 125, 0.08)",
+              borderColor: "rgba(45, 142, 125, 0.32)",
+            }}
+          >
+            <div
+              className="text-[10px] uppercase tracking-[0.14em] mb-1"
+              style={{
+                color: "var(--dcp-teal)",
+                fontFamily: "var(--mono)",
+                fontWeight: 600,
+              }}
+            >
+              ● loaded from your teardown
+            </div>
+            <p className="text-sm m-0" style={{ color: "var(--dcp-ink)" }}>
+              We pre-filled this from your{" "}
+              <strong>{prefill.business_name}</strong> analysis
+              {prefill.package.agent_persona?.name ? (
+                <>
+                  {" "}— including the persona{" "}
+                  <strong>{prefill.package.agent_persona.name}</strong>
+                </>
+              ) : null}
+              . Skim each step to confirm.
+            </p>
+          </div>
+        )}
+        {prefillLoading && (
+          <div
+            className="mb-8 rounded border px-4 py-3 text-sm"
+            style={{
+              background: "var(--dcp-paper)",
+              borderColor: "var(--dcp-line)",
+              fontFamily: "var(--mono)",
+              color: "var(--dcp-mut)",
+            }}
+          >
+            Loading your teardown context…
+          </div>
+        )}
 
         {/* Steps */}
         {currentStep === 0 && (
