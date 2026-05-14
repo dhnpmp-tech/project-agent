@@ -218,6 +218,7 @@ export interface TeardownPackage {
   competitor_radar?: CompetitorRadar | null;
   social_pulse?: SocialPulse | null;
   schema_audit?: SchemaAudit | null;
+  agent_persona?: AgentPersona | null;
 }
 
 export interface SchemaAudit {
@@ -230,6 +231,8 @@ export interface SchemaAudit {
 
 import { TeardownVideoPlayer } from "./teardown-video";
 import { SchemaEmitButton } from "./schema-emit-button";
+import { EmployeePersona, type AgentPersona } from "./employee-persona";
+export type { AgentPersona };
 
 const GRADE_PALETTE: Record<AgentScore["grade"], { fg: string; bg: string; ring: string }> = {
   "A+": { fg: "#1e6d3d", bg: "#dfeede", ring: "#2d8e7d" },
@@ -643,6 +646,7 @@ export function TeardownReport({ pkg, slug }: { pkg: TeardownPackage; slug?: str
         </p>
       </div>
       </section>
+      {pkg.agent_persona && <EmployeePersona persona={pkg.agent_persona} />}
     </>
   );
 }
@@ -1787,7 +1791,7 @@ function BadgeRow({ badges }: { badges: Badge[] }) {
               cursor: "help",
             }}
           >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>{b.emoji}</span>
+            <BadgeIcon badge={b} />
             <span
               style={{
                 fontSize: 13,
@@ -1801,6 +1805,118 @@ function BadgeRow({ badges }: { badges: Badge[] }) {
         ))}
       </div>
     </section>
+  );
+}
+
+// Branded SVG glyph for each badge type. Replaces the colour-emoji that
+// reads as low-craft (yellow star, blue globe, etc.). Single accent
+// colour (DCP teal) keeps the badge row visually quiet.
+function BadgeIcon({ badge }: { badge: Badge }) {
+  const TEAL = "#2d8e7d";
+  const label = badge.label.toLowerCase();
+  const props = {
+    width: 16,
+    height: 16,
+    viewBox: "0 0 18 18",
+    fill: "none" as const,
+    stroke: TEAL,
+    strokeWidth: 1.5,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    style: { flexShrink: 0, display: "block" },
+  };
+
+  if (label.includes("champion") || label.includes("★")) {
+    // Filled star — earned status, not just a tag
+    return (
+      <svg {...props}>
+        <path
+          d="M9 1.6 L10.85 6.85 L16.5 7.05 L11.95 10.5 L13.7 15.9 L9 12.85 L4.3 15.9 L6.05 10.5 L1.5 7.05 L7.15 6.85 Z"
+          fill={TEAL}
+          stroke={TEAL}
+        />
+      </svg>
+    );
+  }
+  if (label.includes("heritage") || label.includes("year")) {
+    return (
+      <svg {...props}>
+        <path d="M2 6 L9 2.5 L16 6" />
+        <line x1="3" y1="6" x2="3" y2="14.5" />
+        <line x1="9" y1="6" x2="9" y2="14.5" />
+        <line x1="15" y1="6" x2="15" y2="14.5" />
+        <line x1="1.5" y1="15.5" x2="16.5" y2="15.5" />
+      </svg>
+    );
+  }
+  if (label.includes("outlet") || label.includes("location")) {
+    return (
+      <svg {...props}>
+        <path d="M2 7.5 L9 3.5 L16 7.5" />
+        <line x1="3.5" y1="7.5" x2="3.5" y2="15.5" />
+        <line x1="14.5" y1="7.5" x2="14.5" y2="15.5" />
+        <line x1="3.5" y1="15.5" x2="14.5" y2="15.5" />
+        <rect x="7" y="10.5" width="4" height="5" />
+      </svg>
+    );
+  }
+  if (label.includes("omnipresent") || label.includes("everywhere") || label.includes("global")) {
+    return (
+      <svg {...props}>
+        <circle cx="9" cy="9" r="7" />
+        <ellipse cx="9" cy="9" rx="3.5" ry="7" />
+        <line x1="2" y1="9" x2="16" y2="9" />
+      </svg>
+    );
+  }
+  if (label.includes("tourism") || label.includes("travel")) {
+    return (
+      <svg {...props}>
+        <path d="M3 10 L7.5 8.5 L7.5 4 L9 4 L10.5 8.5 L15 9.5 L15 11 L10.5 11 L9 15.5 L7.5 15.5 L7.5 11 Z" />
+      </svg>
+    );
+  }
+  if (label.includes("channel") || label.includes("whatsapp") || label.includes("multi-channel")) {
+    return (
+      <svg {...props}>
+        <rect x="5.5" y="2.5" width="7" height="12" rx="1.2" />
+        <line x1="7.5" y1="12.5" x2="10.5" y2="12.5" />
+        <path d="M14.5 5.5 Q16 7.5 14.5 9.5" />
+        <path d="M3.5 5.5 Q2 7.5 3.5 9.5" />
+      </svg>
+    );
+  }
+  if (label.includes("voice") || label.includes("review")) {
+    return (
+      <svg {...props}>
+        <path d="M2.5 4 L13.5 4 L13.5 11.5 L9.5 11.5 L6.5 14.5 L6.5 11.5 L2.5 11.5 Z" />
+        <line x1="5" y1="6.5" x2="11" y2="6.5" />
+        <line x1="5" y1="9" x2="9" y2="9" />
+      </svg>
+    );
+  }
+  if (label.includes("loved") || label.includes("community") || label.includes("fan")) {
+    return (
+      <svg {...props}>
+        <path d="M9 15 C9 15 2.5 11.5 2.5 6.5 C2.5 4 4.5 2.5 6.5 2.5 C7.8 2.5 8.7 3.3 9 4.3 C9.3 3.3 10.2 2.5 11.5 2.5 C13.5 2.5 15.5 4 15.5 6.5 C15.5 11.5 9 15 9 15 Z" />
+      </svg>
+    );
+  }
+  if (label.includes("ready")) {
+    return (
+      <svg {...props}>
+        <path d="M3 9 C3 5.5 5.5 3 9 3 C12.5 3 15 5.5 15 9 C15 11.5 13 13.5 11 14 L9 16 L8 14 C5 13.5 3 11.5 3 9 Z" />
+        <line x1="6.5" y1="8.5" x2="11.5" y2="8.5" />
+        <line x1="6.5" y1="10.5" x2="9.5" y2="10.5" />
+      </svg>
+    );
+  }
+  // Default: rosette / generic award
+  return (
+    <svg {...props}>
+      <circle cx="9" cy="7" r="4.5" />
+      <path d="M6 11 L4.5 15.5 L9 14 L13.5 15.5 L12 11" />
+    </svg>
   );
 }
 

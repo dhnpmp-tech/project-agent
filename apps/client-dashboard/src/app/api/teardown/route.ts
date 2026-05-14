@@ -292,6 +292,35 @@ interface TeardownPackage {
   // LLM-inferred. Fact-states what entities the site declares + which
   // category-critical ones are missing.
   schema_audit?: SchemaAudit | null;
+  // The finale: a hireable AI employee tailored to THIS business —
+  // cultural fit, languages, full skill matrix (inbound / proactive /
+  // outbound B2B), day-in-the-life, salary comparison.
+  agent_persona?: AgentPersona | null;
+}
+
+interface AgentSkill {
+  category: "inbound" | "proactive" | "outbound";
+  title: string;
+  detail: string;
+}
+
+interface AgentPersona {
+  name: string;
+  age: number;
+  origin: string;
+  languages: string[];
+  backstory: string;
+  fit: string;
+  signature_line: string;
+  skills: AgentSkill[];
+  daily_routine: { time: string; action: string }[];
+  references: string[];
+  agent_cost_aed: number;
+  human_equivalent: {
+    title: string;
+    salary_aed: number;
+    benefits_aed: number;
+  };
 }
 
 interface TeardownBody {
@@ -507,6 +536,207 @@ function buildSchemaAudit(
   }
 
   return { present, missing_critical, ai_take, recommendation, automation };
+}
+
+// generateAgentPersona — the finale of the teardown.
+//
+// Designs a culturally-aligned AI employee for THIS specific business,
+// with a full skill matrix that explicitly covers the three categories
+// the platform actually does: inbound (WhatsApp/voice/booking), proactive
+// (posting/re-engagement/morning brief), and outbound B2B (cold outreach
+// to cultural clubs / corporate planners / hotel concierges / tour ops
+// with personalised pitches and offers). The persona reads like a hire,
+// not like marketing copy.
+//
+// Returns null on any failure — the report renders fine without it.
+async function generateAgentPersona(args: {
+  businessName: string;
+  country: "AE" | "SA";
+  groundingBlock: string;
+  gbp: GbpData | null;
+  reviews: ReviewMining | null;
+  social_pulse: SocialPulse | null;
+  insight: string;
+}): Promise<AgentPersona | null> {
+  const { businessName, country, groundingBlock, gbp, reviews, social_pulse, insight } = args;
+
+  // Pull verified facts the LLM should ground the persona in. If a
+  // signal is missing we say so explicitly so the LLM doesn't invent.
+  const facts: string[] = [];
+  if (gbp) {
+    const outlets = gbp.outlets?.length || 1;
+    const totalReviews = gbp.aggregate?.total_reviews || gbp.user_ratings_total || 0;
+    const avg = gbp.aggregate?.weighted_avg_rating || gbp.rating || null;
+    facts.push(
+      `- Google Business Profile: ${outlets} verified outlet${outlets === 1 ? "" : "s"} · ${totalReviews.toLocaleString()} reviews${avg ? ` · ★ ${avg}` : ""}`,
+    );
+  } else {
+    facts.push("- Google Business Profile: not yet claimed (acquisition opportunity)");
+  }
+  if (reviews && reviews.sentiment?.total) {
+    const s = reviews.sentiment;
+    const positive = (s.five || 0) + (s.four || 0);
+    const negative = (s.two || 0) + (s.one || 0);
+    facts.push(
+      `- Reviews mined: ${s.total} · ${positive} positive (4-5★) · ${negative} negative (1-2★) · ${reviews.top_complaints?.length || 0} complaint themes surfaced`,
+    );
+  }
+  if (social_pulse?.instagram) {
+    const ig = social_pulse.instagram;
+    facts.push(
+      `- Instagram: @${ig.handle} · ${ig.followers?.toLocaleString() || "?"} followers · last post ${ig.days_since_last_post ?? "?"} days ago`,
+    );
+  } else {
+    facts.push("- Instagram: not verified yet (the agent will find or create the account)");
+  }
+  if (social_pulse?.tiktok && social_pulse.tiktok.post_count > 0) {
+    facts.push(
+      `- TikTok UGC: ${social_pulse.tiktok.post_count} posts about the brand · ${social_pulse.tiktok.total_views?.toLocaleString() || "?"} total views`,
+    );
+  }
+
+  const city = country === "AE" ? "Dubai/UAE" : "Riyadh/Saudi Arabia";
+  const cityShort = country === "AE" ? "Dubai" : "Riyadh";
+
+  const prompt = `${groundingBlock}
+
+VERIFIED FACTS ABOUT THIS BUSINESS
+==================================
+${facts.join("\n")}
+
+YOUR SHARP-EYED READ (already shipped to the prospect)
+======================================================
+${insight.trim()}
+
+TASK — DESIGN THE AI EMPLOYEE FOR ${businessName.toUpperCase()}
+============================================================
+
+You are designing a fictional AI employee tailored to this business. This is
+the finale of a teardown report. The prospect should feel: "this is a real
+hire that fits my place, not a generic chatbot."
+
+CULTURAL FIT (read the site content above before naming):
+- Japanese / Silk Road / pan-Asian venue → Japanese name (Hiroshi, Aiko, Kenji, Yuki)
+- Lebanese / Levantine → Lebanese name (Layla, Karim, Nadia, Tarek)
+- Emirati / Khaleeji traditional → Emirati name (Khalid, Mariam, Faisal, Hessa)
+- Saudi traditional → Saudi name (Abdullah, Sara, Sultan, Reem)
+- Italian → Italian name (Camilla, Marco, Sofia)
+- French / European → French name (Camille, Thomas, Léa)
+- Indian / South Asian → Indian name (Priya, Arjun, Anika)
+- Modern / cosmopolitan / unclear → Yara, Omar, Nour, Ziad
+The name + origin + languages MUST feel right for the brand's actual story.
+
+OUTPUT FORMAT — a single JSON object with these EXACT keys:
+
+{
+  "name": "First Last",
+  "age": 28-38,
+  "origin": "City, Country",
+  "languages": ["Arabic (native)", "English (fluent)", ...],
+  "backstory": "TWO sentences max. Tie to the brand's actual story or city from the site content. No generic 'passionate about hospitality' filler.",
+  "fit": "ONE sentence: why this specific persona is the right hire for THIS specific business. Reference a concrete detail from the site.",
+  "signature_line": "What this agent would say to a new customer arriving on WhatsApp. 1-2 short lines max. Their voice, not yours.",
+  "skills": [
+    { "category": "inbound", "title": "...", "detail": "..." }
+  ],
+  "daily_routine": [
+    { "time": "08:00", "action": "..." }
+  ],
+  "references": ["..."],
+  "agent_cost_aed": 3000,
+  "human_equivalent": {
+    "title": "Restaurant Host + Marketing Coordinator + B2B Sales Rep",
+    "salary_aed": 18000,
+    "benefits_aed": 4500
+  }
+}
+
+SKILLS REQUIREMENTS — at least 9, covering all 3 categories:
+
+INBOUND (3+) — handling customers who already reached out:
+- WhatsApp + voice notes: replies in <2 min, AR/EN, voice or text (whichever the customer used). Transcribes Arabic voice notes in 1.2s.
+- Booking management: checks calendar, holds tables, confirms via WhatsApp.
+- FAQ answering grounded in verified menu + hours + policies.
+- Review response: drafts replies to 1-2★ within 10 min, owner approves from WhatsApp with one tap.
+
+PROACTIVE (3+) — keeping the relationship alive:
+- Instagram posting from owner photos (3×/week, scheduled around peak dayparts).
+- Re-engagement to lapsed customers (>14 days no visit).
+- Morning brief to owner at 9am (SCQA format — situation, complication, question, action).
+- Multi-outlet monitoring (if more than one location).
+
+OUTBOUND · B2B (3+ — this is the part most prospects haven't thought about):
+- Research relevant groups in ${city} every Friday. BE SPECIFIC TO THIS BUSINESS TYPE. For a shisha/lounge: Japanese expat community, Russian Cultural Centre, Tokyo-${cityShort} Business Network, BCG ${cityShort} events lead, 5-star hotel concierges. For a salon: bridal planners, hotel spa concierges, expat WhatsApp groups. For coffee: corporate offices, co-working spaces, hotel F&B. For each you imagine, NAME 3-5 specific target group types.
+- Draft personalised invitations in the target group's language. Owner approves once.
+- Offer mechanics — e.g., 30% off first booking for groups of 8+, comp-table-for-content with food creators, hotel-guest referral discounts.
+- Track responses and follow up.
+
+DAILY ROUTINE — 6-7 entries covering 08:00 to 23:00. Include morning brief, midday inbound peak, afternoon outbound drafting, evening service support, late-night memory write + nightly self-improvement.
+
+REFERENCES — 3-4 lines like:
+- "Trained on N similar businesses in ${cityShort}."
+- "Same engine that runs Saffron Kitchen Dubai + Jareed Coffee Riyadh."
+- "Speaks ${country === "AE" ? "Khaleeji" : "Najdi"} dialect — not broken Modern Standard Arabic."
+
+human_equivalent.title — invent the multi-role human equivalent (e.g. "Restaurant Host + Social Media Manager + B2B Sales Rep"). salary_aed should be roughly the combined cost of those roles in ${cityShort}. benefits_aed should be ~25% of salary.
+
+agent_cost_aed: 3000
+
+Output ONLY the JSON. No preamble, no markdown fence.`;
+
+  try {
+    const raw = await inferenceJsonChat("rami_research", prompt, { maxTokens: 3000 });
+    const sliced = jsonSliceOrNull(raw);
+    if (!sliced) return null;
+    const parsed = JSON.parse(sliced) as Partial<AgentPersona>;
+    if (
+      !parsed.name ||
+      !parsed.signature_line ||
+      !Array.isArray(parsed.skills) ||
+      parsed.skills.length < 6
+    ) {
+      return null;
+    }
+    // Light type-shaping with safe fallbacks so we never ship a half-formed
+    // persona that breaks the React renderer.
+    return {
+      name: String(parsed.name).slice(0, 60),
+      age: typeof parsed.age === "number" ? parsed.age : 32,
+      origin: String(parsed.origin || "").slice(0, 80),
+      languages: Array.isArray(parsed.languages) ? parsed.languages.slice(0, 5) : [],
+      backstory: String(parsed.backstory || "").slice(0, 600),
+      fit: String(parsed.fit || "").slice(0, 400),
+      signature_line: String(parsed.signature_line || "").slice(0, 280),
+      skills: (parsed.skills as AgentSkill[]).filter(
+        (s) => s && (s.category === "inbound" || s.category === "proactive" || s.category === "outbound"),
+      ).slice(0, 14),
+      daily_routine: Array.isArray(parsed.daily_routine)
+        ? parsed.daily_routine.slice(0, 9).map((r) => ({
+            time: String(r.time || "").slice(0, 10),
+            action: String(r.action || "").slice(0, 220),
+          }))
+        : [],
+      references: Array.isArray(parsed.references)
+        ? parsed.references.slice(0, 6).map((r) => String(r).slice(0, 200))
+        : [],
+      agent_cost_aed:
+        typeof parsed.agent_cost_aed === "number" ? parsed.agent_cost_aed : 3000,
+      human_equivalent: {
+        title: String(parsed.human_equivalent?.title || "Restaurant Host + Marketing Coordinator").slice(0, 120),
+        salary_aed:
+          typeof parsed.human_equivalent?.salary_aed === "number"
+            ? parsed.human_equivalent.salary_aed
+            : 12000,
+        benefits_aed:
+          typeof parsed.human_equivalent?.benefits_aed === "number"
+            ? parsed.human_equivalent.benefits_aed
+            : 3000,
+      },
+    };
+  } catch (e) {
+    console.error("[teardown] persona generation failed:", e);
+    return null;
+  }
 }
 
 async function fetchSocialPulse(
@@ -1421,6 +1651,19 @@ Output STRICT JSON only:
     ? await fetchCompetitors(gbp, category, corpus, businessName, country)
     : null;
 
+  // Fourth-stage: the AI employee persona — the finale of the report.
+  // Grounded in everything we now know (crawl + GBP + reviews + social).
+  // Returns null on failure; the report renders fine without it.
+  const agent_persona = await generateAgentPersona({
+    businessName,
+    country,
+    groundingBlock,
+    gbp,
+    reviews,
+    social_pulse,
+    insight,
+  });
+
   // Compute the gamified score + grade + badges from everything we know.
   // These are pure functions over the data already collected — no extra
   // LLM cost, no extra latency.
@@ -1460,6 +1703,7 @@ Output STRICT JSON only:
       category,
       businessName,
     ),
+    agent_persona,
   };
 
   // Persist + slug. Retry slug collision up to 3 times (extremely
