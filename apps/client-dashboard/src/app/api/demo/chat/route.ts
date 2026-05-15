@@ -463,7 +463,7 @@ NEVER use markdown formatting like **bold** or --- dividers. This is WhatsApp, n
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        Authorization: `Bearer ${process.env.INTERNAL_API_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY}`,
       },
       body: JSON.stringify({
         clientId: "3bd50557-6680-43b9-bb8e-261c7f8a19d2",

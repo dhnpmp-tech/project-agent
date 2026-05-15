@@ -13,24 +13,27 @@ import {
  * POST /api/email/send
  *
  * Generic email-sending endpoint for n8n workflows and internal services.
- * Requires the service role key in the Authorization header.
+ * Requires a shared bearer token in the Authorization header. The env
+ * is INTERNAL_API_KEY; we still accept the legacy
+ * SUPABASE_SERVICE_ROLE_KEY name during the n8n reconfiguration window.
  *
  * Body: { type: string, to: string, data: Record<string, unknown> }
  */
 export async function POST(request: NextRequest) {
   // ── Auth check ───────────────────────────────────────────────
   const authHeader = request.headers.get("authorization");
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const internalKey =
+    process.env.INTERNAL_API_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!serviceRoleKey) {
+  if (!internalKey) {
     return NextResponse.json(
-      { error: "Server misconfigured: missing service role key" },
+      { error: "Server misconfigured: missing INTERNAL_API_KEY" },
       { status: 500 }
     );
   }
 
   const token = authHeader?.replace(/^Bearer\s+/i, "");
-  if (!token || token !== serviceRoleKey) {
+  if (!token || token !== internalKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

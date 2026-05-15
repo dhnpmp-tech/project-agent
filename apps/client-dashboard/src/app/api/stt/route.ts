@@ -10,12 +10,16 @@ import { NextResponse } from "next/server";
  * Request: { audioUrl: string, language?: string }
  * Response: { text: string, language: string, duration: number }
  *
- * Auth: Requires SUPABASE_SERVICE_ROLE_KEY in Authorization header.
+ * Auth: shared bearer token in the Authorization header. The env name is
+ * INTERNAL_API_KEY going forward; we still accept the legacy
+ * SUPABASE_SERVICE_ROLE_KEY name for zero-downtime rotation while n8n
+ * gets reconfigured.
  */
 export async function POST(request: Request) {
   // Auth check — only n8n / service role can call this
   const authHeader = request.headers.get("authorization");
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey =
+    process.env.INTERNAL_API_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey || authHeader !== `Bearer ${serviceKey}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
