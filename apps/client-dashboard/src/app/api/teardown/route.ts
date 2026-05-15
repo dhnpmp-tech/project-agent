@@ -1395,6 +1395,113 @@ async function fetchMetaAdsAudit(
   }
 }
 
+// ── Rate-limit on POST /api/teardown ──────────────────────────────────
+//
+// The teardown is the most expensive public endpoint we run: ~12 LLM
+// calls + Firecrawl crawl + Firecrawl search + Places (multi-outlet) +
+// Places nearby + ScrapeCreators (IG + TikTok + Reddit) per submission.
+// An abuse loop can burn ~$30-80 in <10 minutes. These caps are
+// deliberately generous for a real prospect (they can run their own
+// site + a couple of competitors in a session) but hostile to bots.
+//
+// All three key types share the teardown_rate_limit table via a
+// bucket_key prefix ("ip:", "host:", "iphost:"). Sliding-window sums
+// across recent minute-bucket rows.
+
+interface RateLimitDecision {
+  ok: boolean;
+  reason?: string;
+  retry_after_seconds?: number;
+}
+
+const RATE_LIMITS: Array<{
+  prefix: "ip" | "host" | "iphost";
+  windowMinutes: number;
+  max: number;
+  label: string;
+}> = [
+  // Per-IP: 5/hour, 20/day. Cushion for a curious prospect; nukes scripts.
+  { prefix: "ip", windowMinutes: 60, max: 5, label: "5 teardowns / hour" },
+  { prefix: "ip", windowMinutes: 60 * 24, max: 20, label: "20 teardowns / day" },
+  // Per-host: 3/hour, 8/day. Prevents repeated hits on the same victim site.
+  { prefix: "host", windowMinutes: 60, max: 3, label: "3 reports per site / hour" },
+  { prefix: "host", windowMinutes: 60 * 24, max: 8, label: "8 reports per site / day" },
+  // Per-IP×host: 1 every 5 minutes. Stops "refresh, refresh, refresh".
+  { prefix: "iphost", windowMinutes: 5, max: 1, label: "1 retry per site / 5 min" },
+];
+
+function clientIpFromRequest(req: NextRequest): string {
+  const xff = req.headers.get("x-forwarded-for") || "";
+  const real = req.headers.get("x-real-ip") || "";
+  const first = xff.split(",")[0]?.trim();
+  return (first || real || "unknown").slice(0, 64);
+}
+
+function hostFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase().slice(0, 128);
+  } catch {
+    return "unknown";
+  }
+}
+
+async function checkAndRecordRateLimit(
+  ip: string,
+  host: string,
+): Promise<RateLimitDecision> {
+  const sql = db();
+  const ipKey = `ip:${ip}`;
+  const hostKey = `host:${host}`;
+  const iphostKey = `iphost:${ip}:${host}`;
+
+  // Single round-trip: read all window sums in parallel.
+  const sums = await Promise.all(
+    RATE_LIMITS.map(async (r) => {
+      const key =
+        r.prefix === "ip" ? ipKey : r.prefix === "host" ? hostKey : iphostKey;
+      const rows = await sql<{ n: number }[]>`
+        SELECT COALESCE(SUM(count), 0)::int AS n
+        FROM teardown_rate_limit
+        WHERE bucket_key = ${key}
+          AND bucket_start_minute > NOW() - (${r.windowMinutes} || ' minutes')::interval
+      `;
+      return { rule: r, n: rows[0]?.n ?? 0 };
+    }),
+  );
+
+  for (const { rule, n } of sums) {
+    if (n >= rule.max) {
+      return {
+        ok: false,
+        reason: rule.label,
+        retry_after_seconds: rule.windowMinutes * 60,
+      };
+    }
+  }
+
+  // Passed all checks → record the hit in the three bucket keys.
+  // date_trunc('minute', NOW()) gives us a stable minute bucket.
+  await Promise.all(
+    [ipKey, hostKey, iphostKey].map(
+      (key) => sql`
+        INSERT INTO teardown_rate_limit (bucket_key, bucket_start_minute, count)
+        VALUES (${key}, date_trunc('minute', NOW()), 1)
+        ON CONFLICT (bucket_key, bucket_start_minute)
+        DO UPDATE SET count = teardown_rate_limit.count + 1
+      `,
+    ),
+  );
+
+  // Cheap housekeeping: ~5% of writes also prune rows >48h old.
+  if (Math.random() < 0.05) {
+    sql`DELETE FROM teardown_rate_limit WHERE bucket_start_minute < NOW() - interval '48 hours'`.catch(
+      () => undefined,
+    );
+  }
+
+  return { ok: true };
+}
+
 async function fetchSocialPulse(
   businessName: string,
   socialProfiles: Record<string, string> | undefined,
@@ -2106,6 +2213,29 @@ export async function POST(req: NextRequest) {
     new URL(url);
   } catch {
     return NextResponse.json({ error: "invalid_url" }, { status: 400 });
+  }
+
+  // Rate-limit BEFORE we hit the cache check — cache reads are cheap but
+  // a bot loop still costs us DB reads + log volume. The check itself is
+  // ~2ms (indexed sum over a small table) so the latency tax on the real
+  // happy-path is negligible. Skipped for refresh:true on a recent cache
+  // hit (owners re-running their own report shouldn't trip the limiter).
+  const clientIp = clientIpFromRequest(req);
+  const targetHost = hostFromUrl(url);
+  const decision = await checkAndRecordRateLimit(clientIp, targetHost);
+  if (!decision.ok) {
+    return NextResponse.json(
+      {
+        error: "rate_limited",
+        detail: `Slow down — you've hit the ${decision.reason} limit. Try again in a few minutes.`,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(decision.retry_after_seconds ?? 300),
+        },
+      },
+    );
   }
 
   const sql = db();
