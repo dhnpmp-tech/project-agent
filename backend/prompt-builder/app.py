@@ -2107,6 +2107,76 @@ async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
         except:
             pass
 
+    # ── OWNER REPLY DETECTION ──
+    # If the sender's phone matches clients.owner_whatsapp_number for
+    # the client this Kapso number belongs to, treat the message as an
+    # owner reply BEFORE the customer pipeline. Approval replies
+    # ("YES", "A C E", "no") close the daily-plan loop. Other owner
+    # messages fall through to process_owner_command (existing).
+    if client_id and phone and phone_number_id:
+        try:
+            async with supa.client(timeout=5) as http_client:
+                r = await http_client.get(
+                    f"{_SUPA_URL}/rest/v1/clients?id=eq.{client_id}"
+                    f"&select=owner_whatsapp_number,owner_timezone",
+                    headers=_SUPA_HEADERS,
+                )
+                rows = r.json() if r.status_code == 200 else []
+        except Exception:
+            rows = []
+        owner_row = rows[0] if rows else {}
+        owner_phone_raw = (owner_row.get("owner_whatsapp_number") or "").strip()
+        owner_phone = re.sub(r"\D", "", owner_phone_raw)
+        sender_phone = re.sub(r"\D", "", phone)
+        if owner_phone and sender_phone and owner_phone == sender_phone:
+            _logger.info(f"[webhook] Owner reply detected · client {client_id} · text={text[:80]!r}")
+            from daily_plan_reply import try_handle_approval
+            try:
+                confirmation = await try_handle_approval(
+                    client_id=client_id,
+                    owner_timezone=owner_row.get("owner_timezone") or "Asia/Dubai",
+                    text=text,
+                )
+            except Exception as e:
+                _logger.exception(f"[webhook] approval handler crashed: {e}")
+                confirmation = None
+            if confirmation:
+                try:
+                    kapso_key = os.environ.get("KAPSO_PLATFORM_API_KEY", "")
+                    async with supa.client(timeout=15) as http_client:
+                        await http_client.post(
+                            f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
+                            headers={"X-API-Key": kapso_key, "Content-Type": "application/json"},
+                            json={
+                                "messaging_product": "whatsapp",
+                                "to": phone,
+                                "type": "text",
+                                "text": {"body": confirmation},
+                            },
+                        )
+                except Exception as e:
+                    _logger.exception(f"[webhook] Kapso confirmation send failed: {e}")
+                return {"status": "ok", "note": "owner approval handled", "confirmation": confirmation[:200]}
+            # Not an approval reply — route to the existing owner-command handler
+            try:
+                command_result = await process_owner_command(client_id, text)
+                if command_result:
+                    kapso_key = os.environ.get("KAPSO_PLATFORM_API_KEY", "")
+                    async with supa.client(timeout=15) as http_client:
+                        await http_client.post(
+                            f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
+                            headers={"X-API-Key": kapso_key, "Content-Type": "application/json"},
+                            json={
+                                "messaging_product": "whatsapp",
+                                "to": phone,
+                                "type": "text",
+                                "text": {"body": command_result[:4000]},
+                            },
+                        )
+                    return {"status": "ok", "note": "owner command handled"}
+            except Exception as e:
+                _logger.exception(f"[webhook] process_owner_command failed: {e}")
+
     if client_id:
         gate = await gate_request(client_id, "message")
         if not gate.get("allowed", True):
@@ -4862,6 +4932,22 @@ async def daily_plan_generate_one(client_id: str, force: bool = False):
     the onboarding 'first plan' button + ops smoke tests."""
     from daily_action_planner import plan_one_tenant
     return await plan_one_tenant(client_id, force=force)
+
+
+class _OwnerReplyTest(BaseModel):
+    text: str
+    owner_timezone: Optional[str] = "Asia/Dubai"
+
+
+@app.post("/owner-reply/test/{client_id}")
+async def owner_reply_test(client_id: str, req: _OwnerReplyTest):
+    """Test-only: invoke the approval parser as if the owner had sent
+    `text` on their WhatsApp. Used to verify the loop without exercising
+    the full Kapso webhook payload shape.
+    """
+    from daily_plan_reply import try_handle_approval
+    res = await try_handle_approval(client_id, req.owner_timezone or "Asia/Dubai", req.text)
+    return {"client_id": client_id, "text": req.text, "confirmation": res}
 
 
 @app.post("/owner-brief/run")
