@@ -4915,6 +4915,25 @@ async def cron_heartbeat_finish(req: _CronHeartbeatFinish):
     return {"ok": ok}
 
 
+@app.post("/daily-plan/execute-due")
+@app.get("/daily-plan/execute-due")
+async def daily_plan_execute_due():
+    """Executor: walk every approved + for_date<=today row, LLM-draft
+    the deliverable (review reply text / IG caption / B2B email / etc.),
+    persist to agent_action_queue.payload.draft, and flip status to
+    'executed'. NOTHING is sent live — drafts wait for owner re-approval.
+    """
+    from daily_action_executor import execute_due
+    return await execute_due()
+
+
+@app.post("/daily-plan/execute/{row_id}")
+async def daily_plan_execute_one(row_id: str):
+    """Same as /daily-plan/execute-due but for one row — for ops smoke."""
+    from daily_action_executor import execute_one
+    return await execute_one(row_id)
+
+
 @app.post("/daily-plan/generate")
 @app.get("/daily-plan/generate")
 async def daily_plan_generate(force: bool = False):

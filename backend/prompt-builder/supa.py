@@ -241,25 +241,17 @@ def _try_coerce_string(decoded: str) -> Any:
 
 def _coerce_body_value(val: Any) -> Any:
     """Coerce body values (POST/PATCH JSON) the same way _decode coerces
-    URL filter values. Recursively walks dicts and lists; scalars get
-    string→datetime/int promotion via _try_coerce_string; other types
-    pass through untouched (UUIDs, bools, native datetimes already typed
-    by the caller stay as-is).
+    URL filter values. Strings get ISO/int promotion via _try_coerce_string.
+    Dicts and lists pass through unchanged — database.py registers a
+    JSONB codec at connection init (json.dumps on encode, json.loads on
+    decode), so asyncpg handles them natively for jsonb columns. A
+    previous version of this function double-serialised dicts to JSON
+    text, which caused jsonb columns to store JSON-STRING scalars
+    instead of JSON OBJECTS (caught when the executor tried `dict(row
+    .get("payload"))` on what came back as a quoted string).
     """
     if isinstance(val, str):
         return _try_coerce_string(val)
-    if isinstance(val, dict):
-        # JSONB columns: serialise dicts to JSON so asyncpg doesn't try
-        # to bind them as record types. Most insert paths target jsonb.
-        import json as _json
-        return _json.dumps(val, default=str)
-    if isinstance(val, list):
-        # Same reasoning for lists targeting jsonb columns. asyncpg will
-        # still bind them as text[]/jsonb as appropriate.
-        if val and all(isinstance(x, str) for x in val):
-            return val
-        import json as _json
-        return _json.dumps(val, default=str)
     return val
 
 
