@@ -195,9 +195,45 @@ def _compile_filters(qs: dict[str, list[str]]) -> tuple[str, list[Any], dict[str
     return where_sql, params, meta
 
 
+# ISO 8601 date / timestamp matcher. Used by _decode() to coerce strings
+# like "2026-05-15" or "2026-05-15T08:00:00Z" into datetime objects —
+# asyncpg's prepared statements reject strings for timestamptz/date
+# columns because the binary wire protocol requires the native type.
+# This broke EVERY karpathy / market-intel query that filtered by date.
+_ISO_DATE_RE = re.compile(
+    # Accepts: date alone, full ISO timestamp with or without microseconds,
+    # trailing Z, or +/-HH:MM offset. Also accepts the space-before-offset
+    # variant (which is what parse_qs produces when a '+' in the query
+    # value gets normalised to a space — common when callers don't URL-
+    # encode '+' as %2B in the offset).
+    r"^\d{4}-\d{2}-\d{2}"
+    r"(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[ +-]\d{2}:?\d{2})?)?$"
+)
+
+
 def _decode(s: str) -> Any:
-    """Unquote URL-encoded value; preserve as string (PG handles casts)."""
-    return unquote(s)
+    """Unquote URL-encoded value; coerce ISO 8601 strings to datetime so
+    asyncpg accepts them for timestamptz/date columns.
+    """
+    import datetime as _dt
+    decoded = unquote(s)
+    if _ISO_DATE_RE.match(decoded):
+        norm = decoded
+        # Trailing Z → +00:00 for fromisoformat.
+        if norm.endswith("Z"):
+            norm = norm[:-1] + "+00:00"
+        # parse_qs replaces '+' in the offset with a space. Restore the
+        # canonical ISO form before parsing.
+        m = re.search(r"(\.\d+)? (\d{2}:?\d{2})$", norm)
+        if m and "+" not in norm[-7:] and "-" not in norm[-7:]:
+            norm = norm[: m.start()] + (m.group(1) or "") + "+" + m.group(2)
+        try:
+            if "T" in norm or " " in norm[:11]:
+                return _dt.datetime.fromisoformat(norm)
+            return _dt.date.fromisoformat(norm)
+        except ValueError:
+            pass
+    return decoded
 
 
 def _compile_col_expr(expr: str) -> str:

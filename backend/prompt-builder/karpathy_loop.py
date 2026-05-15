@@ -162,6 +162,23 @@ async def get_todays_bookings(client_id: str) -> list:
         return r.json() if r.status_code == 200 else []
 
 
+def _has_signal(analysis: dict) -> bool:
+    """True when there's enough data to attempt rule generation — either
+    bookings to tag outcomes against, OR conversations to analyse for
+    patterns. Without this gate, demo tenants with WhatsApp traffic but
+    zero formal bookings would silently produce no rules (the actual bug
+    that left Saffron and Jareed sitting at 0 active rules for weeks).
+    """
+    if analysis.get("total", 0) > 0:
+        return True
+    cp = analysis.get("conversation_patterns") or {}
+    if cp.get("total_conversations", 0) > 0:
+        return True
+    if cp.get("total_messages", 0) >= 3:
+        return True
+    return False
+
+
 async def analyze_outcomes(bookings: list) -> dict:
     """Tag each booking with an outcome."""
     outcomes = {
@@ -539,7 +556,7 @@ async def control_bloat(client_id: str, rules: list) -> list:
 
 async def generate_improvement_suggestions(client_id: str, analysis: dict, kb: dict) -> str:
     """Use AI to suggest prompt improvements based on conversation patterns."""
-    if not _MINIMAX_KEY or analysis["total"] == 0:
+    if not _MINIMAX_KEY or not _has_signal(analysis):
         return "Not enough data for suggestions yet."
 
     cd = kb.get("crawl_data", {})
@@ -587,7 +604,7 @@ async def save_learning(client_id: str, analysis: dict, suggestions: str):
 
 async def generate_prompt_patch(client_id: str, analysis: dict, kb: dict) -> dict:
     """Generate a specific prompt patch — actual changes to apply."""
-    if not _MINIMAX_KEY or analysis["total"] == 0:
+    if not _MINIMAX_KEY or not _has_signal(analysis):
         return {"action": "none", "reason": "No data"}
 
     cd = kb.get("crawl_data", {})
@@ -750,18 +767,26 @@ async def run_karpathy_loop(client_id: str) -> dict:
     """Run the full Karpathy Loop v2 — analyze, verify, resolve, apply, log."""
     print(f"[karpathy] Running v2 for client {client_id}")
 
-    # Get today's bookings
+    # Get today's bookings AND conversations. Either is enough signal —
+    # conversation-only volume produces drop-off / FAQ-gap / verbosity
+    # patterns that yield useful rules even when no formal bookings
+    # exist (WhatsApp-first SMBs frequently match this shape).
     bookings = await get_todays_bookings(client_id)
-    if not bookings:
-        return {"client_id": client_id, "status": "no_data", "message": "No bookings today"}
-
-    # Analyze outcomes
-    analysis = await analyze_outcomes(bookings)
-
-    # Analyze conversations
     conversations = await get_todays_conversations(client_id)
+
+    # Analyze whichever we have
+    analysis = await analyze_outcomes(bookings)
     convo_analysis = await analyze_conversations(conversations)
     analysis["conversation_patterns"] = convo_analysis
+
+    if not _has_signal(analysis):
+        return {
+            "client_id": client_id,
+            "status": "no_data",
+            "message": "No bookings or conversations today",
+            "bookings_analyzed": 0,
+            "conversations_analyzed": 0,
+        }
 
     # Build sample transcripts
     sample_transcripts = []
