@@ -211,19 +211,17 @@ _ISO_DATE_RE = re.compile(
 )
 
 
-def _decode(s: str) -> Any:
-    """Unquote URL-encoded value; coerce ISO 8601 strings to datetime so
-    asyncpg accepts them for timestamptz/date columns.
+def _try_coerce_string(decoded: str) -> Any:
+    """Best-effort ISO-date + int coercion of a string value.
+    Pure-string passthrough on no match. Used by both filter parsing
+    (_decode) and body value coercion (_coerce_body_value) so the
+    behaviour is identical in both paths.
     """
     import datetime as _dt
-    decoded = unquote(s)
     if _ISO_DATE_RE.match(decoded):
         norm = decoded
-        # Trailing Z → +00:00 for fromisoformat.
         if norm.endswith("Z"):
             norm = norm[:-1] + "+00:00"
-        # parse_qs replaces '+' in the offset with a space. Restore the
-        # canonical ISO form before parsing.
         m = re.search(r"(\.\d+)? (\d{2}:?\d{2})$", norm)
         if m and "+" not in norm[-7:] and "-" not in norm[-7:]:
             norm = norm[: m.start()] + (m.group(1) or "") + "+" + m.group(2)
@@ -233,7 +231,45 @@ def _decode(s: str) -> Any:
             return _dt.date.fromisoformat(norm)
         except ValueError:
             pass
+    if decoded.isdigit() and len(decoded) <= 18 and (decoded == "0" or decoded[0] != "0"):
+        try:
+            return int(decoded)
+        except ValueError:
+            pass
     return decoded
+
+
+def _coerce_body_value(val: Any) -> Any:
+    """Coerce body values (POST/PATCH JSON) the same way _decode coerces
+    URL filter values. Recursively walks dicts and lists; scalars get
+    string→datetime/int promotion via _try_coerce_string; other types
+    pass through untouched (UUIDs, bools, native datetimes already typed
+    by the caller stay as-is).
+    """
+    if isinstance(val, str):
+        return _try_coerce_string(val)
+    if isinstance(val, dict):
+        # JSONB columns: serialise dicts to JSON so asyncpg doesn't try
+        # to bind them as record types. Most insert paths target jsonb.
+        import json as _json
+        return _json.dumps(val, default=str)
+    if isinstance(val, list):
+        # Same reasoning for lists targeting jsonb columns. asyncpg will
+        # still bind them as text[]/jsonb as appropriate.
+        if val and all(isinstance(x, str) for x in val):
+            return val
+        import json as _json
+        return _json.dumps(val, default=str)
+    return val
+
+
+def _decode(s: str) -> Any:
+    """Unquote URL-encoded value; coerce ISO 8601 strings to datetime
+    and pure-digit strings to int so asyncpg accepts them for
+    timestamptz/date/bigint/int columns.
+    """
+    decoded = unquote(s)
+    return _try_coerce_string(decoded)
 
 
 def _compile_col_expr(expr: str) -> str:
@@ -331,6 +367,10 @@ class _Client:
         table, _ = _parse_table(url)
         body = json or {}
         rows = [body] if isinstance(body, dict) else list(body)
+        # Coerce every value the same way filter values are coerced —
+        # ISO strings → datetime, digit strings → int, dicts/lists → JSON
+        # text. Otherwise asyncpg rejects strings bound to native types.
+        rows = [{k: _coerce_body_value(v) for k, v in r.items()} for r in rows]
         try:
             result = await db.insert(table, rows, returning="*")
             return _Resp(201, result)
@@ -349,7 +389,7 @@ class _Client:
         set_parts: list[str] = []
         params = list(where_params)
         for col, val in body.items():
-            params.append(val)
+            params.append(_coerce_body_value(val))
             set_parts.append(f"{_quote_ident(col)} = ${len(params)}")
         sql = (
             f"UPDATE {_quote_ident(table)} SET {', '.join(set_parts)} "

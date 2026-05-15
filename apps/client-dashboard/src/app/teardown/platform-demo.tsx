@@ -201,8 +201,8 @@ export function CustomerMemoryCard({
   return (
     <Section
       idx="I"
-      label="what I already know"
-      right={<span>customer memory · spans years</span>}
+      label="customer memory · what I'll build"
+      right={<span>persistent · spans years</span>}
     >
       <h3
         style={{
@@ -213,8 +213,8 @@ export function CustomerMemoryCard({
           lineHeight: 1.15,
         }}
       >
-        Meet a customer{" "}
-        <em style={{ color: "#2d8e7d" }}>I&apos;ll already recognise on day one.</em>
+        The profile{" "}
+        <em style={{ color: "#2d8e7d" }}>I&apos;ll write for every returning customer.</em>
       </h3>
       <p
         style={{
@@ -224,8 +224,9 @@ export function CustomerMemoryCard({
           lineHeight: 1.55,
         }}
       >
-        From your reviews and booking patterns, this is the kind of profile {firstName} writes
-        and remembers across every channel — forever.
+        Modelled from your reviews and booking patterns — the example below is illustrative.
+        Every customer who messages {firstName} from week 1 onward gets a card like this,
+        updated on every visit, shared across WhatsApp + IG + voice + web.
       </p>
 
       <div
@@ -387,7 +388,7 @@ export function OwnerBriefCard({
   return (
     <Section
       idx="II"
-      label="your 9am brief"
+      label="9am brief · sample"
       right={<span>owner brain · daily SCQA</span>}
     >
       <h3
@@ -399,8 +400,8 @@ export function OwnerBriefCard({
           lineHeight: 1.15,
         }}
       >
-        What you&apos;d find on your WhatsApp{" "}
-        <em style={{ color: "#2d8e7d" }}>tomorrow at 9:00am</em>.
+        How your morning brief{" "}
+        <em style={{ color: "#2d8e7d" }}>will read</em>.
       </h3>
       <p
         style={{
@@ -410,8 +411,9 @@ export function OwnerBriefCard({
           lineHeight: 1.55,
         }}
       >
-        Situation, complication, question, action — the McKinsey framework, every morning.
-        Variance detection flags what changed.
+        Situation, complication, question, action — the McKinsey framework. First real brief
+        lands the morning after your agent goes live (day 2), built from your overnight
+        bookings + messages + new reviews.
       </p>
 
       <div
@@ -1001,8 +1003,9 @@ export function SevenDayPlanCard({
           lineHeight: 1.55,
         }}
       >
-        Every day mixes inbound (customers who come to you), proactive (keep relationships
-        alive), and outbound (bring new business in).
+        Every day mixes inbound, proactive, and outbound. You see the next day&apos;s plan in
+        each morning brief — approve it as-is, edit, or skip a lane. Nothing customer-facing
+        ships without your one-tap OK.
       </p>
 
       <div

@@ -1295,15 +1295,22 @@ EXACT SHAPE (every key required):
 
   "channel_map": {
     "channels": [
-      { "name": "WhatsApp", "status": "live", "inbound_rate_estimate": "~Nmsg/wk today", "sample_action": "Replies in <2min, AR/EN" },
-      { "name": "Voice notes", "status": "live", "inbound_rate_estimate": "AR transcription in 1.2s", "sample_action": "Voice in → voice OR text out per preference" },
-      { "name": "Instagram DM", "status": "live", "inbound_rate_estimate": "~Nmsg/wk today", "sample_action": "Same memory as WhatsApp" },
-      { "name": "Web chat widget", "status": "ready", "inbound_rate_estimate": "—", "sample_action": "Drop one snippet on your site" },
-      { "name": "Telegram", "status": "coming", "inbound_rate_estimate": "—", "sample_action": "Same brain, different surface" },
-      { "name": "Owner WhatsApp", "status": "live", "inbound_rate_estimate": "9am brief + alerts", "sample_action": "Approves replies, gets briefs" }
+      { "name": "WhatsApp", "status": "live", "inbound_rate_estimate": "live on day 1", "sample_action": "Replies in <2min, AR/EN" },
+      { "name": "Voice notes", "status": "live", "inbound_rate_estimate": "AR transcription ~1.2s", "sample_action": "Voice in → voice OR text out per customer preference" },
+      { "name": "Owner WhatsApp", "status": "live", "inbound_rate_estimate": "9am brief + alerts", "sample_action": "Approves drafts, gets briefs" },
+      { "name": "Instagram DM", "status": "ready", "inbound_rate_estimate": "1-step Meta Business link", "sample_action": "Same memory as WhatsApp once linked" },
+      { "name": "Web chat widget", "status": "ready", "inbound_rate_estimate": "drop one snippet on your site", "sample_action": "Brain shared with WhatsApp" },
+      { "name": "Telegram", "status": "coming", "inbound_rate_estimate": "—", "sample_action": "Same brain, different surface" }
     ],
     "unique_value": "ONE sentence: one memory across every channel, so a customer who DMs on IG yesterday gets greeted by name on WhatsApp today."
   },
+
+CHANNEL HONESTY RULES (DO NOT VIOLATE):
+- ONLY WhatsApp, Voice notes, and Owner WhatsApp are "live" on day 1.
+- Instagram DM is "ready" — needs the owner to link a Meta Business account (1 step).
+- Web chat is "ready" — owner drops a snippet on their site.
+- Telegram is "coming" — not yet wired.
+- Output the channels in EXACTLY the order above (live first, ready next, coming last) and use the EXACT status strings shown.
 
   "nightly_learning": {
     "timeline": [

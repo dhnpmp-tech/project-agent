@@ -4802,6 +4802,86 @@ async def web_research_b2b_targets(req: _ResearchB2BRequest):
     return {"targets": targets[: req.total_max], "city": city}
 
 
+class _CronHeartbeatStart(BaseModel):
+    cron_name: str
+    notes: Optional[str] = None
+
+
+class _CronHeartbeatFinish(BaseModel):
+    run_id: Optional[int] = None
+    cron_name: str
+    status: str  # 'success' | 'failed' | 'timeout'
+    exit_code: Optional[int] = None
+    duration_ms: Optional[int] = None
+    http_codes: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@app.post("/cron/heartbeat/start")
+async def cron_heartbeat_start(req: _CronHeartbeatStart):
+    """Insert a 'running' row, return its id. Called by cron_wrap.sh at
+    the start of every cron run."""
+    import cron_monitor
+    run_id = await cron_monitor.heartbeat_start(req.cron_name, req.notes)
+    return {"run_id": run_id}
+
+
+@app.post("/cron/heartbeat/finish")
+async def cron_heartbeat_finish(req: _CronHeartbeatFinish):
+    """Mark a run as finished — success / failed / timeout. Caller passes
+    the run_id from heartbeat/start; falls back to inserting a new row if
+    that's missing (e.g. start call failed but finish call succeeded).
+    """
+    import cron_monitor
+    ok = await cron_monitor.heartbeat_finish(
+        run_id=req.run_id,
+        cron_name=req.cron_name,
+        status=req.status,
+        exit_code=req.exit_code,
+        duration_ms=req.duration_ms,
+        http_codes=req.http_codes,
+        notes=req.notes,
+    )
+    return {"ok": ok}
+
+
+@app.get("/cron/health")
+async def cron_health(alert: bool = True):
+    """Watchdog endpoint. Scans for failed runs in the last hour without
+    alert_sent_at, AND for critical crons missing recent success.
+    Pages the founder via Kapso WhatsApp on first detection of each
+    failure, marks alert_sent. Idempotent — calling repeatedly only
+    re-pages if NEW failures appear.
+
+    `alert=false` returns the diagnosis without sending the WA — useful
+    for ops checking the state.
+    """
+    import cron_monitor
+    from ceo_persona import send_to_founder
+
+    failures = await cron_monitor.scan_failures(window_minutes=60)
+    missing = await cron_monitor.scan_missing()
+
+    if not failures and not missing:
+        return {"status": "healthy", "failures": [], "missing": []}
+
+    if alert:
+        message = cron_monitor.format_failure_brief(failures, missing)
+        result = await send_to_founder(message, context="cron_alert")
+        # Mark each failure as alerted so we don't double-page.
+        if result.get("sent"):
+            for f in failures:
+                if f.get("id"):
+                    await cron_monitor.mark_alerted(f["id"], channel="whatsapp")
+
+    return {
+        "status": "degraded",
+        "failures": failures,
+        "missing": missing,
+        "alerted": alert,
+    }
+
+
 class _MetaAdsResearchRequest(BaseModel):
     business_name: str
     country: Optional[str] = "AE"
