@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase-client";
 
 /* ------------------------------------------------------------------ */
 /*  API base                                                           */
@@ -511,16 +510,25 @@ export default function ReportsPage() {
     active_guests: 67,
   });
 
-  // Resolve client_id from Supabase session
+  // Resolve client_id from the session JWT via /api/auth/me.
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("clients")
-      .select("id")
-      .single()
-      .then(({ data }) => {
-        if (data?.id) setClientId(data.id);
+    let cancelled = false;
+    fetch("/api/auth/me", { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          ok: boolean;
+          user?: { client_id?: string | null };
+        };
+        if (cancelled) return;
+        if (data.ok && data.user?.client_id) setClientId(data.user.client_id);
+      })
+      .catch(() => {
+        /* fall through to seed data */
       });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch data from VPS APIs

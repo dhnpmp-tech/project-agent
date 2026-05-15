@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase-client";
 
 /* ------------------------------------------------------------------ */
 /*  API base                                                           */
@@ -203,16 +202,25 @@ export default function ChannelsPage() {
   const [loading, setLoading] = useState(true);
   const [channelStats, setChannelStats] = useState<Record<string, number>>({});
 
-  // Resolve client_id
+  // Resolve client_id from the session JWT via /api/auth/me.
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("clients")
-      .select("id")
-      .single()
-      .then(({ data }) => {
-        if (data?.id) setClientId(data.id);
+    let cancelled = false;
+    fetch("/api/auth/me", { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          ok: boolean;
+          user?: { client_id?: string | null };
+        };
+        if (cancelled) return;
+        if (data.ok && data.user?.client_id) setClientId(data.user.client_id);
+      })
+      .catch(() => {
+        /* leave clientId null; loading effect will flip to false */
       });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch channel stats

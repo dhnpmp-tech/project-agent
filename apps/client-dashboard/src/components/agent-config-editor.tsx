@@ -1,33 +1,52 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase-client";
 
 interface Props {
   agentId: string;
   currentStatus: string;
 }
 
+/**
+ * Pause/resume an agent_deployment from the agent detail page.
+ *
+ * Calls PATCH /api/agents/[id]/status, which scopes to the caller's
+ * client_id via the JWT cookie. Replaces the old Supabase client-side
+ * `.update({ status })` call.
+ */
 export function AgentConfigEditor({ agentId, currentStatus }: Props) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function toggleStatus() {
     setLoading(true);
-    const supabase = createClient();
+    setError(null);
     const newStatus = currentStatus === "active" ? "paused" : "active";
 
-    await supabase
-      .from("agent_deployments")
-      .update({ status: newStatus })
-      .eq("id", agentId);
-
-    window.location.reload();
+    try {
+      const res = await fetch(`/api/agents/${agentId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error || `Failed (${res.status})`);
+        setLoading(false);
+        return;
+      }
+      window.location.reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "network_error");
+      setLoading(false);
+    }
   }
 
   const isActive = currentStatus === "active";
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col items-end gap-1">
       <button
         onClick={toggleStatus}
         disabled={loading || currentStatus === "pending" || currentStatus === "deploying"}
@@ -39,6 +58,9 @@ export function AgentConfigEditor({ agentId, currentStatus }: Props) {
       >
         {loading ? "..." : isActive ? "Pause" : "Resume"}
       </button>
+      {error && (
+        <p className="text-xs text-red-600">{error}</p>
+      )}
     </div>
   );
 }
