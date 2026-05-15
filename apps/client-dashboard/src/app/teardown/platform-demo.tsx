@@ -225,8 +225,9 @@ export function CustomerMemoryCard({
         }}
       >
         Modelled from your reviews and booking patterns — the example below is illustrative.
-        Every customer who messages {firstName} from week 1 onward gets a card like this,
-        updated on every visit, shared across WhatsApp + IG + voice + web.
+        Once you go live, every customer who messages {firstName} gets a card just like this,
+        updated on every visit, shared across WhatsApp + IG + voice + web. You browse them
+        all on your dashboard at <code style={{ background: "rgba(45,142,125,0.08)", padding: "1px 6px", borderRadius: 3, fontSize: 12.5 }}>/dashboard/customers</code>.
       </p>
 
       <div
@@ -412,8 +413,9 @@ export function OwnerBriefCard({
         }}
       >
         Situation, complication, question, action — the McKinsey framework. First real brief
-        lands the morning after your agent goes live (day 2), built from your overnight
-        bookings + messages + new reviews.
+        lands the morning after you go live (day 2) on the owner WhatsApp you give us during
+        onboarding, built from your overnight bookings + messages + new reviews, plus the
+        list of actions {firstName} wants to run that day for your one-tap approval.
       </p>
 
       <div
@@ -1003,9 +1005,10 @@ export function SevenDayPlanCard({
           lineHeight: 1.55,
         }}
       >
-        Every day mixes inbound, proactive, and outbound. You see the next day&apos;s plan in
-        each morning brief — approve it as-is, edit, or skip a lane. Nothing customer-facing
-        ships without your one-tap OK.
+        Every day mixes inbound, proactive, and outbound. {firstName} drafts tomorrow&apos;s
+        plan every night at 22:00 your time; the morning brief lists it with letter codes;
+        you reply <em>YES</em> to approve all, <em>NO</em> to skip, or letters (e.g. <em>A C E</em>)
+        to approve a subset. Nothing customer-facing ships without your nod.
       </p>
 
       <div

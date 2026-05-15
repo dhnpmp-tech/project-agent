@@ -4845,6 +4845,42 @@ async def cron_heartbeat_finish(req: _CronHeartbeatFinish):
     return {"ok": ok}
 
 
+@app.post("/daily-plan/generate")
+@app.get("/daily-plan/generate")
+async def daily_plan_generate(force: bool = False):
+    """Nightly: generate tomorrow's action queue for every active
+    tenant. Rows land in agent_action_queue with status='pending_approval'.
+    The morning brief picks them up and surfaces the approval block.
+    """
+    from daily_action_planner import plan_all_tenants
+    return await plan_all_tenants(force=force)
+
+
+@app.post("/daily-plan/generate/{client_id}")
+async def daily_plan_generate_one(client_id: str, force: bool = False):
+    """Same as /daily-plan/generate but for a single tenant — used by
+    the onboarding 'first plan' button + ops smoke tests."""
+    from daily_action_planner import plan_one_tenant
+    return await plan_one_tenant(client_id, force=force)
+
+
+@app.post("/owner-brief/run")
+@app.get("/owner-brief/run")
+async def owner_brief_run(force: bool = False):
+    """Hourly fan-out: send each active tenant's morning brief when
+    their tenant-local hour matches owner_brief_hour AND no brief has
+    been sent today.
+
+    Idempotent via the (client_id, local_date) unique index on
+    owner_briefings — if the cron fires twice in the same tenant-local
+    day we INSERT-conflict and skip.
+
+    `?force=true` ignores the time-of-day gate (used for smoke tests).
+    """
+    from owner_brief_fanout import run_fanout
+    return await run_fanout(force=force)
+
+
 @app.get("/cron/health")
 async def cron_health(alert: bool = True):
     """Watchdog endpoint. Scans for failed runs in the last hour without
