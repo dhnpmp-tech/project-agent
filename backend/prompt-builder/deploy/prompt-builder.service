@@ -1,0 +1,22 @@
+[Unit]
+Description=Prompt Builder API for AI Agent Platform
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/prompt-builder
+
+# All secrets live in a sealed root-only file. To rotate any key,
+# edit /etc/prompt-builder/secrets.env and `systemctl restart prompt-builder`.
+# DO NOT add Environment= lines back here — every plaintext line is one
+# more place a `systemctl show` or `ps eww` leak can read them from.
+EnvironmentFile=/etc/prompt-builder/secrets.env
+
+ExecStart=/usr/bin/python3 -m uvicorn app:app --host 0.0.0.0 --port 8200 --workers 2
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
