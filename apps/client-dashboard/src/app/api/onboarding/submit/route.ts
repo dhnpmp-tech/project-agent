@@ -89,20 +89,44 @@ export async function POST(req: NextRequest) {
   const slug = slugify(payload.companyName);
   const sql = db();
 
+  // Pull owner-channel config out of industryConfig (Step 5 of the
+  // wizard). These feed migration-017 columns (owner_whatsapp_number,
+  // owner_name, owner_timezone) — without them, the 9am owner brief
+  // can't deliver. Default timezone by country.
+  //
+  // NOTE: the wizard serializes Step 5 to snake_case (owner_whatsapp,
+  // owner_name) before posting, so we read those keys — not the
+  // camelCase form stored in React state.
+  const ic = (payload.industryConfig || {}) as Record<string, unknown>;
+  const ownerWhatsAppRaw = typeof ic.owner_whatsapp === "string"
+    ? ic.owner_whatsapp.trim()
+    : "";
+  const ownerWhatsApp = ownerWhatsAppRaw.replace(/\D/g, "") || null;
+  const ownerName = typeof ic.owner_name === "string" && ic.owner_name.trim()
+    ? ic.owner_name.trim()
+    : payload.contactName;
+  const ownerTimezone = payload.country === "SA" ? "Asia/Riyadh" : "Asia/Dubai";
+
   try {
     await sql.begin(async (tx) => {
       // 1. Insert client. ON CONFLICT lets us surface the duplicate slug
       // case as a 409 rather than crashing.
+      // Owner-channel columns are populated atomically here so the
+      // post-commit /provisioning/start call has everything it needs.
       const insertedClient = await tx`
         INSERT INTO clients (
           id, slug, company_name, company_name_ar, contact_name,
-          contact_email, contact_phone, country, status, plan, metadata
+          contact_email, contact_phone, country, status, plan, metadata,
+          owner_name, owner_whatsapp_number, owner_timezone, owner_brief_hour
         ) VALUES (
           ${clientId}, ${slug}, ${payload.companyName},
           ${payload.companyNameAr || null}, ${payload.contactName},
           ${payload.contactEmail}, ${payload.contactPhone || null},
-          ${payload.country}, 'active', ${payload.plan},
-          ${sql.json({ business_description: payload.businessDescription || "" } as never)}
+          ${payload.country},
+          ${ownerWhatsApp ? "provisioning" : "active"},
+          ${payload.plan},
+          ${sql.json({ business_description: payload.businessDescription || "" } as never)},
+          ${ownerName}, ${ownerWhatsApp}, ${ownerTimezone}, 9
         )
         RETURNING id
       `;
@@ -199,18 +223,30 @@ export async function POST(req: NextRequest) {
     .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
     .sign(key);
 
-  // 6. Trigger auto-provisioning (best-effort) AND day-1 deliverables
+  // 6. Trigger live-agent provisioning (best-effort) AND day-1 deliverables
   //    generation (best-effort). Day-1 deliverables run on the dashboard
   //    project itself so the route can use the JWT we just issued.
+  //
+  // Provisioning only fires when the owner gave us a WhatsApp number in
+  // Step 5 — without it there's no channel to ping, and we leave the
+  // tenant as status='active' so they can use the dashboard while they
+  // arrange their channel separately. The endpoint is fire-and-forget;
+  // the dashboard can retrigger from /dashboard/agent-queue or via a
+  // future /dashboard/provisioning page if it fails silently.
   const promptBuilderUrl =
     process.env.PROMPT_BUILDER_URL || "https://api.dcp.sa";
-  fetch(`${promptBuilderUrl}/provisioning/trigger`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clientId }),
-  }).catch(() => {
-    // intentional — provisioning is a follow-up concern
-  });
+  if (ownerWhatsApp) {
+    fetch(`${promptBuilderUrl}/provisioning/start/${clientId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        owner_phone: ownerWhatsApp,
+        lang: "ar",
+      }),
+    }).catch(() => {
+      // intentional — retryable from dashboard
+    });
+  }
 
   // Kick off day-1 deliverables generation. Fire-and-forget — the new
   // tenant lands on /dashboard and sees the package render as soon as
