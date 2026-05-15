@@ -4802,6 +4802,28 @@ async def web_research_b2b_targets(req: _ResearchB2BRequest):
     return {"targets": targets[: req.total_max], "city": city}
 
 
+class _MetaAdsResearchRequest(BaseModel):
+    business_name: str
+    country: Optional[str] = "AE"
+
+
+@app.post("/web/meta-ads-research")
+async def web_meta_ads_research(req: _MetaAdsResearchRequest):
+    """Lookup the business's current active Meta (Facebook + Instagram)
+    ads via the public Ad Library API. Returns the data the teardown's
+    "Meta Ads" section renders — count, samples, platform distribution,
+    launch dates, creative-type breakdown.
+
+    Requires META_AD_LIBRARY_TOKEN. Returns {"result": null} when the
+    token isn't configured so callers can hide the section.
+    """
+    from meta_ads_library import search_active_ads
+    result = await search_active_ads(
+        req.business_name, req.country or "AE", limit=25,
+    )
+    return {"result": result}
+
+
 @app.post("/web/social-pulse")
 async def web_social_pulse(req: _SocialPulseRequest):
     """Three parallel signals: Instagram profile freshness, TikTok UGC

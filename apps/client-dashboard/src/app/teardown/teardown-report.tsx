@@ -217,6 +217,7 @@ export interface TeardownPackage {
   gbp?: GbpData | null;
   competitor_radar?: CompetitorRadar | null;
   social_pulse?: SocialPulse | null;
+  meta_ads_audit?: MetaAdsAudit | null;
   schema_audit?: SchemaAudit | null;
   agent_persona?: AgentPersona | null;
   agent_notes?: AgentMarginNote[];
@@ -247,6 +248,29 @@ export interface ReportMetrics {
   outlets_found: number;
   competitors_plotted: number;
   signals_pulled: number;
+}
+
+export interface MetaAdSample {
+  id: string;
+  page_name: string;
+  ad_creative_bodies?: string[];
+  ad_creative_link_titles?: string[];
+  ad_snapshot_url: string;
+  ad_creation_time?: string;
+  ad_delivery_start_time?: string;
+  ad_delivery_stop_time?: string;
+  publisher_platforms?: string[];
+  ad_active_status?: string;
+}
+
+export interface MetaAdsAudit {
+  active_count: number;
+  samples: MetaAdSample[];
+  platforms_distribution: Record<string, number>;
+  earliest_launch: string | null;
+  latest_launch: string | null;
+  creative_types: { video?: number; image?: number; carousel?: number; other?: number };
+  query?: { brand: string; country: string };
 }
 
 export interface SchemaAudit {
@@ -308,6 +332,7 @@ export function TeardownReport({ pkg, slug }: { pkg: TeardownPackage; slug?: str
           <SocialPulseSection pulse={pkg.social_pulse} />
         </>
       )}
+      {pkg.meta_ads_audit && <MetaAdsSection audit={pkg.meta_ads_audit} />}
       {pkg.competitor_radar && pkg.competitor_radar.competitors.length > 0 && (
         <>
           <AgentNote sectionKey="competitors" notes={notes} agentName={agentName} />
@@ -1575,6 +1600,272 @@ function CompetitorSection({
         </div>
       )}
     </section>
+  );
+}
+
+// Active Meta (Facebook + Instagram) ads — pulled live from the public
+// Ad Library. When the business runs no ads, the section becomes a
+// gentle "you're invisible on the channel where your competitors live."
+function MetaAdsSection({ audit }: { audit: MetaAdsAudit }) {
+  const running = audit.active_count > 0;
+  const platformChips = Object.entries(audit.platforms_distribution).sort(
+    (a, b) => b[1] - a[1],
+  );
+
+  return (
+    <section
+      style={{
+        background: "var(--paper-card, #fbfaf4)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 8,
+        padding: 24,
+        marginBottom: 20,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 11,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+          paddingBottom: 14,
+          borderBottom: "1px solid var(--paper-line, #d8d2bf)",
+          marginBottom: 18,
+        }}
+      >
+        <span>§ meta ads · live from ad library</span>
+        <span style={{ color: running ? "#1e6d3d" : "#a83a2b" }}>
+          {running ? "● ACTIVE" : "● DARK"}
+        </span>
+      </div>
+
+      <h3
+        style={{
+          fontFamily: "Instrument Serif, serif",
+          fontSize: 28,
+          fontWeight: 400,
+          lineHeight: 1.15,
+          margin: "0 0 8px",
+        }}
+      >
+        {running ? (
+          <>
+            You&apos;re running{" "}
+            <em style={{ color: "#2d8e7d" }}>
+              {audit.active_count} active ad{audit.active_count === 1 ? "" : "s"}
+            </em>{" "}
+            on Meta right now.
+          </>
+        ) : (
+          <>
+            You&apos;re <em style={{ color: "#a83a2b" }}>invisible</em> on the channel
+            your competitors live on.
+          </>
+        )}
+      </h3>
+      <p
+        style={{
+          fontSize: 13.5,
+          lineHeight: 1.55,
+          color: "var(--paper-mut, #514c40)",
+          margin: "0 0 18px",
+        }}
+      >
+        {running ? (
+          <>
+            Pulled from Meta&apos;s public Ad Library. Your agent can monitor what&apos;s
+            running, A/B fresh creative, and pause losers — without you logging
+            into Ads Manager.
+          </>
+        ) : (
+          <>
+            Restaurants in {audit.query?.country === "SA" ? "Riyadh" : "Dubai"} that
+            run even a small Meta budget (AED 30/day) pick up 200-500 weekly
+            impressions in your neighbourhood. Your agent can launch your first
+            campaign from a single approval.
+          </>
+        )}
+      </p>
+
+      {/* Stat strip */}
+      {running && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gap: 12,
+            marginBottom: 22,
+          }}
+        >
+          <MetaStatTile k="active ads" v={String(audit.active_count)} />
+          {audit.earliest_launch && (
+            <MetaStatTile k="running since" v={audit.earliest_launch} />
+          )}
+          {audit.latest_launch && audit.latest_launch !== audit.earliest_launch && (
+            <MetaStatTile k="latest creative" v={audit.latest_launch} />
+          )}
+          {platformChips.length > 0 && (
+            <MetaStatTile
+              k="platforms"
+              v={platformChips.map(([p, n]) => `${p} · ${n}`).join("  ")}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Creative samples */}
+      {running && audit.samples.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div
+            style={{
+              fontFamily: "var(--mono, ui-monospace)",
+              fontSize: 10,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "var(--paper-mut, #837c69)",
+            }}
+          >
+            Sample creative ({audit.samples.length} of {audit.active_count})
+          </div>
+          {audit.samples.map((ad) => (
+            <MetaAdSampleCard key={ad.id} ad={ad} />
+          ))}
+        </div>
+      )}
+
+      {/* Bottom action line */}
+      <div
+        style={{
+          marginTop: 22,
+          paddingTop: 16,
+          borderTop: "1px dashed var(--paper-line, #d8d2bf)",
+          fontFamily: "Instrument Serif, serif",
+          fontStyle: "italic",
+          fontSize: 16,
+          lineHeight: 1.45,
+          color: "var(--paper-ink, #1d1c18)",
+        }}
+      >
+        ↳{" "}
+        {running
+          ? "Your agent will draft 3 new variants per week, A/B against your top performer, and pause anything below benchmark CTR — without your daily attention."
+          : "Your agent will draft your first 5 ad variants from your menu + reviews, launch with a AED 30/day test budget, and only escalate spend on the variants that work."}
+      </div>
+    </section>
+  );
+}
+
+function MetaStatTile({ k, v }: { k: string; v: string }) {
+  return (
+    <div
+      style={{
+        background: "var(--paper, #f6f3eb)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 6,
+        padding: "10px 14px",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "Instrument Serif, serif",
+          fontSize: 22,
+          color: "var(--paper-ink, #1d1c18)",
+          lineHeight: 1.1,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {v}
+      </div>
+      <div
+        style={{
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 9,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "var(--paper-mut, #837c69)",
+          marginTop: 6,
+        }}
+      >
+        {k}
+      </div>
+    </div>
+  );
+}
+
+function MetaAdSampleCard({ ad }: { ad: MetaAdSample }) {
+  const body = (ad.ad_creative_bodies || [])[0] || "(no copy on file)";
+  const title = (ad.ad_creative_link_titles || [])[0];
+  const platforms = (ad.publisher_platforms || []).join(" · ");
+  return (
+    <div
+      style={{
+        background: "var(--paper, #f6f3eb)",
+        border: "1px solid var(--paper-line, #d8d2bf)",
+        borderRadius: 6,
+        padding: "14px 16px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          gap: 10,
+          marginBottom: 6,
+          flexWrap: "wrap",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "Instrument Serif, serif",
+            fontSize: 15,
+            color: "var(--paper-ink, #1d1c18)",
+          }}
+        >
+          {title || ad.page_name}
+        </span>
+        <span
+          style={{
+            fontFamily: "var(--mono, ui-monospace)",
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            color: "var(--paper-mut, #837c69)",
+          }}
+        >
+          {platforms} · {(ad.ad_delivery_start_time || "").slice(0, 10)}
+        </span>
+      </div>
+      <p
+        style={{
+          fontSize: 13.5,
+          lineHeight: 1.5,
+          color: "var(--paper-mut, #514c40)",
+          margin: "0 0 8px",
+        }}
+      >
+        &ldquo;{body.length > 280 ? body.slice(0, 280) + "…" : body}&rdquo;
+      </p>
+      <a
+        href={ad.ad_snapshot_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          fontFamily: "var(--mono, ui-monospace)",
+          fontSize: 11,
+          color: "#2d8e7d",
+          textDecoration: "underline",
+          textUnderlineOffset: 3,
+        }}
+      >
+        view on meta ad library ↗
+      </a>
+    </div>
   );
 }
 

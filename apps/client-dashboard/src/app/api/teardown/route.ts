@@ -230,6 +230,29 @@ interface RedditSignal {
   top_mentions: RedditMention[];
 }
 
+interface MetaAdSample {
+  id: string;
+  page_name: string;
+  ad_creative_bodies?: string[];
+  ad_creative_link_titles?: string[];
+  ad_snapshot_url: string;
+  ad_creation_time?: string;
+  ad_delivery_start_time?: string;
+  ad_delivery_stop_time?: string;
+  publisher_platforms?: string[];
+  ad_active_status?: string;
+}
+
+interface MetaAdsAudit {
+  active_count: number;
+  samples: MetaAdSample[];
+  platforms_distribution: Record<string, number>;
+  earliest_launch: string | null;
+  latest_launch: string | null;
+  creative_types: { video?: number; image?: number; carousel?: number; other?: number };
+  query?: { brand: string; country: string };
+}
+
 interface SocialPulse {
   instagram: InstagramSignal | null;
   tiktok: TikTokSignal | null;
@@ -288,6 +311,9 @@ interface TeardownPackage {
   // Social pulse via ScrapeCreators — IG profile freshness, TikTok UGC
   // discovery, Reddit mention count. Null when no SCRAPECREATORS_API_KEY.
   social_pulse?: SocialPulse | null;
+  // Active Meta (Facebook + Instagram) ads via public Ad Library API.
+  // Null when META_AD_LIBRARY_TOKEN isn't configured.
+  meta_ads_audit?: MetaAdsAudit | null;
   // Real Schema.org JSON-LD audit — parsed from the rendered HTML, not
   // LLM-inferred. Fact-states what entities the site declares + which
   // category-critical ones are missing.
@@ -1346,6 +1372,25 @@ Output ONLY the JSON. No preamble, no markdown fence.`;
     };
   } catch (e) {
     console.error("[teardown] platform demo failed:", e);
+    return null;
+  }
+}
+
+async function fetchMetaAdsAudit(
+  businessName: string,
+  country: "AE" | "SA",
+): Promise<MetaAdsAudit | null> {
+  try {
+    const res = await fetch(`${PROMPT_BUILDER_URL.replace(/\/$/, "")}/web/meta-ads-research`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ business_name: businessName, country }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { result?: MetaAdsAudit | null };
+    return data.result ?? null;
+  } catch (e) {
+    console.error("[teardown] meta-ads-research failed:", e);
     return null;
   }
 }
@@ -2432,12 +2477,13 @@ Output STRICT JSON only:
       : {}),
   };
 
-  const [reviews, gbpInitial, social_pulse] = await Promise.all([
+  const [reviews, gbpInitial, social_pulse, meta_ads_audit] = await Promise.all([
     directoryStrategy?.confirmed?.length
       ? fetchReviews(businessName, directoryStrategy.confirmed)
       : Promise.resolve(null),
     fetchGbp(businessName, country, locationHint),
     fetchSocialPulse(businessName, augmentedSocialProfiles, country, category),
+    fetchMetaAdsAudit(businessName, country),
   ]);
 
   // Multi-outlet enrichment from prose. When the site advertises multiple
@@ -2539,6 +2585,7 @@ Output STRICT JSON only:
     gbp,
     competitor_radar,
     social_pulse,
+    meta_ads_audit,
     schema_audit: buildSchemaAudit(
       crawl.schemaTypes || [],
       category,
