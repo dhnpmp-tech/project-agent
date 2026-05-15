@@ -42,6 +42,7 @@ PIPELINE = [
     ("013_no_show_recovery.sql",   "supabase/migrations/012_no_show_recovery.sql"),
     ("014_expense_capture.sql",    "supabase/migrations/013_expense_capture.sql"),
     ("015_public_teardowns.sql",   "supabase/migrations/014_public_teardowns.sql"),
+    ("016_teardown_rate_limit.sql","supabase/migrations/015_teardown_rate_limit.sql"),
 ]
 
 REPO_ROOT = ROOT.parent.parent.parent  # → /Users/pp/Desktop/Moboob/project-agent
