@@ -233,8 +233,12 @@ export async function POST(req: NextRequest) {
   // arrange their channel separately. The endpoint is fire-and-forget;
   // the dashboard can retrigger from /dashboard/agent-queue or via a
   // future /dashboard/provisioning page if it fails silently.
+  // NB: api.dcp.sa is reserved for DCP GPU inference — do NOT use it as
+  // a prompt-builder fallback. Prompt-builder lives on the VPS at
+  // 76.13.179.86:8200 (FastAPI + systemd). Production overrides via
+  // PROMPT_BUILDER_URL on Vercel.
   const promptBuilderUrl =
-    process.env.PROMPT_BUILDER_URL || "https://api.dcp.sa";
+    process.env.PROMPT_BUILDER_URL || "http://76.13.179.86:8200";
   if (ownerWhatsApp) {
     fetch(`${promptBuilderUrl}/provisioning/start/${clientId}`, {
       method: "POST",

@@ -27,8 +27,11 @@ export const runtime = "nodejs";
 // even on slow MiniMax days.
 export const maxDuration = 240;
 
+// n8n.dcp.sa is the legacy proxy (only /webhook/* still routes through it);
+// the actual prompt-builder runs at 76.13.179.86:8200. Vercel sets
+// PROMPT_BUILDER_URL in production. api.dcp.sa is DCP GPU inference — not us.
 const PROMPT_BUILDER_URL =
-  process.env.PROMPT_BUILDER_URL || "https://n8n.dcp.sa";
+  process.env.PROMPT_BUILDER_URL || "http://76.13.179.86:8200";
 
 interface CrawlResult {
   businessDescription: string;
