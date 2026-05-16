@@ -6113,3 +6113,67 @@ async def invoice_outstanding(phone: str = ""):
     from invoicing import get_outstanding_invoices
     invoices = await get_outstanding_invoices(phone)
     return {"invoices": invoices, "total": len(invoices)}
+
+
+# ── Supertonic TTS endpoints ──────────────────────────────────────────
+#
+# On-device text-to-speech. POST /tts/synthesize returns audio bytes
+# (OGG opus by default — WhatsApp/Kapso compatible — or WAV).
+#
+# First call lazily downloads the Supertonic model from Hugging Face
+# (~hundreds of MB into the local HF cache). Subsequent calls are
+# instant. Synthesis runs at ~6× real-time on the current VPS, no GPU.
+
+
+class TTSBody(BaseModel):
+    text: str
+    lang: str = "en"
+    voice: Optional[str] = "M1"
+    format: Optional[str] = "ogg"  # "ogg" or "wav"
+
+
+@app.post("/tts/synthesize")
+async def tts_synthesize(body: TTSBody):
+    """Synthesize speech from text. Returns audio as a streamed response."""
+    from fastapi.responses import Response
+    import tts as tts_module
+
+    try:
+        result = await tts_module.synthesize(
+            text=body.text,
+            lang=body.lang,
+            voice=body.voice or "M1",
+            format=body.format or "ogg",
+        )
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        return JSONResponse(
+            {"error": "synthesis_failed", "detail": str(e)[:200]},
+            status_code=500,
+        )
+
+    headers = {
+        "X-Audio-Duration-Seconds": f"{result['duration_s']:.3f}",
+        "X-Synthesis-Wall-Seconds": f"{result['wall_s']:.3f}",
+        "Content-Length": str(len(result["audio_bytes"])),
+    }
+    return Response(
+        content=result["audio_bytes"],
+        media_type=result["mime"],
+        headers=headers,
+    )
+
+
+@app.get("/tts/health")
+async def tts_health():
+    """Check Supertonic TTS readiness. Lazily initializes on first hit."""
+    try:
+        import tts as tts_module
+        tts_module._get_tts()  # forces init
+        return {"status": "ready", "engine": "supertonic", "sample_rate": tts_module.SAMPLE_RATE}
+    except Exception as e:
+        return JSONResponse(
+            {"status": "error", "detail": str(e)[:200]},
+            status_code=500,
+        )
