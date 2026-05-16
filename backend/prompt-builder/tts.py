@@ -34,9 +34,10 @@ import numpy as np
 
 logger = logging.getLogger("tts")
 
-# Default sample rate from supertonic v3 ONNX models
-SAMPLE_RATE = 24_000
-DEFAULT_VOICE = os.getenv("TTS_DEFAULT_VOICE", "M1")
+# Sample rate is read from the model at init time (Supertonic 3 = 44100 Hz;
+# older models may be 24000). DO NOT hardcode — a mismatch makes audio
+# play at the wrong speed.
+DEFAULT_VOICE = os.getenv("TTS_DEFAULT_VOICE", "F1")
 DEFAULT_LANG = "en"
 
 # Singleton — first access triggers HF model download.
@@ -50,8 +51,18 @@ def _get_tts():
         from supertonic import TTS  # heavy import; defer until first use
         logger.info("Initializing Supertonic TTS (will download model on first run)")
         _tts_instance = TTS(auto_download=True)
-        logger.info("Supertonic TTS ready")
+        logger.info(
+            "Supertonic TTS ready: model=%s sample_rate=%d voices=%s",
+            _tts_instance.model_name,
+            _tts_instance.sample_rate,
+            ",".join(_tts_instance.voice_style_names),
+        )
     return _tts_instance
+
+
+def _sample_rate() -> int:
+    """Read sample rate from the live model. 24000 for v1/v2, 44100 for v3."""
+    return _get_tts().sample_rate
 
 
 def _wav_bytes_from_array(wav: np.ndarray) -> bytes:
@@ -69,7 +80,7 @@ def _wav_bytes_from_array(wav: np.ndarray) -> bytes:
     with wave.open(buf, "wb") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)
-        wf.setframerate(SAMPLE_RATE)
+        wf.setframerate(_sample_rate())
         wf.writeframes(samples_i16.tobytes())
     return buf.getvalue()
 
@@ -84,13 +95,15 @@ def _wav_to_ogg_opus(wav_bytes: bytes) -> bytes:
         fin.write(wav_bytes)
         fin_path = fin.name
     fout_path = fin_path.replace(".wav", ".ogg")
+    # Opus supports 8/12/16/24/48 kHz — not 44.1. Resample to 48k for
+    # transparency (avoids the lossy 44100→24000 downsample artifact).
     try:
         result = subprocess.run(
             [
                 "ffmpeg", "-y", "-loglevel", "error",
                 "-i", fin_path,
-                "-c:a", "libopus", "-b:a", "24k", "-vbr", "on",
-                "-ac", "1", "-ar", "24000",
+                "-c:a", "libopus", "-b:a", "32k", "-vbr", "on",
+                "-ac", "1", "-ar", "48000",
                 fout_path,
             ],
             capture_output=True,
@@ -108,17 +121,37 @@ def _wav_to_ogg_opus(wav_bytes: bytes) -> bytes:
                 pass
 
 
-def _synthesize_sync(text: str, lang: str = DEFAULT_LANG, voice: str = DEFAULT_VOICE) -> tuple[bytes, float, float]:
-    """Synchronous synthesis. Returns (wav_bytes, audio_duration_s, wall_s)."""
+def _synthesize_sync(
+    text: str,
+    lang: str = DEFAULT_LANG,
+    voice: str = DEFAULT_VOICE,
+    total_steps: int = 16,
+    speed: float = 1.0,
+) -> tuple[bytes, float, float]:
+    """Synchronous synthesis. Returns (wav_bytes, audio_duration_s, wall_s).
+
+    `total_steps` controls diffusion sampling — Supertonic's default of 8 is
+    fast but the audio sounds rushed/robotic. 16 roughly doubles wall time
+    (still 3× real-time) for noticeably more natural output.
+
+    `speed` defaults to 1.0 (natural). Supertonic's library default is 1.05
+    which audibly rushes the speaker — explicitly override.
+    """
     tts = _get_tts()
     style = tts.get_voice_style(voice_name=voice)
 
     t0 = time.time()
-    result = tts.synthesize(text, voice_style=style, lang=lang)
+    result = tts.synthesize(
+        text,
+        voice_style=style,
+        lang=lang,
+        total_steps=total_steps,
+        speed=speed,
+    )
     wall_s = time.time() - t0
 
     wav = result[0] if isinstance(result, tuple) else result
-    audio_s = (wav.shape[-1] if hasattr(wav, "shape") else len(wav)) / SAMPLE_RATE
+    audio_s = (wav.shape[-1] if hasattr(wav, "shape") else len(wav)) / _sample_rate()
     wav_bytes = _wav_bytes_from_array(wav)
     return wav_bytes, audio_s, wall_s
 
@@ -128,6 +161,8 @@ async def synthesize(
     lang: str = DEFAULT_LANG,
     voice: str = DEFAULT_VOICE,
     format: str = "ogg",
+    total_steps: int = 16,
+    speed: float = 1.0,
 ) -> dict:
     """Async wrapper. Returns {audio_bytes, mime, duration_s, wall_s}.
 
@@ -140,7 +175,7 @@ async def synthesize(
 
     loop = asyncio.get_running_loop()
     wav_bytes, audio_s, wall_s = await loop.run_in_executor(
-        None, _synthesize_sync, text, lang, voice
+        None, _synthesize_sync, text, lang, voice, total_steps, speed
     )
 
     if format == "wav":

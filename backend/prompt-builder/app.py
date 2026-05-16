@@ -6171,7 +6171,7 @@ async def tts_health():
     try:
         import tts as tts_module
         tts_module._get_tts()  # forces init
-        return {"status": "ready", "engine": "supertonic", "sample_rate": tts_module.SAMPLE_RATE}
+        return {"status": "ready", "engine": "supertonic", "sample_rate": tts_module._sample_rate()}
     except Exception as e:
         return JSONResponse(
             {"status": "error", "detail": str(e)[:200]},
