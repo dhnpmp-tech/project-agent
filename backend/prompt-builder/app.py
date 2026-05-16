@@ -6177,3 +6177,51 @@ async def tts_health():
             {"status": "error", "detail": str(e)[:200]},
             status_code=500,
         )
+
+
+# ── Customer memory analyzer endpoints ────────────────────────────────
+#
+# Walks conversation_messages and writes customer_memory rows. The
+# dashboard at /dashboard/customers reads from customer_memory; nothing
+# was populating it until this module landed.
+
+
+@app.post("/customer-memory/refresh/{client_id}")
+async def customer_memory_refresh_tenant(client_id: str):
+    """Refresh customer_memory for every customer of one tenant. Admin-callable."""
+    try:
+        from customer_memory_analyzer import analyze_tenant
+        result = await analyze_tenant(client_id)
+        return result
+    except Exception as e:
+        return JSONResponse(
+            {"error": "analyzer_failed", "detail": str(e)[:200]},
+            status_code=500,
+        )
+
+
+@app.post("/customer-memory/refresh/{client_id}/{phone}")
+async def customer_memory_refresh_customer(client_id: str, phone: str):
+    """Refresh customer_memory for one customer. Called after each new message."""
+    try:
+        from customer_memory_analyzer import analyze_customer
+        result = await analyze_customer(client_id, phone)
+        return result
+    except Exception as e:
+        return JSONResponse(
+            {"error": "analyzer_failed", "detail": str(e)[:200]},
+            status_code=500,
+        )
+
+
+@app.post("/customer-memory/refresh-all")
+async def customer_memory_refresh_all():
+    """Cron entry point. Walks every active tenant and refreshes memory."""
+    try:
+        from customer_memory_analyzer import run_for_active_tenants
+        return await run_for_active_tenants()
+    except Exception as e:
+        return JSONResponse(
+            {"error": "analyzer_failed", "detail": str(e)[:200]},
+            status_code=500,
+        )
