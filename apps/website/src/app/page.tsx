@@ -149,8 +149,29 @@ const INTELLIGENCE: IntelItem[] = [
   {
     t: { en: "Morning Briefs", ar: "موجز الصباح" },
     msg: {
-      en: "Every morning at 9am. Situation, complication, question, action — the McKinsey framework. Variance detection flags what changed. Recommended actions, not just data.",
-      ar: "كل صباح الساعة ٩. وضع، إشكال، سؤال، إجراء — إطار ماكنزي. كشف الانحرافات يبيّن إيش تغيّر. توصيات بإجراءات، مو مجرّد أرقام.",
+      en: "Every morning at 9am local — Riyadh tenants get it at 9 Riyadh, Dubai tenants at 9 Dubai, idempotent so a re-run never double-sends. Situation, complication, question, action — the McKinsey framework. Variance detection flags what changed. Recommended actions, not just data.",
+      ar: "كل صباح الساعة ٩ بتوقيتك المحلي — تنانير الرياض يوصلها ٩ الرياض، تنانير دبي ٩ دبي، بلا تكرار. وضع، إشكال، سؤال، إجراء — إطار ماكنزي. كشف الانحرافات يبيّن إيش تغيّر. توصيات بإجراءات، مو مجرّد أرقام.",
+    },
+  },
+  {
+    t: { en: "Daily Action Queue", ar: "قائمة المهام اليومية" },
+    msg: {
+      en: "Each night the agent drafts 5–7 actions for tomorrow — replies to drop-offs, an Instagram post in your voice, an outbound email to a real ICP-matched lead. Each action gets a letter A–G. You reply YES to do all, or 'A C E' to pick. The executor drafts the deliverable; you approve or skip from WhatsApp.",
+      ar: "كل ليلة الذكاء يرسم ٥–٧ مهام لبكرة — ردود على عملاء تركوا، بوست إنستغرام بصوتك، إيميل خروج لعميل محتمل مطابق. كل مهمة بحرف A–G. ترد YES لكلها، أو 'A C E' لاختيار. المنفّذ يكتب المسوّدة؛ توافق أو تتجاوز من واتساب.",
+    },
+  },
+  {
+    t: { en: "Customer Memory", ar: "ذاكرة العملاء" },
+    msg: {
+      en: "A live dashboard of every customer that ever messaged your business. Avatar, sentiment bar, preferences, key events, last visit. Search by name, phone, or email. The agent reads from the same source — it never forgets a regular.",
+      ar: "لوحة حيّة لكل عميل راسلك في أي وقت. صورة، شريط مشاعر، تفضيلات، أحداث رئيسية، آخر زيارة. ابحث بالاسم أو الجوال أو البريد. الذكاء يقرأ من نفس المصدر — ما ينسى زبون دائم.",
+    },
+  },
+  {
+    t: { en: "Tenant Isolation by Default", ar: "عزل البيانات افتراضياً" },
+    msg: {
+      en: "Every server query filters by your client_id from the JWT on the way in — not after the fact, not behind a row-level rule that needs auditing. A dedicated audit test suite runs the symmetric A/B + B/A case against every helper to prove no row leaks the other way.",
+      ar: "كل استعلام يفلتر بمعرّف عميلك من الـJWT لحظة الدخول — مو بعد ما يجيب البيانات، ولا خلف قاعدة سطرية تحتاج تدقيق. مجموعة اختبارات مخصّصة تتحقق من كل استعلام في الاتجاهين لتثبت ما في تسرّب.",
     },
   },
   {
