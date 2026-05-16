@@ -1765,6 +1765,15 @@ async def _whatsapp_pipeline(
                 )
         except Exception as e:
             print(f"[webhook] Failed to store conversation: {e}")
+        # ── 11. Fire-and-forget customer-memory refresh ──
+        # Keeps /dashboard/customers live without waiting for the 2h cron.
+        # If the LLM call fails the row still gets count/timestamp updates,
+        # and the cron is the safety net. Errors here never block the webhook.
+        try:
+            from customer_memory_analyzer import analyze_customer
+            asyncio.create_task(analyze_customer(client_id, phone))
+        except Exception as _cm_e:
+            _logger.warning(f"[webhook] customer-memory refresh schedule failed: {_cm_e}")
 
         _logger.info(
             f"[webhook] Pipeline complete for {phone}: sent {len(parts)} part(s)"
@@ -2018,6 +2027,15 @@ async def _widget_pipeline(
                 )
         except Exception as e:
             print(f"[widget] Failed to store conversation: {e}")
+        # ── 11. Fire-and-forget customer-memory refresh ──
+        # Keeps /dashboard/customers live without waiting for the 2h cron.
+        # If the LLM call fails the row still gets count/timestamp updates,
+        # and the cron is the safety net. Errors here never block the webhook.
+        try:
+            from customer_memory_analyzer import analyze_customer
+            asyncio.create_task(analyze_customer(client_id, phone))
+        except Exception as _cm_e:
+            _logger.warning(f"[webhook] customer-memory refresh schedule failed: {_cm_e}")
 
         _logger.info(f"[widget] Pipeline complete for {phone}: reply={reply_text[:80]}")
 
