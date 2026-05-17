@@ -192,6 +192,7 @@ async def run_fanout(force: bool = False) -> dict:
 
         try:
             body = await generate_morning_brief(client_id)
+            brief_text_only = body  # text without the approval block — used for audio
         except Exception as e:
             await _record_brief(
                 client_id=client_id,
@@ -229,6 +230,33 @@ async def run_fanout(force: bool = False) -> dict:
             kapso_message_id=msg_id,
             error=err,
         )
+
+        # ── Audio version of the brief ──
+        # Reads only the daily summary (brief_text_only, without the
+        # approval block — TTS reading "reply A C E" is robotic and
+        # confusing). Failure here never blocks the text brief which
+        # has already been recorded and sent.
+        voice_err: Optional[str] = None
+        voice_sent = False
+        try:
+            from tts import synthesize as _tts_synth
+            from voice import send_voice_note as _send_voice_note
+            audio_text = (brief_text_only or "").strip()[:1800]
+            if audio_text and phone_number_id:
+                tts_result = await _tts_synth(
+                    text=audio_text,
+                    lang="en",  # tenant language detection — future
+                    voice="F1",
+                    format="ogg",
+                )
+                voice_sent = await _send_voice_note(
+                    phone_number_id, owner_phone, tts_result["audio_bytes"]
+                )
+                if not voice_sent:
+                    voice_err = "send_voice_note_returned_false"
+        except Exception as _ve:
+            voice_err = f"{type(_ve).__name__}: {str(_ve)[:100]}"
+
         results.append({
             "client_id": client_id,
             "slug": slug,
