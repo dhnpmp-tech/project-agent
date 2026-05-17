@@ -640,15 +640,11 @@ async def generate_morning_brief(client_id: str) -> str:
 
     # ── HEADER ──
     if lang == "ar":
-        b.append(f"{'='*28}")
-        b.append(f"  {company}")
-        b.append(f"  التقرير اليومي — {today_name}")
-        b.append(f"{'='*28}")
+        b.append(f"*{company}*")
+        b.append(f"_التقرير اليومي — {today_name}_")
     else:
-        b.append(f"{'='*28}")
-        b.append(f"  {company}")
-        b.append(f"  Daily Scorecard — {today_name}")
-        b.append(f"{'='*28}")
+        b.append(f"*{company}*")
+        b.append(f"_Daily brief — {today_name}_")
 
     # ── THE SCOREBOARD ──
     b.append("")
@@ -678,22 +674,8 @@ async def generate_morning_brief(client_id: str) -> str:
         else:
             b.append(f"  * Best {day_name} this week!")
 
-    # ── AI PERFORMANCE ──
-    b.append("")
-    if lang == "ar":
-        b.append("🤖 أداء الذكاء الاصطناعي:")
-        b.append(f"  الرسائل    {total_inbound} واردة / {total_outbound} صادرة")
-        b.append(f"  متوسط/محادثة  {msgs_per_convo} رسالة")
-        b.append(f"  جمع الأسماء   {name_rate}%")
-        if collecting:
-            b.append(f"  حجوزات معلقة  {len(collecting)} (ما اكتملت)")
-    else:
-        b.append("🤖 AI performance:")
-        b.append(f"  Messages       {total_inbound} in / {total_outbound} out")
-        b.append(f"  Avg/convo      {msgs_per_convo} messages")
-        b.append(f"  Name capture   {name_rate}%")
-        if collecting:
-            b.append(f"  Stuck bookings {len(collecting)} (didn't complete)")
+    # ── AI PERFORMANCE (moved to weekly digest) ──
+    pass
 
     # ── WHAT HAPPENED — color commentary ──
     highlights = []
@@ -730,7 +712,7 @@ async def generate_morning_brief(client_id: str) -> str:
         if lang == "ar":
             b.append("📌 أبرز الأحداث:")
         else:
-            b.append("📌 Highlights:")
+            b.append("*📌 Highlights*")
         for h in highlights:
             b.append(f"  {h}")
 
@@ -766,10 +748,10 @@ async def generate_morning_brief(client_id: str) -> str:
     if total_guests > 0:
         b.append("")
         if lang == "ar":
-            b.append(f"👥 قاعدة العملاء: {total_guests} عميل")
+            b.append(f"*👥 العملاء*: {total_guests}")
             b.append(f"  🏆 {champion_count} VIP  |  ⚠️ {at_risk_count} معرض  |  💤 {lapsed_count} مفقود")
         else:
-            b.append(f"👥 Guest base: {total_guests} total")
+            b.append(f"*👥 Guests*: {total_guests} on the list")
             b.append(f"  🏆 {champion_count} VIP  |  ⚠️ {at_risk_count} at risk  |  💤 {lapsed_count} lapsed")
         if at_risk_names:
             if lang == "ar":
@@ -844,17 +826,8 @@ async def generate_morning_brief(client_id: str) -> str:
     active_rules = [r for r in learned_rules if isinstance(r, dict) and r.get("status", "active") in ("active", "probation", "verified")]
     if active_rules:
         b.append("")
-        verified = sum(1 for r in active_rules if r.get("status") == "verified")
-        probation = sum(1 for r in active_rules if r.get("status") == "probation")
-        if lang == "ar":
-            b.append(f"🧠 الذكاء الاصطناعي: {len(active_rules)} قاعدة ({verified} مثبتة, {probation} تجريبية)")
-        else:
-            b.append(f"🧠 AI brain: {len(active_rules)} rules ({verified} verified, {probation} testing)")
-        newest = active_rules[-1]
-        if lang == "ar":
-            b.append(f"  آخر قاعدة: \"{newest['rule'][:60]}\"")
-        else:
-            b.append(f"  Latest: \"{newest['rule'][:60]}\"")
+        # AI brain detail moved to weekly internal digest
+        pass
 
     # ── QUALITY SCORE ──
     try:
@@ -893,32 +866,14 @@ async def generate_morning_brief(client_id: str) -> str:
             b.append(f"               {day_labels}")
 
     # ── QUICK ACTIONS ──
+    # Compressed from a 10-line menu to a single hint. The full
+    # command help moves to an explicit "help" reply so it stops
+    # dwarfing the actual daily brief on mobile.
     b.append("")
-    b.append("─" * 28)
     if lang == "ar":
-        b.append("⚡ أوامر سريعة:")
-        b.append("  'تقرير العملاء' — تفاصيل الضيوف")
-        b.append("  'وش ناقص' — تنبيهات")
-        b.append("  'مبيعات' — تقرير المبيعات")
-        b.append("  'محتوى' — أفكار وجدول محتوى")
-        b.append("  'نقاطي' — برنامج الولاء")
-        b.append("  'قوقل' — تقرير الملف التجاري")
-        b.append("  'صورة [موضوع]' — توليد وصف صورة احترافية")
-        b.append("  'جودة' — تقييم جودة الذكاء الاصطناعي")
-        b.append("  'سوق' — معلومات السوق")
-        b.append("  'غيّر سعر [المنتج] لـ [السعر]'")
+        b.append("_رد بـ 'مساعدة' لقائمة الأوامر_")
     else:
-        b.append("⚡ Quick commands:")
-        b.append("  'guest report' — full guest breakdown")
-        b.append("  'what am I missing' — risk alerts")
-        b.append("  'sales' — pipeline + hot leads")
-        b.append("  'content' — ideas + calendar")
-        b.append("  'loyalty' — program stats")
-        b.append("  'google' — GBP audit + tips")
-        b.append("  'image [topic]' — AI photo prompt")
-        b.append("  'quality' — AI response quality score")
-        b.append("  'intel' — market intelligence")
-        b.append("  'change [item] price to [X]'")
+        b.append("_Reply 'help' for command list_")
 
     return "\n".join(b)
 
@@ -951,6 +906,40 @@ async def process_owner_command(client_id: str, command: str) -> str:
 
     # ── Special Commands (no AI needed) ──
     cmd_lower = command.strip().lower()
+
+    # Help / command list (used to live inline in the daily brief, now
+    # owner explicitly requests it). Trigger words include English +
+    # Arabic + the slash variant.
+    if cmd_lower in ("help", "/help", "?", "مساعدة", "المساعدة"):
+        if lang == "ar":
+            return (
+                "*الأوامر المتاحة:*\n\n"
+                "• _تقرير العملاء_ — تفاصيل الضيوف\n"
+                "• _وش ناقص_ — تنبيهات + مخاطر\n"
+                "• _مبيعات_ — الفرص + المكسوب\n"
+                "• _محتوى_ — أفكار وجدول\n"
+                "• _ولاء_ — برنامج الولاء\n"
+                "• _قوقل_ — تقرير الملف التجاري\n"
+                "• _صورة [موضوع]_ — وصف صورة احترافية\n"
+                "• _جودة_ — تقييم جودة الذكاء\n"
+                "• _سوق_ — معلومات السوق\n"
+                "• _غيّر سعر [المنتج] لـ [السعر]_\n\n"
+                "كل صباح 9:00 يصلك التقرير اليومي. رد *YES* / *NO* أو حروف (مثل *A C E*) للموافقة الجزئية."
+            )
+        return (
+            "*Available commands:*\n\n"
+            "• _guest report_ — full customer breakdown\n"
+            "• _what am I missing_ — risks + alerts\n"
+            "• _sales_ — pipeline + hot leads\n"
+            "• _content_ — post ideas + calendar\n"
+            "• _loyalty_ — program stats\n"
+            "• _google_ — GBP audit + tips\n"
+            "• _image [topic]_ — AI photo prompt\n"
+            "• _quality_ — AI response quality score\n"
+            "• _intel_ — market intelligence\n"
+            "• _change [item] price to [X]_\n\n"
+            "Every morning 9:00 you get the daily brief. Reply *YES* / *NO* or letters (e.g. *A C E*) to approve a subset."
+        )
 
     # Risk surfacing request
     if any(kw in cmd_lower for kw in ["what am i missing", "risks", "problems", "issues", "وش ناقص", "مشاكل", "تنبيهات", "ايش فاتني"]):

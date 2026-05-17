@@ -15,6 +15,8 @@ returns "already_sent" without re-paying for the brief.
 
 from __future__ import annotations
 import os
+import logging
+_logger = logging.getLogger("owner_brief")
 from datetime import datetime, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -133,9 +135,10 @@ async def _send_via_kapso(
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             r = await client.post(
-                "https://api.kapso.ai/v1/messages",
+                f"https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages",
                 json={
-                    "phone_number_id": phone_number_id,
+                    "messaging_product": "whatsapp",
+                    "recipient_type": "individual",
                     "to": to,
                     "type": "text",
                     "text": {"body": message},
@@ -242,20 +245,27 @@ async def run_fanout(force: bool = False) -> dict:
             from tts import synthesize as _tts_synth
             from voice import send_voice_note as _send_voice_note
             audio_text = (brief_text_only or "").strip()[:1800]
+            _logger.info(f"[brief] audio path: audio_len={len(audio_text)} phone_number_id={phone_number_id!r} owner_phone={owner_phone!r}")
             if audio_text and phone_number_id:
+                _logger.info(f"[brief] synth start for {client_id}")
                 tts_result = await _tts_synth(
                     text=audio_text,
-                    lang="en",  # tenant language detection — future
+                    lang="en",
                     voice="F1",
                     format="ogg",
                 )
+                _logger.info(f"[brief] synth done, bytes={len(tts_result['audio_bytes'])}, sending")
                 voice_sent = await _send_voice_note(
                     phone_number_id, owner_phone, tts_result["audio_bytes"]
                 )
+                _logger.info(f"[brief] voice_sent={voice_sent}")
                 if not voice_sent:
                     voice_err = "send_voice_note_returned_false"
+            else:
+                _logger.warning(f"[brief] skipping audio: audio_text={bool(audio_text)} phone_number_id={bool(phone_number_id)}")
         except Exception as _ve:
             voice_err = f"{type(_ve).__name__}: {str(_ve)[:100]}"
+            _logger.exception(f"[brief] audio path failed: {_ve}")
 
         results.append({
             "client_id": client_id,
@@ -264,6 +274,8 @@ async def run_fanout(force: bool = False) -> dict:
             "kapso_status": status,
             "kapso_message_id": msg_id,
             "error": err,
+            "voice_sent": voice_sent,
+            "voice_err": voice_err,
         })
 
     return {

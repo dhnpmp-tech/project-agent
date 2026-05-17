@@ -121,6 +121,36 @@ def _wav_to_ogg_opus(wav_bytes: bytes) -> bytes:
                 pass
 
 
+
+# Characters Supertonic cannot pronounce. We strip them rather than failing —
+# the LLM brief sprinkles emojis (⚠️ 🏆 💤 📋 📅 🤖) and box-drawing chars
+# (= | + -) that the model rejects with "unsupported character(s)".
+import unicodedata as _ud
+import re as _re
+
+
+def _sanitize_for_tts(text: str) -> str:
+    """Strip characters the Supertonic model can't pronounce.
+
+    Keeps: letters (any script), digits, basic punctuation, whitespace.
+    Drops: emojis, symbols, ASCII box-drawing/border chars, variation selectors.
+    Collapses runs of whitespace.
+    """
+    out_chars = []
+    for ch in text:
+        cat = _ud.category(ch)
+        if cat[0] in {"L", "N"}:  # letters + numbers
+            out_chars.append(ch)
+        elif ch in " \t\n.,;:!?'\"()-":
+            out_chars.append(ch)
+        elif cat in {"Zs", "Zl", "Zp"}:
+            out_chars.append(" ")
+    cleaned = "".join(out_chars)
+    cleaned = _re.sub(r"[=_]{3,}", "", cleaned)
+    cleaned = _re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
+
+
 def _synthesize_sync(
     text: str,
     lang: str = DEFAULT_LANG,
@@ -139,6 +169,12 @@ def _synthesize_sync(
     """
     tts = _get_tts()
     style = tts.get_voice_style(voice_name=voice)
+
+    # Strip unpronounceable chars before sending. Avoids the Supertonic
+    # "unsupported character(s)" error on emojis + variation selectors.
+    text = _sanitize_for_tts(text)
+    if not text:
+        raise ValueError("text empty after sanitization")
 
     t0 = time.time()
     result = tts.synthesize(
