@@ -44,6 +44,48 @@ RFM_SEGMENTS = {
 }
 
 
+
+async def _get_memory_segment_counts(client_id: str) -> dict:
+    """Aggregate customer_memory.tags into RFM segment buckets.
+
+    Tag → bucket priority (first match wins per customer):
+      vip → champion · at_risk/complaint → at_risk · regular → loyal
+      · lapsed → lapsed · new → new · potential → potential
+    """
+    try:
+        from database import db
+        rows = await db.query(
+            "SELECT tags FROM customer_memory WHERE client_id = $1",
+            client_id,
+        )
+    except Exception:
+        return {}
+    counts = {"champion": 0, "loyal": 0, "potential": 0, "new": 0, "at_risk": 0, "lapsed": 0}
+    priority = [
+        ("vip", "champion"),
+        ("at_risk", "at_risk"),
+        ("complaint", "at_risk"),
+        ("regular", "loyal"),
+        ("lapsed", "lapsed"),
+        ("new", "new"),
+        ("potential", "potential"),
+    ]
+    for row in rows:
+        tags = row.get("tags") or []
+        matched = False
+        for tag, bucket in priority:
+            if tag in tags:
+                counts[bucket] += 1
+                matched = True
+                break
+        if not matched:
+            # Off-vocabulary tags (e.g. only "group_organizer" or
+            # "allergic"). Default to "potential" so the customer is
+            # still in the total but does not inflate VIP/loyal counts.
+            counts["potential"] += 1
+    return counts
+
+
 async def build_guest_intelligence(client_id: str) -> dict:
     """Build RFM segmentation for all guests of a client."""
 
@@ -140,11 +182,23 @@ async def build_guest_intelligence(client_id: str) -> dict:
         segments[seg].sort(key=lambda x: (-x["visits"], x["days_since_contact"]))
 
     total_guests = len(guest_data)
+    # Prefer customer_memory.tags-based segmentation when available — the
+    # LLM analyzer reads complaint/sentiment signals that RFM-by-activity
+    # misses. Falls back to activity-based when memory is empty.
+    activity_counts = {s: len(guests) for s, guests in segments.items()}
+    memory_counts = await _get_memory_segment_counts(client_id)
+    total_in_memory = sum(memory_counts.values()) if memory_counts else 0
+    if total_in_memory > 0:
+        segment_counts = memory_counts
+        # total_guests should match the more authoritative source
+        total_guests = max(total_guests, total_in_memory)
+    else:
+        segment_counts = activity_counts
     return {
         "client_id": client_id,
         "total_guests": total_guests,
         "segments": segments,
-        "segment_counts": {s: len(guests) for s, guests in segments.items()},
+        "segment_counts": segment_counts,
         "generated_at": now.isoformat(),
     }
 
