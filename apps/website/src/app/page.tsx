@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { DcpProvider } from "@/components/dcp/provider";
+import { StickyDemoCta } from "@/components/dcp/sticky-demo-cta";
 import { useLang } from "@/components/dcp/lib";
 import {
   Marquee,
@@ -75,8 +76,8 @@ interface PricingTier {
 }
 
 const HERO_STATS: HeroStat[] = [
-  { v: "380+", k: { en: "inquiries monthly", ar: "استفسار شهرياً" } },
-  { v: "2 min", k: { en: "to go live", ar: "للإطلاق" } },
+  { v: "10 min", k: { en: "to go live", ar: "للإطلاق" } },
+  { v: "AR + EN", k: { en: "native, not translated", ar: "أصيل، مش مترجم" } },
   { v: "24/7", k: { en: "self-improving", ar: "يتطوّر ذاتياً" } },
 ];
 
@@ -620,45 +621,49 @@ function Hero() {
     <section className="section hero-v2">
       <div className="container">
         <div className="hero-head">
-          <a
-            href="/teardown"
+          <span
             className="eyebrow"
-            style={{ textDecoration: "none", cursor: "pointer" }}
+            style={{ textDecoration: "none" }}
           >
             <span className="d" />
-            {lang === "ar" ? "جديد · تشريح مجاني · ٦٠ ثانية" : "NEW · Free teardown · 60s"}
-            <Arrow size={10} />
-          </a>
+            {lang === "ar"
+              ? "واتساب أصلي · عربية أصلية · جاهز خلال ١٠ دقائق"
+              : "WhatsApp-native · Arabic-native · live in 10 minutes"}
+          </span>
         </div>
         <div className="hero-grid">
           <div className="hero-left">
             <Reveal as="h1" className="display tight">
               {lang === "ar" ? (
                 <>
-                  أدِر <em>عملك</em>،<br />
-                  لا بريدك.
+                  <em>موظفك</em> على واتساب.<br />
+                  عربي. جاهز اليوم.
                 </>
               ) : (
                 <>
-                  Run your business.<br />
-                  Not your <em>inbox</em>.
+                  Your <em>employee</em> on WhatsApp.<br />
+                  Arabic. Live today.
                 </>
               )}
             </Reveal>
 
             <Reveal as="p" className="lede-strong" delay={120}>
               {lang === "ar" ? (
-                "ذكاؤك الاصطناعي يدير واتساب، الرسائل الصوتية، رسائل إنستغرام، ومحادثة موقعك — بالعربية والإنجليزية. يتذكّر كل عميل، يحسّن نفسه ليلاً، ويتابع تلقائياً حتى لا يضيع أي حجز. على مدار الساعة."
+                <>
+                  مبني على واتساب — <b>مو ملصق عليه</b>. مصمم للإمارات والسعودية. نتولى إعداد ميتا، الرسائل الصوتية بعربية خليجية، الفروع المتعددة، والتكامل مع <b>فودكس وتابي وتمارا</b>. أنت تركز على عملك — هي تخدم عملاءك. على مدار الساعة، بلا توقف، بلا نسيان.
+                </>
               ) : (
                 <>
-                  Your AI handles <b>WhatsApp</b>, <b>voice notes</b>, <b>Instagram DMs</b>, and your <b>website chat</b> — in Arabic and English. She <b>remembers every customer</b>, <b>improves herself nightly</b>, and proactively follows up so no booking is ever lost. Around the clock.
+                  Built <b>on WhatsApp</b>, not bolted onto it. Designed for UAE &amp; Saudi SMBs. We handle Meta verification, native voice notes, multi-outlet operations, and integrations with <b>Foodics, Tabby &amp; Tamara</b> — so you focus on the business while she handles the customers. Around the clock, in Arabic and English.
                 </>
               )}
             </Reveal>
 
             <Reveal as="div" className="cta-row tight" delay={200}>
               <a className="btn primary lg" href="/teardown">
-                {lang === "ar" ? "تشريح مجاني · ٦٠ ثانية" : "Free teardown · 60s"}{" "}
+                {lang === "ar"
+                  ? "احصل على تشريح مجاني لعملك · ٦٠ ثانية"
+                  : "Free 60-second teardown of your business"}{" "}
                 <Arrow size={14} />
               </a>
               <a
@@ -667,7 +672,9 @@ function Hero() {
                 target="_blank"
                 rel="noreferrer"
               >
-                {lang === "ar" ? "عرض واتساب مباشر" : "Live WhatsApp demo"}
+                {lang === "ar"
+                  ? "كلّم نديا الآن على واتساب"
+                  : "Text Nadia live on WhatsApp →"}
               </a>
             </Reveal>
 
@@ -2046,6 +2053,7 @@ export default function HomePage(): ReactNode {
   return (
     <DcpProvider initialLang="en">
       <HomeApp />
+      <StickyDemoCta />
     </DcpProvider>
   );
 }

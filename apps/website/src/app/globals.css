@@ -6,6 +6,7 @@
 @import "../styles/extras.css";
 @import "../styles/pricing.css";
 @import "../styles/process.css";
+@import "../styles/vs.css";
 
 @tailwind base;
 @tailwind components;

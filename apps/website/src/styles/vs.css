@@ -1,0 +1,336 @@
+/* Styles for /vs/* comparison pages.
+ *
+ * Used by /vs/chatbase. Reuses the existing DCP kit tokens (--dcp-bg,
+ * --dcp-ink, etc.) — no new design system. Just a structured table
+ * for side-by-side product comparisons and a verdict pair.
+ *
+ * Mobile: collapses each comparison row into a stack so the cells
+ * read top-to-bottom instead of cramming three columns onto a phone. */
+
+.vs-table {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vs-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) 1.4fr 1.4fr;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--dcp-ink) 14%, transparent);
+  border-radius: 14px;
+  background: var(--dcp-paper);
+  align-items: start;
+}
+
+.vs-label h4 {
+  margin: 6px 0 0;
+  font-size: 16px;
+  line-height: 1.3;
+  color: var(--dcp-ink);
+  font-weight: 600;
+}
+
+.vs-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  font-size: 10px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+
+.vs-pill-us {
+  color: #58c39c;
+}
+
+.vs-pill-them {
+  color: #c39c58;
+}
+
+.vs-pill-tie {
+  color: color-mix(in srgb, var(--dcp-ink) 55%, transparent);
+}
+
+.vs-cell {
+  font-size: 14px;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--dcp-ink) 78%, transparent);
+}
+
+.vs-cell-h {
+  display: block;
+  margin-bottom: 6px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--dcp-ink) 50%, transparent);
+}
+
+.vs-us .vs-cell-h {
+  color: #58c39c;
+}
+
+.vs-cell p {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .vs-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 18px;
+  }
+  .vs-cell {
+    padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--dcp-ink) 10%, transparent);
+  }
+}
+
+.vs-verdict {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.vs-verdict-card {
+  padding: 28px 26px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--dcp-ink) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dcp-ink) 12%, transparent);
+}
+
+.vs-verdict-card h3 {
+  margin: 0 0 18px;
+  font-size: 22px;
+  color: var(--dcp-ink);
+}
+
+.vs-verdict-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vs-verdict-card li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0 0 12px;
+  color: color-mix(in srgb, var(--dcp-ink) 80%, transparent);
+}
+
+.vs-verdict-card svg {
+  flex-shrink: 0;
+  margin-top: 5px;
+  color: color-mix(in srgb, var(--dcp-ink) 55%, transparent);
+}
+
+.vs-verdict-us {
+  background: color-mix(in srgb, #58c39c 9%, var(--dcp-paper));
+  border-color: color-mix(in srgb, #58c39c 30%, transparent);
+}
+
+.vs-verdict-us h3 {
+  color: #ade5cd;
+}
+
+.vs-verdict-us svg {
+  color: #58c39c;
+}
+
+@media (max-width: 720px) {
+  .vs-verdict {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vs-cta {
+  text-align: center;
+  padding: 60px 0 20px;
+}
+
+.vs-cta h2 {
+  max-width: 22ch;
+  margin: 0 auto 18px;
+}
+
+.vs-cta p {
+  max-width: 60ch;
+  margin: 0 auto 26px;
+}
+
+.vs-cta .cta-row {
+  justify-content: center;
+}
+
+/* /changelog ship log */
+
+.ship-log {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ship-entry {
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--dcp-ink) 12%, transparent);
+  border-radius: 14px;
+  background: var(--dcp-paper);
+}
+
+.ship-meta {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 10px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.ship-meta time {
+  color: color-mix(in srgb, var(--dcp-ink) 60%, transparent);
+}
+
+.ship-tag {
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+
+.ship-commit {
+  color: color-mix(in srgb, var(--dcp-ink) 50%, transparent);
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+
+.ship-commit:hover {
+  color: var(--dcp-ink);
+}
+
+.ship-entry h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--dcp-ink);
+}
+
+.ship-entry p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--dcp-ink) 78%, transparent);
+}
+
+/* Sticky demo CTA — bottom-right floating bubble.
+ * Mounted globally via SubShell; auto-shows after the visitor scrolls
+ * past the hero so it does not fight the primary CTA above the fold. */
+
+.sticky-demo {
+  position: fixed;
+  z-index: 90;
+  bottom: 22px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #25d366;
+  color: #061419;
+  padding: 10px 14px 10px 12px;
+  border-radius: 999px;
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
+  transform: translateY(140%);
+  opacity: 0;
+  transition: transform 320ms cubic-bezier(.22, 1, .36, 1),
+              opacity 240ms ease-out;
+  font-family: "Inter", -apple-system, system-ui, sans-serif;
+}
+
+.sticky-demo.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.sticky-demo-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sticky-demo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(6, 20, 25, 0.16);
+}
+
+.sticky-demo-body {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.sticky-demo-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sticky-demo-sub {
+  font-size: 11px;
+  opacity: 0.78;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: 0.01em;
+}
+
+.sticky-demo-close {
+  background: transparent;
+  color: inherit;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 4px 0 6px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 160ms ease;
+}
+
+.sticky-demo-close:hover {
+  opacity: 1;
+}
+
+@media (max-width: 540px) {
+  .sticky-demo {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    justify-content: space-between;
+  }
+  .sticky-demo-sub {
+    display: none;
+  }
+}
+
+/* RTL */
+html[dir="rtl"] .sticky-demo {
+  right: auto;
+  left: 22px;
+}
+
+@media (max-width: 540px) {
+  html[dir="rtl"] .sticky-demo {
+    right: 12px;
+    left: 12px;
+  }
+}

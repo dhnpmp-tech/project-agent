@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { DcpProvider } from "./provider";
 import { Marquee, Nav, type NavLink } from "./chrome";
 import { useLang } from "./lib";
+import { StickyDemoCta } from "./sticky-demo-cta";
 
 const SUB_NAV_KEYS = [
   "home",
@@ -210,6 +211,7 @@ export function SubShell({
   return (
     <DcpProvider initialLang="en">
       <SubChrome active={active}>{children}</SubChrome>
+      <StickyDemoCta />
     </DcpProvider>
   );
 }
