@@ -208,6 +208,34 @@ async def run_fanout(force: bool = False) -> dict:
             results.append({"client_id": client_id, "slug": slug, "error": "brief_generation_failed"})
             continue
 
+        # Fold Gmail triage line in BEFORE the approval block, AFTER
+        # the natural-language brief. We append it to `body` (the text
+        # version) but not to `brief_text_only` (the audio version) —
+        # reading "Email queue: 3 urgent, 1 hot lead" via TTS is robotic.
+        try:
+            from database import db as _trg_db
+            triage_rows = await _trg_db.query(
+                "SELECT bucket_counts FROM gmail_triage_snapshots WHERE client_id = $1 ORDER BY snapshot_date DESC LIMIT 1",
+                client_id,
+            )
+            if triage_rows:
+                _counts = triage_rows[0].get("bucket_counts") or {}
+                _urgent = int(_counts.get("urgent", 0))
+                _hot = int(_counts.get("hot_lead", 0))
+                _supplier = int(_counts.get("supplier", 0))
+                if _urgent + _hot + _supplier > 0:
+                    _parts = []
+                    if _urgent:
+                        _parts.append(f"{_urgent} *urgent*")
+                    if _hot:
+                        _parts.append(f"{_hot} hot lead{'s' if _hot != 1 else ''}")
+                    if _supplier:
+                        _parts.append(f"{_supplier} supplier")
+                    body = body + "\n\n📧 *Email queue*: " + " · ".join(_parts)
+        except Exception:
+            # Triage line is a nice-to-have — never block the brief.
+            pass
+
         # Append today's approval block (actions queued for today that
         # are still pending the owner's nod). Empty string when there
         # are no pending actions, so the brief reads cleanly either way.

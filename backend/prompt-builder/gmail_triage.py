@@ -200,6 +200,60 @@ async def _classify_thread(meta: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------
 
 
+
+async def _route_hot_leads_to_daq(client_id: str, items: list[dict]) -> int:
+    """For each hot_lead with needs_reply=true, insert an agent_action_queue
+    row so the daily executor drafts a reply tomorrow.
+
+    Idempotent on (client_id, target=thread_id) — re-runs of the triage
+    won't duplicate rows for the same Gmail thread.
+    """
+    if not items:
+        return 0
+    from datetime import date, timedelta as _td
+    tomorrow = (date.today() + _td(days=1)).isoformat()
+    inserted = 0
+    for it in items:
+        if it.get("bucket") != "hot_lead" or not it.get("needs_reply"):
+            continue
+        thread_id = it.get("thread_id") or ""
+        if not thread_id:
+            continue
+        try:
+            # Dedup: skip if we already queued this thread for this tenant.
+            existing = await db.query(
+                "SELECT id FROM agent_action_queue WHERE client_id = $1 AND target = $2 AND action_type = $3 LIMIT 1",
+                client_id, thread_id, "email_reply_draft",
+            )
+            if existing:
+                continue
+            await db.query(
+                """
+                INSERT INTO agent_action_queue
+                  (client_id, agent, action_type, target, payload, status, for_date)
+                VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
+                """,
+                client_id,
+                "email_triage",
+                "email_reply_draft",
+                thread_id,
+                json.dumps({
+                    "source": "gmail_triage",
+                    "from": it.get("from", ""),
+                    "subject": it.get("subject", ""),
+                    "snippet": it.get("snippet", ""),
+                    "reason": it.get("reason", ""),
+                    "deadline_hours": it.get("deadline_hours"),
+                }),
+                "pending_approval",
+                tomorrow,
+            )
+            inserted += 1
+        except Exception as e:
+            logger.warning("daq insert failed for thread %s: %s", thread_id, e)
+    return inserted
+
+
 async def triage_for_client(client_id: str, hours_back: int = 24) -> dict[str, Any]:
     """Triage one tenant's recent Gmail. Returns summary the daily brief uses."""
     if not await _composio_gmail_available(client_id):
@@ -258,6 +312,14 @@ async def triage_for_client(client_id: str, hours_back: int = 24) -> dict[str, A
     except Exception as e:
         logger.warning("gmail_triage_snapshots write failed: %s", e)
 
+    # Route hot leads to the daily action queue so tomorrow's executor
+    # drafts replies that surface in the owner brief.
+    daq_inserts = 0
+    try:
+        daq_inserts = await _route_hot_leads_to_daq(client_id, items)
+    except Exception as e:
+        logger.warning("hot-lead routing failed: %s", e)
+
     return {
         "status": "ok",
         "client_id": client_id,
@@ -266,6 +328,7 @@ async def triage_for_client(client_id: str, hours_back: int = 24) -> dict[str, A
         "items": items,
         "urgent_count": bucket_counts["urgent"],
         "hot_lead_count": bucket_counts["hot_lead"],
+        "daq_inserts": daq_inserts,
     }
 
 
