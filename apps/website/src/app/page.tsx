@@ -334,98 +334,64 @@ const MEMORY_CARD: MemoryCard = {
   ],
 };
 
+// ONE offer. Mirrors apps/website/src/lib/pricing-data.ts::OFFER.
+// Kept inline (rather than importing from the lib) because the
+// homepage card uses BiString-shaped labels for AR/EN rendering and
+// the lib's Tier shape uses plain strings — diverging just here is
+// cleaner than threading lang through the lib.
 const TIERS: PricingTier[] = [
   {
-    id: "starter",
-    name: { en: "Starter", ar: "البداية" },
-    sub: { en: "For solopreneurs", ar: "للأعمال الفردية" },
-    monthly_aed: 1500,
-    setup_aed: 3000,
-    popular: false,
-    includes: [
-      {
-        en: "1 WhatsApp AI agent with custom persona",
-        ar: "موظف ذكاء واتساب واحد بشخصية مخصّصة",
-      },
-      {
-        en: "Owner Brain — morning briefs + commands",
-        ar: "عقل المالك — موجز الصباح وأوامر",
-      },
-      {
-        en: "Sales Rep — lead scoring + pipeline",
-        ar: "مندوب المبيعات — تقييم العملاء وخط المبيعات",
-      },
-      {
-        en: "Arabic + English auto-detection",
-        ar: "كشف تلقائي عربي/إنجليزي",
-      },
-      {
-        en: "Customer memory across conversations",
-        ar: "ذاكرة عملاء عبر كل المحادثات",
-      },
-    ],
-  },
-  {
-    id: "growth",
-    name: { en: "Growth", ar: "النمو" },
-    sub: { en: "Most popular", ar: "الأكثر طلباً" },
-    monthly_aed: 3000,
-    setup_aed: 3000,
+    id: "core",
+    name: { en: "Project Agent", ar: "بروجكت إيجنت" },
+    sub: { en: "Your AI ops team — done for you", ar: "فريق الذكاء الكامل — جاهز عندك" },
+    monthly_aed: 5000,
+    setup_aed: 3500,
     popular: true,
     includes: [
-      { en: "Everything in Starter", ar: "كل ما في البداية" },
       {
-        en: "Content Engine — social on autopilot",
-        ar: "محرّك المحتوى — سوشيال على الطيّار الآلي",
-      },
-      { en: "Loyalty program management", ar: "إدارة برنامج الولاء" },
-      {
-        en: "Google Business Profile optimization",
-        ar: "تحسين ملف قوقل بزنس",
-      },
-      { en: "Calendar and CRM integration", ar: "ربط التقويم والـ CRM" },
-      { en: "Multi-channel content generation", ar: "محتوى لكل القنوات" },
-    ],
-  },
-  {
-    id: "pro",
-    name: { en: "Pro", ar: "المحترف" },
-    sub: { en: "For growing teams", ar: "للفرق المتنامية" },
-    monthly_aed: 5000,
-    setup_aed: 3000,
-    popular: false,
-    includes: [
-      { en: "Everything in Growth", ar: "كل ما في النمو" },
-      { en: "AI image prompt generator", ar: "مولّد بروميت الصور" },
-      {
-        en: "Conversion tracking and attribution",
-        ar: "تتبّع التحويلات وعزو المصدر",
+        en: "Unlimited customers, conversations, voice notes",
+        ar: "عملاء بلا حدود، محادثات بلا حدود، رسائل صوتية بلا حدود",
       },
       {
-        en: "Priority support — under 2h response",
-        ar: "دعم بالأولوية — ردّ خلال أقلّ من ساعتين",
+        en: "All five agents — WhatsApp, Sales, Content, HR, Financial",
+        ar: "الموظفون الخمسة — واتساب، مبيعات، محتوى، موارد بشرية، مالي",
       },
-      { en: "Voice message AI responses", ar: "ردود ذكاء على الرسائل الصوتية" },
-      { en: "Custom workflow automations", ar: "أتمتة خاصة لسير العمل" },
-    ],
-  },
-  {
-    id: "enterprise",
-    name: { en: "Enterprise", ar: "المؤسسات" },
-    sub: { en: "For scaling operations", ar: "للعمليات الموسّعة" },
-    monthly_aed: 8000,
-    setup_aed: 3000,
-    popular: false,
-    includes: [
-      { en: "Everything, unlimited", ar: "كل شي بدون حدود" },
       {
-        en: "Custom integrations and API access",
-        ar: "ربط مخصّص وواجهات API",
+        en: "Native WhatsApp on your own number — we handle Meta verification",
+        ar: "واتساب أصلي على رقمك — نحن نتولى تفعيل ميتا",
       },
-      { en: "UAE data residency option", ar: "خيار استضافة البيانات بالإمارات" },
-      { en: "Dedicated account manager", ar: "مدير حساب مخصّص" },
-      { en: "SLA guarantee", ar: "ضمان مستوى خدمة (SLA)" },
-      { en: "White-label available", ar: "علامة بيضاء متاحة" },
+      {
+        en: "Native Arabic + English with Gulf-dialect voice notes",
+        ar: "عربية خليجية + إنجليزي، مع رسائل صوتية بصوت أصلي",
+      },
+      {
+        en: "Daily 9am owner brief on WhatsApp — text and voice",
+        ar: "موجز صباحي يومي على واتساب — نص ورسالة صوتية",
+      },
+      {
+        en: "Customer memory dashboard with VIP, at-risk, and lapsed segmentation",
+        ar: "لوحة ذاكرة العملاء — VIP، معرّض، مفقود",
+      },
+      {
+        en: "Composio integrations — Foodics, Bayut, Tabby, Tamara, Google, Calendly",
+        ar: "تكاملات Composio — فودكس، بيوت، تابي، تمارا، قوقل، Calendly",
+      },
+      {
+        en: "Dedicated cloud computer per agent — true data isolation",
+        ar: "حاسب سحابي مخصّص لكل موظف ذكاء — عزل بيانات حقيقي",
+      },
+      {
+        en: "Infrastructure, monitoring, and security upgrades included",
+        ar: "البنية التحتية والمراقبة وتحديثات الأمان مشمولة",
+      },
+      {
+        en: "Weekly workflow tuning — we adjust the agent as your business changes",
+        ar: "ضبط أسبوعي لسير العمل — نطوّر الذكاء مع تطوّر عملك",
+      },
+      {
+        en: "Direct line to the founders on WhatsApp",
+        ar: "تواصل مباشر مع المؤسّسين على واتساب",
+      },
     ],
   },
 ];
@@ -1465,7 +1431,7 @@ function PricingCardV2({ tier, lang }: { tier: PricingTier; lang: Lang }) {
   return (
     <div className={"pv2-card" + (tier.popular ? " popular" : "")}>
       {tier.popular && (
-        <div className="pv2-pop">{lang === "ar" ? "الأكثر طلباً" : "Most popular"}</div>
+        <div className="pv2-pop">{lang === "ar" ? "جاهز عندك" : "Done for you"}</div>
       )}
       <div className="pv2-name">{tier.name[lang]}</div>
       <div className="pv2-sub">{tier.sub[lang]}</div>

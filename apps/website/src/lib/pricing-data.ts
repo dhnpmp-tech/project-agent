@@ -23,19 +23,25 @@ export interface Tier {
 
 /**
  * THE single offer. Mirrors the Nick playbook (unlimited agents, unlimited
- * usage, infrastructure + monitoring + workflow changes included).
+ * usage, infrastructure + monitoring + workflow changes included), priced
+ * for the UAE/KSA SMB owner who is comparing us to a full-time hire.
  *
  * Pricing logic:
- *   AED 18,000/mo ≈ USD 4,900 — same band as Nick's $5K USD OpenClaw deal.
- *   Founding-customer rate (case study + logo + named quote) = AED 9,000/mo.
- *   Setup fee rolled into year-one billing; no separate upfront ask.
+ *   AED 5,000/mo  · monthly all-inclusive (≈ 1/4 of a single junior hire)
+ *   AED 3,500    · one-time setup (Meta verification, KB seeding, persona,
+ *                  integration wiring — covers the human work we do up front)
+ *   Founding-customer rate (case study + logo + named quote) = AED 2,500/mo.
+ *
+ * The setup fee is intentional — it filters tire-kickers without raising
+ * the recurring number. Nick charges $5K USD/mo because his ICP is mid-
+ * market US agencies; ours is UAE/KSA SMBs and the band is different.
  */
 export const OFFER: Tier = {
   id: "core",
   name: "Project Agent",
   sub: "Your AI ops team — done for you",
-  monthly_aed: 18000,
-  setup_aed: 0,
+  monthly_aed: 5000,
+  setup_aed: 3500,
   popular: true,
   includes: [
     "Unlimited customers, conversations, voice notes",

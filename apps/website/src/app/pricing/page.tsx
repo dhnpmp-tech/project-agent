@@ -52,12 +52,15 @@ function PricingHeroPanel() {
   // Cost comparison against the human equivalents an SMB would otherwise
   // need to hire to cover the same surface area. Numbers are anchored at
   // mid-market UAE salary bands (LinkedIn data, 2026).
+  // UAE SMB salary medians, conservative end of the band so the
+  // claim survives a 30-second prospect fact-check on Bayt/GulfTalent.
+  // Sources: GulfTalent, Indeed UAE, PayScale UAE, Glassdoor Dubai (2026).
   const rows = [
-    { k: "Marketing manager", v: "AED 18,000", d: "monthly · one person · 8h/day", n: "human" },
-    { k: "Sales coordinator", v: "AED 14,000", d: "+ commission · CRM-only", n: "human" },
-    { k: "Customer-service rep", v: "AED 9,000", d: "single channel · no nights", n: "human" },
+    { k: "Marketing manager", v: "AED 14,000", d: "monthly · one person · 8h/day", n: "human" },
+    { k: "Sales coordinator", v: "AED 7,000", d: "+ commission · CRM-only", n: "human" },
+    { k: "Customer-service rep", v: "AED 4,500", d: "single channel · no nights", n: "human" },
     { k: "Generic AI chatbot", v: "AED 1,200", d: "1 channel · no memory", n: "tool" },
-    { k: "Project Agent", v: "AED 18,000", d: "five agents · all channels · 24/7", n: "us" },
+    { k: "Project Agent", v: "AED 5,000", d: "five agents · all channels · 24/7", n: "us" },
   ];
   return (
     <div className="ph-panel">
@@ -80,7 +83,7 @@ function PricingHeroPanel() {
         </div>
       ))}
       <div className="ph-foot mono">
-        One manager&apos;s salary. The output of three. Around the clock.
+        One-third a marketing manager. The work of three. Around the clock.
       </div>
     </div>
   );
@@ -136,11 +139,11 @@ function TierCard({ tier, sym, rate }: { tier: Tier; sym: string; rate: number }
       </div>
       {hasSetup ? (
         <div className="tier-setup mono">
-          + {sym} {setup.toLocaleString()} one-time setup
+          + {sym} {setup.toLocaleString()} one-time setup · founding-customer rate {sym} {Math.round(2500 * rate).toLocaleString()}/mo
         </div>
       ) : (
         <div className="tier-setup mono">
-          no setup fee · founding-customer rate {sym} {Math.round(9000 * rate).toLocaleString()}/mo
+          no setup fee · founding-customer rate {sym} {Math.round(2500 * rate).toLocaleString()}/mo
         </div>
       )}
       <a
@@ -376,7 +379,7 @@ function ROICalculator() {
               </div>
             </div>
             <div className="ro-foot mono">
-              based on the single Project Agent plan — AED 18,000/month all in
+              based on the single Project Agent plan — AED 5,000/month all in (+ AED 3,500 one-time setup)
             </div>
           </div>
         </div>
@@ -453,7 +456,7 @@ function FAQv2() {
     ],
     [
       "Can I cancel?",
-      "Yes — anytime, with 30 days' notice. No setup fee to claw back.",
+      "Yes — anytime, with 30 days' notice. The setup fee is non-refundable once we go live.",
     ],
     [
       "Where is my data stored?",
