@@ -1,7 +1,15 @@
-// Pricing tiers + currency rates. Mirrors /tmp/dcp-design/assets/data.js
-// (tiers + rates blocks). Single source of truth for the /pricing page.
+// Pricing — single offer, no friction.
+//
+// Lifted from Nick / Greg Isenberg's "$1M solo agent" playbook: skip the
+// tiered comparison matrix, sell one plan that bundles everything. The
+// magic dies the moment a prospect has to think about tokens, credits,
+// agent count, or which tier unlocks what. We charge one price, deliver
+// done-for-you, and absorb the operational complexity.
+//
+// Current top-tier customers (Saffron, Jareed) effectively get this
+// today. The page just stops asking them to assemble it from a menu.
 
-export type TierId = "starter" | "growth" | "pro" | "enterprise";
+export type TierId = "core";
 
 export interface Tier {
   id: TierId;
@@ -13,71 +21,40 @@ export interface Tier {
   includes: string[];
 }
 
-export const TIERS: Tier[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    sub: "For solopreneurs",
-    monthly_aed: 1500,
-    setup_aed: 3000,
-    popular: false,
-    includes: [
-      "1 WhatsApp AI agent with custom persona",
-      "Owner Brain — morning briefs + commands",
-      "Sales Rep — lead scoring + pipeline",
-      "Arabic + English auto-detection",
-      "Customer memory across conversations",
-    ],
-  },
-  {
-    id: "growth",
-    name: "Growth",
-    sub: "Most popular",
-    monthly_aed: 3000,
-    setup_aed: 3000,
-    popular: true,
-    includes: [
-      "Everything in Starter",
-      "Content Engine — social on autopilot",
-      "Loyalty program management",
-      "Google Business Profile optimization",
-      "Calendar and CRM integration",
-      "Multi-channel content generation",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    sub: "For growing teams",
-    monthly_aed: 5000,
-    setup_aed: 3000,
-    popular: false,
-    includes: [
-      "Everything in Growth",
-      "AI image prompt generator",
-      "Conversion tracking and attribution",
-      "Priority support — under 2h response",
-      "Voice message AI responses",
-      "Custom workflow automations",
-    ],
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    sub: "For scaling operations",
-    monthly_aed: 8000,
-    setup_aed: 3000,
-    popular: false,
-    includes: [
-      "Everything, unlimited",
-      "Custom integrations and API access",
-      "UAE data residency option",
-      "Dedicated account manager",
-      "SLA guarantee",
-      "White-label available",
-    ],
-  },
-];
+/**
+ * THE single offer. Mirrors the Nick playbook (unlimited agents, unlimited
+ * usage, infrastructure + monitoring + workflow changes included).
+ *
+ * Pricing logic:
+ *   AED 18,000/mo ≈ USD 4,900 — same band as Nick's $5K USD OpenClaw deal.
+ *   Founding-customer rate (case study + logo + named quote) = AED 9,000/mo.
+ *   Setup fee rolled into year-one billing; no separate upfront ask.
+ */
+export const OFFER: Tier = {
+  id: "core",
+  name: "Project Agent",
+  sub: "Your AI ops team — done for you",
+  monthly_aed: 18000,
+  setup_aed: 0,
+  popular: true,
+  includes: [
+    "Unlimited customers, conversations, voice notes",
+    "All five agents — WhatsApp, Sales, Content, HR, Financial",
+    "Native WhatsApp on your own number — we handle Meta verification",
+    "Native Arabic + English, with Gulf-dialect voice notes",
+    "Daily 9am owner brief on WhatsApp — text and voice",
+    "Customer memory dashboard with VIP, at-risk, and lapsed segmentation",
+    "Composio integrations — Foodics, Bayut, Tabby, Tamara, Google, Calendly, more",
+    "Dedicated cloud computer per agent — true data isolation",
+    "Infrastructure, monitoring, and security upgrades included",
+    "Weekly workflow tuning — we adjust the agent as your business changes",
+    "Direct line to the founders on WhatsApp",
+  ],
+};
+
+// Backwards-compat: existing imports of TIERS still resolve to an array
+// containing the single offer.
+export const TIERS: Tier[] = [OFFER];
 
 export const RATES = { aed_to_sar: 1.02, aed_to_usd: 0.272 } as const;
 

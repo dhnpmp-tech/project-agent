@@ -14,12 +14,10 @@ import { useTweaks } from "@/components/dcp/lib";
 import {
   TIERS,
   type Tier,
-  type TierId,
   type Currency,
   CURRENCY_SYMBOL,
   rateFor,
 } from "@/lib/pricing-data";
-import { AGENTS } from "@/lib/agents-data";
 
 /* ─── HERO ─────────────────────────────────────────────────────── */
 
@@ -30,20 +28,17 @@ function PricingHero() {
         <div className="hero-head">
           <span className="eyebrow">
             <span className="d" />
-            pricing · in AED &amp; SAR
+            one plan · no tiers · no friction
           </span>
         </div>
         <div className="pricing-hero-grid">
           <div>
             <Reveal as="h1" className="display tight">
-              The cost of <em>one employee</em>.
-              <br />
-              The output of eight.
+              One offer. <em>Everything</em><br />
+              included. Done for you.
             </Reveal>
             <Reveal as="p" className="lede-strong" delay={120}>
-              One monthly subscription. Every agent in your tier running 24/7.{" "}
-              <b>One-time setup</b> covers all training on your business. No API
-              fees, no per-message charges, no surprises.
+              We do not sell you tokens, credits, or a menu of features. You get the entire AI ops team — <b>five agents, unlimited customers and messages, dedicated infrastructure, weekly workflow tuning, and a direct line to our founders</b>. We run it. You run your business.
             </Reveal>
           </div>
           <PricingHeroPanel />
@@ -54,10 +49,15 @@ function PricingHero() {
 }
 
 function PricingHeroPanel() {
+  // Cost comparison against the human equivalents an SMB would otherwise
+  // need to hire to cover the same surface area. Numbers are anchored at
+  // mid-market UAE salary bands (LinkedIn data, 2026).
   const rows = [
-    { k: "Human employee", v: "AED 12,000", d: "monthly · 8h/day", n: "human" },
-    { k: "Generic AI tool", v: "AED 1,200", d: "1 tool · no memory", n: "tool" },
-    { k: "DCP Agents", v: "AED 3,000", d: "8 agents · 24/7 · memory", n: "us" },
+    { k: "Marketing manager", v: "AED 18,000", d: "monthly · one person · 8h/day", n: "human" },
+    { k: "Sales coordinator", v: "AED 14,000", d: "+ commission · CRM-only", n: "human" },
+    { k: "Customer-service rep", v: "AED 9,000", d: "single channel · no nights", n: "human" },
+    { k: "Generic AI chatbot", v: "AED 1,200", d: "1 channel · no memory", n: "tool" },
+    { k: "Project Agent", v: "AED 18,000", d: "five agents · all channels · 24/7", n: "us" },
   ];
   return (
     <div className="ph-panel">
@@ -80,7 +80,7 @@ function PricingHeroPanel() {
         </div>
       ))}
       <div className="ph-foot mono">
-        ≈ 4× cheaper than one human, ≈ 8× the output
+        One manager&apos;s salary. The output of three. Around the clock.
       </div>
     </div>
   );
@@ -99,7 +99,7 @@ function Tiers() {
       <div className="container">
         <SectionMeta
           idx="01"
-          label="the tiers"
+          label="the offer"
           right={
             <div className="ph-cur-toggle">
               <CurrencyTog />
@@ -121,9 +121,10 @@ function Tiers() {
 function TierCard({ tier, sym, rate }: { tier: Tier; sym: string; rate: number }) {
   const monthly = Math.round(tier.monthly_aed * rate);
   const setup = Math.round(tier.setup_aed * rate);
+  const hasSetup = setup > 0;
   return (
     <div className={`tier-card ${tier.popular ? "tier-pop" : ""}`}>
-      {tier.popular && <div className="tier-badge mono">MOST CHOSEN</div>}
+      {tier.popular && <div className="tier-badge mono">DONE FOR YOU</div>}
       <div className="tier-hd">
         <div className="tier-name">{tier.name}</div>
         <div className="tier-sub mono">{tier.sub}</div>
@@ -133,9 +134,15 @@ function TierCard({ tier, sym, rate }: { tier: Tier; sym: string; rate: number }
         <span className="tier-num">{monthly.toLocaleString()}</span>
         <span className="tier-per mono">/ month</span>
       </div>
-      <div className="tier-setup mono">
-        + {sym} {setup.toLocaleString()} one-time setup
-      </div>
+      {hasSetup ? (
+        <div className="tier-setup mono">
+          + {sym} {setup.toLocaleString()} one-time setup
+        </div>
+      ) : (
+        <div className="tier-setup mono">
+          no setup fee · founding-customer rate {sym} {Math.round(9000 * rate).toLocaleString()}/mo
+        </div>
+      )}
       <a
         className={`btn ${tier.popular ? "primary" : "ghost"} lg tier-cta`}
         href="/app/onboarding"
@@ -369,7 +376,7 @@ function ROICalculator() {
               </div>
             </div>
             <div className="ro-foot mono">
-              based on Growth tier — AED 3,000/month
+              based on the single Project Agent plan — AED 18,000/month all in
             </div>
           </div>
         </div>
@@ -423,133 +430,6 @@ function RoiSlider({
   );
 }
 
-/* ─── COMPARE MATRIX (8 agents × 4 tiers) ────────────────────── */
-
-const TIER_ORDER: TierId[] = ["starter", "growth", "pro", "enterprise"];
-
-function CompareMatrix() {
-  return (
-    <section className="section">
-      <div className="container">
-        <SectionMeta
-          idx="04"
-          label="full matrix"
-          right={<span className="mono">8 agents × 4 tiers</span>}
-        />
-        <div className="sec-title-row">
-          <h2 className="display tight">
-            Every agent,
-            <br />
-            every <em>tier</em>.
-          </h2>
-        </div>
-
-        <div className="cmp-v2">
-          <div className="cmp-head">
-            <div className="cmp-h-empty" />
-            <div className="cmp-h-cell">
-              <span className="mono">STARTER</span>
-              <span className="cmp-h-p mono">1,500</span>
-            </div>
-            <div className="cmp-h-cell cmp-h-pop">
-              <span className="mono">GROWTH</span>
-              <span className="cmp-h-p mono">3,000</span>
-            </div>
-            <div className="cmp-h-cell">
-              <span className="mono">PRO</span>
-              <span className="cmp-h-p mono">5,000</span>
-            </div>
-            <div className="cmp-h-cell">
-              <span className="mono">ENT.</span>
-              <span className="cmp-h-p mono">8,000</span>
-            </div>
-          </div>
-          {AGENTS.map((a) => {
-            const order = TIER_ORDER.indexOf(a.tier);
-            return (
-              <div key={a.id} className="cmp-row">
-                <div className="cmp-agent">
-                  <span className="cmp-agent-num mono">§ {a.code}</span>
-                  <span className="cmp-agent-n">{a.name.en}</span>
-                  <span className="cmp-agent-r mono">{a.pitch.en}</span>
-                </div>
-                {TIER_ORDER.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={"cmp-cell " + (idx === 1 ? "cmp-cell-pop" : "")}
-                  >
-                    {idx >= order ? (
-                      <span className="cmp-yes">
-                        <Check size={12} />
-                      </span>
-                    ) : (
-                      <span className="cmp-no">·</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-          <div className="cmp-row cmp-row-foot">
-            <div className="cmp-agent">
-              <span className="cmp-agent-n mono">PERSISTENT MEMORY</span>
-            </div>
-            {[0, 1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className={"cmp-cell " + (i === 1 ? "cmp-cell-pop" : "")}
-              >
-                <span className="cmp-yes">
-                  <Check size={12} />
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="cmp-row cmp-row-foot">
-            <div className="cmp-agent">
-              <span className="cmp-agent-n mono">REGIONAL DATA RESIDENCY</span>
-            </div>
-            <div className="cmp-cell">
-              <span className="cmp-no">·</span>
-            </div>
-            <div className="cmp-cell cmp-cell-pop">
-              <span className="cmp-no">·</span>
-            </div>
-            <div className="cmp-cell">
-              <span className="cmp-yes">
-                <Check size={12} />
-              </span>
-            </div>
-            <div className="cmp-cell">
-              <span className="cmp-yes">
-                <Check size={12} />
-              </span>
-            </div>
-          </div>
-          <div className="cmp-row cmp-row-foot">
-            <div className="cmp-agent">
-              <span className="cmp-agent-n mono">DEDICATED ACCOUNT MANAGER</span>
-            </div>
-            <div className="cmp-cell">
-              <span className="cmp-no">·</span>
-            </div>
-            <div className="cmp-cell cmp-cell-pop">
-              <span className="cmp-no">·</span>
-            </div>
-            <div className="cmp-cell">
-              <span className="cmp-no">·</span>
-            </div>
-            <div className="cmp-cell">
-              <span className="cmp-yes">
-                <Check size={12} />
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* ─── FAQ ─────────────────────────────────────────────────────── */
 
@@ -561,7 +441,7 @@ function FAQv2() {
     ],
     [
       "Are messages billed separately?",
-      "No. Every tier is all-inclusive — unlimited messages, unlimited storage, unlimited API usage.",
+      "No. One plan, all-inclusive — unlimited customers, unlimited messages, unlimited storage, unlimited API usage. No credits, no tokens, no surprise overages.",
     ],
     [
       "What if my volume spikes?",
@@ -573,11 +453,11 @@ function FAQv2() {
     ],
     [
       "Can I cancel?",
-      "Yes — anytime, with 30 days' notice. Setup fee is non-refundable once we go live.",
+      "Yes — anytime, with 30 days' notice. No setup fee to claw back.",
     ],
     [
       "Where is my data stored?",
-      "Default: regional (RUH/DXB) infrastructure. KSA-resident data option available on Enterprise.",
+      "Default: regional (RUH/DXB) infrastructure on a dedicated cloud computer per agent. KSA-resident data option available on request.",
     ],
     [
       "Can I try first?",
@@ -589,7 +469,7 @@ function FAQv2() {
     <section className="section section-dark">
       <div className="container">
         <SectionMeta
-          idx="05"
+          idx="04"
           label="questions"
           right={<span className="mono">or text us · WhatsApp</span>}
         />
@@ -659,7 +539,6 @@ export default function PricingPage() {
       <Tiers />
       <BreakdownAnatomy />
       <ROICalculator />
-      <CompareMatrix />
       <FAQv2 />
       <PricingCTA />
     </SubShell>
