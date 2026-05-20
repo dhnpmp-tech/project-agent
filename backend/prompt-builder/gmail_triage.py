@@ -195,6 +195,103 @@ async def _classify_thread(meta: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+# ---------------------------------------------------------------------
+# Connection management — initiate OAuth + check status
+# ---------------------------------------------------------------------
+
+
+async def initiate_gmail_connection(client_id: str, redirect_uri: str) -> dict:
+    """Kick off the Composio Gmail OAuth flow.
+
+    Returns a dict containing the Composio-issued redirectUrl. The
+    dashboard opens this URL in a new tab; the user authorizes Gmail
+    via Google's consent screen, Composio finalizes the connection,
+    and the redirect lands the user back on `redirect_uri`. From there
+    the dashboard can poll /connections/gmail/status to flip the UI to
+    'connected'.
+    """
+    if not _COMPOSIO_KEY:
+        return {"status": "error", "message": "COMPOSIO_API_KEY not set on prompt-builder"}
+    try:
+        async with httpx.AsyncClient(timeout=15) as http:
+            r = await http.post(
+                f"{_COMPOSIO_BASE}/connectedAccounts",
+                headers={
+                    "x-api-key": _COMPOSIO_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "integrationId": "gmail",
+                    "entityId": str(client_id),
+                    "redirectUri": redirect_uri,
+                },
+            )
+            if r.status_code in (200, 201):
+                data = r.json() or {}
+                return {
+                    "status": "pending",
+                    "setup_url": data.get("redirectUrl") or data.get("connectionUrl") or "",
+                    "connection_id": data.get("id", ""),
+                }
+            return {
+                "status": "error",
+                "message": f"composio {r.status_code}",
+                "detail": (r.text or "")[:200],
+            }
+    except Exception as e:
+        return {"status": "error", "message": f"{type(e).__name__}: {str(e)[:200]}"}
+
+
+async def get_gmail_connection_status(client_id: str) -> dict:
+    """Return the live Composio Gmail connection state for one tenant.
+
+    {connected: bool, connection_id: str | None, last_snapshot_date: str | None,
+     last_snapshot_total: int | None}
+    """
+    connected = False
+    connection_id: str | None = None
+    if _COMPOSIO_KEY:
+        try:
+            async with httpx.AsyncClient(timeout=10) as http:
+                r = await http.get(
+                    f"{_COMPOSIO_BASE}/connectedAccounts",
+                    headers={"x-api-key": _COMPOSIO_KEY},
+                    params={
+                        "integration_id": "gmail",
+                        "status": "active",
+                        "entityId": str(client_id),
+                    },
+                )
+                if r.status_code == 200:
+                    items = (r.json() or {}).get("items", [])
+                    if items:
+                        connected = True
+                        connection_id = items[0].get("id")
+        except Exception as e:
+            logger.warning("status check failed: %s", e)
+
+    last_date: str | None = None
+    last_total: int | None = None
+    try:
+        rows = await db.query(
+            "SELECT snapshot_date, total_threads FROM gmail_triage_snapshots WHERE client_id = $1 ORDER BY snapshot_date DESC LIMIT 1",
+            client_id,
+        )
+        if rows:
+            last_date = str(rows[0]["snapshot_date"])
+            last_total = int(rows[0]["total_threads"])
+    except Exception:
+        pass
+
+    return {
+        "connected": connected,
+        "connection_id": connection_id,
+        "last_snapshot_date": last_date,
+        "last_snapshot_total": last_total,
+    }
+
+
 # ---------------------------------------------------------------------
 # Public entry points
 # ---------------------------------------------------------------------

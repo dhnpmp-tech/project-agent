@@ -1204,6 +1204,7 @@ async function generatePlatformDemo(args: {
   persona: AgentPersona | null;
   businessName: string;
   country: "AE" | "SA";
+  category: TeardownCategory;
   groundingBlock: string;
   insight: string;
   gbp: GbpData | null;
@@ -1211,7 +1212,7 @@ async function generatePlatformDemo(args: {
   social_pulse: SocialPulse | null;
   realTargets: RealB2BTarget[];
 }): Promise<PlatformDemo | null> {
-  const { persona, businessName, country, groundingBlock, insight, gbp, reviews, social_pulse, realTargets } = args;
+  const { persona, businessName, country, category, groundingBlock, insight, gbp, reviews, social_pulse, realTargets } = args;
   if (!persona) return null;
 
   const firstName = persona.name.split(/\s+/)[0] || persona.name;
@@ -1262,8 +1263,42 @@ PERSONA YOU ARE DESIGNING THIS DEMO FOR:
           .join("\n\n")
       : "(no real targets — fall back to plausible imagined entities, but say so in the why_fit text)";
 
-  const prompt = `${groundingBlock}
+  // Vertical-aware translation hint. The example shapes inside the
+  // EXACT SHAPE block lean restaurant-flavored ("Usual order",
+  // "bookings tonight"); without this hint the LLM produces stilted
+  // restaurant content for non-restaurant tenants. Each line of the
+  // hint maps a restaurant-shaped concept to the vertical's vocabulary.
+  const verticalHint = (() => {
+    if (category === "real_estate") {
+      return `\nVERTICAL CONTEXT — THIS IS A REAL-ESTATE BROKERAGE, NOT A RESTAURANT:
+Translate every "restaurant" concept in the example shapes below to its real-estate equivalent BEFORE writing:
+  - "Usual order" → "Search profile" (budget, area, bedrooms, family size)
+  - "Allergy" → "Hard constraint" (no high floors, no walk-up, no shared pool, etc.)
+  - "Last visit" → "Last viewing" or "Last enquiry"
+  - "bookings tonight" → "viewings scheduled this week"
+  - "new reviews" → "new Bayut/Property Finder enquiries"
+  - "draft replies" → "draft listing matches"
+  - "Mercato / Boxpark" → real Dubai/Riyadh sub-areas (Saadiyat, JBR, Marina, Downtown, Diplomatic Quarter)
+  - "Hiroshi's new cardamom shisha" → "Emaar's new 2BR off-plan in Creek Harbour"
+  - "table at the terrace" → "south-facing 2BR with study"
+  - "bookings tonight" numbers → "viewings booked / leads created / units shortlisted"
+The persona is a property consultant, not a restaurant host. Speak in the broker's language: leads, viewings, budgets, handover dates, off-plan vs ready, ROI, mortgage pre-approval, RERA compliance.
+`;
+    }
+    if (category === "beauty") {
+      return `\nVERTICAL CONTEXT — THIS IS A SALON / SPA, NOT A RESTAURANT:
+Translate restaurant concepts to beauty-venue equivalents:
+  - "Usual order" → "Usual treatment" or "Preferred therapist"
+  - "Allergy" → "Skin sensitivity / contraindication"
+  - "bookings tonight" → "appointments today"
+  - "Mercato" → real Dubai/Riyadh sub-areas relevant to spa clientele
+`;
+    }
+    return "";
+  })();
 
+  const prompt = `${groundingBlock}
+${verticalHint}
 ${personaSummary}
 
 VERIFIED FACTS:
@@ -2778,6 +2813,7 @@ Output STRICT JSON only:
     persona: agent_persona,
     businessName,
     country,
+    category,
     groundingBlock,
     insight,
     gbp,

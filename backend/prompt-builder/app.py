@@ -6315,3 +6315,46 @@ async def gmail_triage_latest(client_id: str):
             {"error": "fetch_failed", "detail": str(e)[:200]},
             status_code=500,
         )
+
+
+# ── Gmail connection management endpoints ──────────────────────────
+#
+# Surfaces the Composio Gmail OAuth init flow + a live status check.
+# The dashboard /integrations/gmail page calls these two endpoints to
+# render either a "Connect Gmail" CTA (when disconnected) or a
+# "Connected · last triage X" status pill (when active).
+
+
+class GmailConnectBody(BaseModel):
+    redirect_uri: str  # where Composio sends the user after OAuth
+
+
+@app.post("/connections/gmail/initiate/{client_id}")
+async def connections_gmail_initiate(client_id: str, body: GmailConnectBody):
+    """Kick off the Composio Gmail OAuth flow for one tenant.
+
+    The dashboard opens the returned setup_url in a new tab. The user
+    authorizes Gmail; Composio finalizes; the dashboard polls the
+    status endpoint until connected=true.
+    """
+    try:
+        from gmail_triage import initiate_gmail_connection
+        return await initiate_gmail_connection(client_id, body.redirect_uri)
+    except Exception as e:
+        return JSONResponse(
+            {"status": "error", "message": str(e)[:200]},
+            status_code=500,
+        )
+
+
+@app.get("/connections/gmail/status/{client_id}")
+async def connections_gmail_status(client_id: str):
+    """Live status: connected? when did the last triage run?"""
+    try:
+        from gmail_triage import get_gmail_connection_status
+        return await get_gmail_connection_status(client_id)
+    except Exception as e:
+        return JSONResponse(
+            {"connected": False, "error": str(e)[:200]},
+            status_code=500,
+        )
