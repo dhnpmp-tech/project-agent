@@ -27,6 +27,12 @@ export const runtime = "nodejs";
 // even on slow MiniMax days.
 export const maxDuration = 240;
 
+// Verticals the teardown supports. The category drives schema audits,
+// B2B prospect categories, persona templates, and section copy. To add
+// a new vertical: extend this union, then update inferCategory(),
+// CRITICAL_SCHEMA, B2B_CATEGORIES_BY_VERTICAL, and the persona prompt.
+type TeardownCategory = "restaurant" | "beauty" | "real_estate" | "default";
+
 // n8n.dcp.sa is the legacy proxy (only /webhook/* still routes through it);
 // the actual prompt-builder runs at 76.13.179.86:8200. Vercel sets
 // PROMPT_BUILDER_URL in production. api.dcp.sa is DCP GPU inference — not us.
@@ -651,7 +657,31 @@ function inferCountry(url: string, hint: TeardownBody["country"]): "AE" | "SA" {
 // over the business description + services. We route to "default" when
 // nothing matches — verify-listings still returns Google Business Profile
 // for the default category.
-function inferCategory(crawl: CrawlResult): "restaurant" | "beauty" | "default" {
+function inferCategory(crawl: CrawlResult, url?: string): TeardownCategory {
+  // URL hostname is the strongest signal — Bayut / Property Finder /
+  // Dubizzle-property aliases are unambiguous real-estate sources.
+  // Check this first so a broker pasting their Bayut profile URL gets
+  // the real-estate flavor even when crawl content is sparse.
+  if (url) {
+    const host = (() => {
+      try {
+        return new URL(url).hostname.toLowerCase();
+      } catch {
+        return "";
+      }
+    })();
+    if (
+      host.includes("bayut.com") ||
+      host.includes("propertyfinder.ae") ||
+      host.includes("propertyfinder.sa") ||
+      host.includes("dubizzle.com/property") ||
+      host.includes("propspace") ||
+      host.endsWith(".realtor.ae")
+    ) {
+      return "real_estate";
+    }
+  }
+
   const blob = [
     crawl.businessDescription || "",
     (crawl.services || []).join(" "),
@@ -668,6 +698,16 @@ function inferCategory(crawl: CrawlResult): "restaurant" | "beauty" | "default" 
     "barber", "wellness", "esthetic", "aesthetic", "makeup", "lashes",
     "skincare", "treatment", "manicure", "pedicure",
   ].filter((kw) => blob.includes(kw)).length;
+  const realEstateHits = [
+    "real estate", "realestate", "property", "properties", "apartment",
+    "villa", "townhouse", "off-plan", "off plan", "rera", "broker",
+    "listings", "bedroom", "studio", "penthouse", "freehold",
+    "leasehold", "viewing", "mortgage", "developer", "handover",
+    "saadiyat", "jbr", "marina", "downtown dubai", "palm jumeirah",
+  ].filter((kw) => blob.includes(kw)).length;
+  if (realEstateHits >= 2 && realEstateHits >= restaurantHits && realEstateHits >= beautyHits) {
+    return "real_estate";
+  }
   if (restaurantHits >= 2 && restaurantHits >= beautyHits) return "restaurant";
   if (beautyHits >= 2) return "beauty";
   return "default";
@@ -680,15 +720,20 @@ function inferCategory(crawl: CrawlResult): "restaurant" | "beauty" | "default" 
 // surfaces these as "you have X, you're missing Y" — purely measured,
 // no LLM hallucination. We don't need every Schema.org type, just the
 // ones that materially affect SERP rich results for SMBs.
-const CRITICAL_SCHEMA: Record<"restaurant" | "beauty" | "default", string[]> = {
+const CRITICAL_SCHEMA: Record<TeardownCategory, string[]> = {
   restaurant: ["Restaurant", "LocalBusiness", "Menu", "MenuItem", "FAQPage", "Review", "AggregateRating", "OpeningHoursSpecification"],
   beauty: ["LocalBusiness", "HealthAndBeautyBusiness", "Service", "FAQPage", "Review", "AggregateRating", "OpeningHoursSpecification"],
+  // Real-estate agencies need schema for the inventory (RealEstateListing /
+  // Apartment / SingleFamilyResidence) AND the agency itself (RealEstateAgent).
+  // Most boutique UAE brokers have zero schema — fixing this unlocks Google
+  // map cards and the "properties for sale near X" carousel.
+  real_estate: ["RealEstateAgent", "RealEstateListing", "Apartment", "SingleFamilyResidence", "LocalBusiness", "FAQPage", "Review", "AggregateRating"],
   default: ["LocalBusiness", "Organization", "Service", "FAQPage", "Review", "AggregateRating"],
 };
 
 function buildSchemaAudit(
   schemaTypes: string[],
-  category: "restaurant" | "beauty" | "default",
+  category: TeardownCategory,
   businessName: string,
 ): SchemaAudit {
   const present = schemaTypes.slice(0, 12);
@@ -706,15 +751,35 @@ function buildSchemaAudit(
 
   if (presentCount === 0) {
     ai_take = `${businessName} has zero Schema.org markup on the home page. Google can't surface rich results for you — your search snippet is plain text while competitors get stars, prices, and FAQ snippets.`;
-    recommendation = `This week: add a single ${category === "restaurant" ? "Restaurant" : "LocalBusiness"} schema block to your home page <head>. Free, takes 20 minutes, instant SERP improvement.`;
+    recommendation = `This week: add a single ${
+      category === "restaurant"
+        ? "Restaurant"
+        : category === "real_estate"
+          ? "RealEstateAgent"
+          : "LocalBusiness"
+    } schema block to your home page <head>. Free, takes 20 minutes, instant SERP improvement.`;
     automation = `Your agent will: emit + maintain the full ${want.join(", ")} schema graph nightly, keep it in sync with menu/hours/reviews.`;
   } else if (missingCount === 0) {
-    ai_take = `Schema.org is fully covered (${present.join(", ")}). You're set up for every relevant rich snippet — most ${category}s in the UAE/KSA don't have this.`;
+    {
+      const peerLabel =
+        category === "restaurant"
+          ? "restaurants"
+          : category === "beauty"
+            ? "salons"
+            : category === "real_estate"
+              ? "brokerages"
+              : "businesses";
+      ai_take = `Schema.org is fully covered (${present.join(", ")}). You're set up for every relevant rich snippet — most ${peerLabel} in the UAE/KSA don't have this.`;
+    }
     recommendation = `Run a Google Rich Results Test on your home page to confirm Google sees all entities cleanly.`;
     automation = `Your agent will: keep schema fresh as menu/hours/reviews change, monitor Search Console for schema warnings.`;
   } else {
     const top3Missing = missing_critical.slice(0, 3).join(", ");
-    ai_take = `You have ${presentCount} schema entit${presentCount === 1 ? "y" : "ies"} (${present.slice(0, 3).join(", ")}${presentCount > 3 ? "…" : ""}) but you're missing ${missingCount} that drive ${category} rich results: ${top3Missing}.`;
+    {
+      const categoryLabel =
+        category === "real_estate" ? "real-estate" : category;
+      ai_take = `You have ${presentCount} schema entit${presentCount === 1 ? "y" : "ies"} (${present.slice(0, 3).join(", ")}${presentCount > 3 ? "…" : ""}) but you're missing ${missingCount} that drive ${categoryLabel} rich results: ${top3Missing}.`;
+    }
     recommendation = `This week: add ${top3Missing} schema to your home page. Each missing block costs you a SERP feature your competitors with the same markup are winning.`;
     automation = `Your agent will: write the missing ${top3Missing} schema blocks for you (grounded in your current menu/hours/reviews), test against Google Rich Results, monitor for breakage.`;
   }
@@ -1036,7 +1101,7 @@ async function discoverRealB2BTargets(args: {
   persona: AgentPersona;
   businessName: string;
   country: "AE" | "SA";
-  category: "restaurant" | "beauty" | "default";
+  category: TeardownCategory;
 }): Promise<RealB2BTarget[]> {
   const { persona, businessName, country, category } = args;
   const city = country === "AE" ? "Dubai" : "Riyadh";
@@ -1045,18 +1110,24 @@ async function discoverRealB2BTargets(args: {
       ? "restaurant / lounge / venue"
       : category === "beauty"
         ? "salon / spa / beauty venue"
-        : "consumer venue";
+        : category === "real_estate"
+          ? "real-estate brokerage / agency"
+          : "consumer venue";
 
-  // Step 1 — LLM picks the categories.
-  const catPrompt = `BUSINESS: ${businessName} — a ${businessType} in ${city}.
-PERSONA WHO WILL DO THE OUTREACH:
-- Name: ${persona.name}
-- Origin: ${persona.origin}
-- Backstory: ${persona.backstory}
+  // Step 1 — LLM picks the categories. Examples are vertical-tuned so
+  // the model anchors on the right outreach type (events vs leads vs
+  // listings) instead of producing generic "marketing agencies".
+  const realEstateExamples = `Good examples for a real-estate agency:
+- "Saadiyat relocation consultant" (not "relocation services")
+- "Dubai expat Facebook admin" (not "social media")
+- "DIFC private banker" (not "banks")
+- "Mortgage broker boutique" (not "mortgages")
+- "UAE family-office relocation advisor" (not "wealth management")
+- "luxury interior design studio" (not "interior design")
+- "Dubai HR rep for new hires" (not "HR")
+- "international school admissions officer" (not "schools")`;
 
-TASK: List 6-8 specific TYPES of B2B targets in ${city} this business should be reaching out to for group bookings, events, or partnerships. Be CONCRETE — name the kind of organisation in 2-4 words. NOT a generic category.
-
-Good examples:
+  const consumerExamples = `Good examples:
 - "Japanese cultural club" (not "cultural clubs")
 - "Marina 5-star hotel concierge" (not "hotels")
 - "Dubai corporate event planner" (not "event planners")
@@ -1064,7 +1135,22 @@ Good examples:
 - "private banking concierge" (not "banks")
 - "food creator agency" (not "creators")
 - "tech startup CEO breakfast" (not "tech")
-- "expat women community" (not "expats")
+- "expat women community" (not "expats")`;
+
+  const examplesBlock = category === "real_estate" ? realEstateExamples : consumerExamples;
+  const outreachIntent = category === "real_estate"
+    ? "lead-source partnerships, referral channels, and recurring listing-distribution relationships"
+    : "group bookings, events, or partnerships";
+
+  const catPrompt = `BUSINESS: ${businessName} — a ${businessType} in ${city}.
+PERSONA WHO WILL DO THE OUTREACH:
+- Name: ${persona.name}
+- Origin: ${persona.origin}
+- Backstory: ${persona.backstory}
+
+TASK: List 6-8 specific TYPES of B2B targets in ${city} this business should be reaching out to for ${outreachIntent}. Be CONCRETE — name the kind of organisation in 2-4 words. NOT a generic category.
+
+${examplesBlock}
 
 Output ONLY a JSON array of strings. No preamble. Max 8.`;
 
@@ -1516,7 +1602,7 @@ async function fetchSocialPulse(
   businessName: string,
   socialProfiles: Record<string, string> | undefined,
   country: "AE" | "SA",
-  category: "restaurant" | "beauty" | "default",
+  category: TeardownCategory,
 ): Promise<SocialPulse | null> {
   // TikTok queries return name-collision noise (e.g. a fragrance brand
   // named "Arabian Tea House" floods results for the Dubai restaurant).
@@ -1524,8 +1610,14 @@ async function fetchSocialPulse(
   const filterKeywords: string[] = [
     country === "AE" ? "dubai" : "riyadh",
     country === "AE" ? "uae" : "saudi",
-    category === "restaurant" ? "restaurant" : category === "beauty" ? "salon" : "",
-    category === "restaurant" ? "food" : "",
+    category === "restaurant"
+      ? "restaurant"
+      : category === "beauty"
+        ? "salon"
+        : category === "real_estate"
+          ? "property"
+          : "",
+    category === "restaurant" ? "food" : category === "real_estate" ? "real estate" : "",
   ].filter(Boolean);
 
   try {
@@ -1744,7 +1836,7 @@ async function discoverInstagramHandle(
 
 async function fetchCompetitors(
   gbp: GbpData,
-  category: "restaurant" | "beauty" | "default",
+  category: TeardownCategory,
   corpus: string,
   businessName: string,
   country: "AE" | "SA",
@@ -1753,6 +1845,7 @@ async function fetchCompetitors(
 
   const placeType = category === "restaurant" ? "restaurant"
     : category === "beauty" ? "beauty_salon"
+    : category === "real_estate" ? "real_estate_agency"
     : undefined;
 
   try {
@@ -1780,7 +1873,9 @@ async function fetchCompetitors(
       .map((c, i) => `${i + 1}. ${c.name} — rating ${c.rating ?? "?"} (${c.user_ratings_total ?? 0} reviews)${c.price_level != null ? ` · price ${c.price_level}` : ""}${c.address ? ` · ${c.address}` : ""}`)
       .join("\n");
 
-    const prompt = `You are advising ${businessName} (a ${country === "AE" ? "UAE" : "Saudi"} ${category}) on how they stack up against nearby competitors.
+    const categoryLabel =
+      category === "real_estate" ? "real-estate agency" : category;
+    const prompt = `You are advising ${businessName} (a ${country === "AE" ? "UAE" : "Saudi"} ${categoryLabel}) on how they stack up against nearby competitors.
 
 YOUR BUSINESS (from website):
 ${corpus.slice(0, 4000)}
@@ -2107,7 +2202,7 @@ function computeBadges(
 async function fetchDirectoryStrategy(
   businessName: string,
   country: "AE" | "SA",
-  category: "restaurant" | "beauty" | "default",
+  category: TeardownCategory,
   businessContext: string,
 ): Promise<DirectoryStrategy | null> {
   try {
@@ -2308,7 +2403,7 @@ export async function POST(req: NextRequest) {
   }
   const context = buildContext(crawl, businessName, country);
   const corpus = buildFullCorpus(crawl);
-  const category = inferCategory(crawl);
+  const category = inferCategory(crawl, url);
 
   // The grounding block — every task gets the real page text + structured
   // metadata, with explicit instructions to cite evidence and not invent.
