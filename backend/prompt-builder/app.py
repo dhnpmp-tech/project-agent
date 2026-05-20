@@ -6243,3 +6243,75 @@ async def customer_memory_refresh_all():
             {"error": "analyzer_failed", "detail": str(e)[:200]},
             status_code=500,
         )
+
+
+# ── Gmail triage endpoints ────────────────────────────────────────
+#
+# Reads the tenant's existing Gmail inbox via Composio, classifies
+# threads into a small fixed bucket vocabulary, drafts replies for the
+# urgent / hot-lead categories. Returns a daily snapshot the 9am owner
+# brief folds in. See gmail_triage.py for the bucket calibration.
+#
+# Pre-req per tenant: a connected Composio Gmail account. Without it
+# these endpoints return {"status": "no_connection"} cleanly.
+
+
+@app.post("/gmail-triage/run/{client_id}")
+async def gmail_triage_run(client_id: str):
+    """Run triage for one tenant. Synchronous — typically 5-15s."""
+    try:
+        from gmail_triage import triage_for_client
+        result = await triage_for_client(client_id)
+        return result
+    except Exception as e:
+        return JSONResponse(
+            {"error": "triage_failed", "detail": str(e)[:200]},
+            status_code=500,
+        )
+
+
+@app.post("/gmail-triage/run-all")
+async def gmail_triage_run_all():
+    """Cron entry point. Walks every active tenant with a Gmail connection."""
+    try:
+        from gmail_triage import run_for_active_tenants
+        return await run_for_active_tenants()
+    except Exception as e:
+        return JSONResponse(
+            {"error": "triage_failed", "detail": str(e)[:200]},
+            status_code=500,
+        )
+
+
+@app.get("/gmail-triage/latest/{client_id}")
+async def gmail_triage_latest(client_id: str):
+    """Read the most recent triage snapshot for a tenant. Used by the
+    daily brief + the dashboard email-triage card."""
+    try:
+        from database import db
+        rows = await db.query(
+            """
+            SELECT snapshot_date, total_threads, bucket_counts, items
+            FROM gmail_triage_snapshots
+            WHERE client_id = $1
+            ORDER BY snapshot_date DESC
+            LIMIT 1
+            """,
+            client_id,
+        )
+        if not rows:
+            return {"status": "no_snapshot", "client_id": client_id}
+        row = rows[0]
+        return {
+            "status": "ok",
+            "client_id": client_id,
+            "snapshot_date": str(row["snapshot_date"]),
+            "total_threads": row["total_threads"],
+            "bucket_counts": row["bucket_counts"],
+            "items": row["items"],
+        }
+    except Exception as e:
+        return JSONResponse(
+            {"error": "fetch_failed", "detail": str(e)[:200]},
+            status_code=500,
+        )
