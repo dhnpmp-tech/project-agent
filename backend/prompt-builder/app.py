@@ -6358,3 +6358,152 @@ async def connections_gmail_status(client_id: str):
             {"connected": False, "error": str(e)[:200]},
             status_code=500,
         )
+
+
+
+
+# ── Property scraper endpoints ────────────────────────────────────
+#
+# Async multi-source aggregation, SSE streaming, normalized
+# scraped_listings persistence. Default source = "dld_public" (Dubai
+# Land Department open data). Adding new sources is a module drop-in
+# under backend/prompt-builder/property_scrapers/ + an entry in the
+# REGISTRY there.
+#
+# Governance: every persisted row carries an `authorization` field
+# tagging where the data came from and on what legal basis. Public-
+# record sources are unrestricted; broker-authorized + partner-api
+# sources require a matching upload-or-contract record before the
+# orchestrator will run them.
+
+
+class ScrapeRequestBody(BaseModel):
+    source: str = "dld_public"
+    city: Optional[str] = None
+    area: Optional[str] = None
+    min_price_aed: Optional[float] = None
+    max_price_aed: Optional[float] = None
+    bedrooms: Optional[int] = None
+    property_type: Optional[str] = None
+    transaction_type: Optional[str] = None
+    limit: int = 50
+    persist: bool = True
+
+
+@app.get("/properties/sources")
+async def properties_sources():
+    """List registered scrapers and their authorization level."""
+    try:
+        from property_scrapers import available_sources
+        return {"sources": available_sources()}
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+
+@app.post("/properties/scrape")
+async def properties_scrape(body: ScrapeRequestBody):
+    """Run one scraper, return all results, optionally persist them."""
+    try:
+        from property_scrapers import fetch_one, ScrapeQuery, REGISTRY
+        from database import db
+        import json as _json
+
+        if body.source not in REGISTRY:
+            return JSONResponse(
+                {"error": f"unknown source: {body.source}",
+                 "available": list(REGISTRY.keys())},
+                status_code=400,
+            )
+
+        query = ScrapeQuery(
+            city=body.city,
+            area=body.area,
+            min_price_aed=body.min_price_aed,
+            max_price_aed=body.max_price_aed,
+            bedrooms=body.bedrooms,
+            property_type=body.property_type,
+            transaction_type=body.transaction_type,
+            limit=body.limit,
+        )
+
+        results = []
+        persisted = 0
+        async for rec in fetch_one(body.source, query):
+            results.append(rec.model_dump(mode="json"))
+            if body.persist:
+                try:
+                    await db.query(
+                        """
+                        INSERT INTO scraped_listings (
+                          source, source_url, source_id, authorization,
+                          title, price_aed, price_per_sqft, area, city, emirate,
+                          bedrooms, bathrooms, sqft, property_type, transaction_type,
+                          latitude, longitude, agent_name, agent_company, agent_phone, agent_email,
+                          amenities, images, raw, listed_at
+                        ) VALUES (
+                          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+                          $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,
+                          $22,$23,$24::jsonb,$25
+                        )
+                        ON CONFLICT (source, source_id) WHERE source_id IS NOT NULL
+                        DO UPDATE SET
+                          price_aed = EXCLUDED.price_aed,
+                          raw = EXCLUDED.raw,
+                          updated_at = NOW()
+                        """,
+                        rec.source, rec.source_url, rec.source_id, rec.authorization,
+                        rec.title, rec.price_aed, rec.price_per_sqft, rec.area, rec.city, rec.emirate,
+                        rec.bedrooms, rec.bathrooms, rec.sqft, rec.property_type, rec.transaction_type,
+                        rec.latitude, rec.longitude, rec.agent_name, rec.agent_company,
+                        rec.agent_phone, rec.agent_email,
+                        rec.amenities, rec.images, _json.dumps(rec.raw), rec.listed_at,
+                    )
+                    persisted += 1
+                except Exception as e:
+                    logging.getLogger("properties").warning("persist failed: %s", e)
+
+        return {"source": body.source, "count": len(results), "persisted": persisted, "results": results}
+    except Exception as e:
+        return JSONResponse(
+            {"error": "scrape_failed", "detail": str(e)[:300]},
+            status_code=500,
+        )
+
+
+@app.get("/properties/stream")
+async def properties_stream(
+    sources: str = "all",
+    city: Optional[str] = None,
+    area: Optional[str] = None,
+    bedrooms: Optional[int] = None,
+    property_type: Optional[str] = None,
+    limit: int = 50,
+):
+    """SSE stream — fan out to every registered scraper, emit each
+    record as a server-sent event as it arrives. Used by the dashboard
+    real-estate-matching UI so the broker sees results live."""
+    from fastapi.responses import StreamingResponse
+    from property_scrapers import fetch_all, ScrapeQuery
+    import json as _json
+
+    query = ScrapeQuery(
+        city=city,
+        area=area,
+        bedrooms=bedrooms,
+        property_type=property_type,
+        limit=limit,
+    )
+
+    async def event_stream():
+        yield f"event: start\ndata: {_json.dumps({'sources': sources, 'query': query.model_dump(mode='json')})}\n\n"
+        try:
+            count = 0
+            async for source, rec in fetch_all(query):
+                count += 1
+                payload = {"source": source, "record": rec.model_dump(mode="json")}
+                yield f"event: listing\ndata: {_json.dumps(payload, default=str)}\n\n"
+            yield f"event: end\ndata: {_json.dumps({'count': count})}\n\n"
+        except Exception as e:
+            yield f"event: error\ndata: {_json.dumps({'error': str(e)[:200]})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
