@@ -933,6 +933,65 @@ async def generate_morning_brief(client_id: str) -> str:
 
 
 # ═══════════════════════════════════════════════════════
+# CONVERSATIONAL HELPERS — used by status/brief intent branches
+# ═══════════════════════════════════════════════════════
+
+async def _last_brief_line(client_id: str, lang: str) -> str:
+    """One-sentence summary of when the last brief landed. Returns '' on miss
+    so the caller can concatenate without an awkward dangling space.
+    """
+    try:
+        from zoneinfo import ZoneInfo
+        async with supa.client(timeout=5) as http:
+            r = await http.get(
+                f"{_SUPA_URL}/rest/v1/owner_briefings"
+                f"?client_id=eq.{client_id}"
+                f"&order=sent_at.desc"
+                f"&limit=1"
+                f"&select=sent_at,local_date",
+                headers=_SUPA_HEADERS,
+            )
+        rows = r.json() if r.status_code == 200 else []
+        if not rows:
+            return ""
+        sent_at = rows[0].get("sent_at")
+        if not sent_at:
+            return ""
+        dt = datetime.fromisoformat(sent_at.replace("Z", "+00:00"))
+        local = dt.astimezone(ZoneInfo("Asia/Dubai"))
+        hhmm = local.strftime("%-I:%M %p") if os.name != "nt" else local.strftime("%I:%M %p").lstrip("0")
+        today_local = datetime.now(ZoneInfo("Asia/Dubai")).date()
+        is_today = local.date() == today_local
+        if lang == "ar":
+            when = "اليوم" if is_today else local.strftime("%A")
+            return f"آخر موجز أرسلته الساعة {hhmm} {when}."
+        when = "today" if is_today else local.strftime("%A")
+        return f"Last brief went out at {hhmm} {when}."
+    except Exception:
+        return ""
+
+
+async def _last_brief_body(client_id: str) -> str:
+    """Return the most recent brief body verbatim, or '' if none on record."""
+    try:
+        async with supa.client(timeout=5) as http:
+            r = await http.get(
+                f"{_SUPA_URL}/rest/v1/owner_briefings"
+                f"?client_id=eq.{client_id}"
+                f"&order=sent_at.desc"
+                f"&limit=1"
+                f"&select=body",
+                headers=_SUPA_HEADERS,
+            )
+        rows = r.json() if r.status_code == 200 else []
+        if not rows:
+            return ""
+        return rows[0].get("body") or ""
+    except Exception:
+        return ""
+
+
+# ═══════════════════════════════════════════════════════
 # NATURAL LANGUAGE COMMANDS (v2 — with idempotency)
 # ═══════════════════════════════════════════════════════
 
@@ -1109,34 +1168,101 @@ async def process_owner_command(client_id: str, command: str) -> str:
                 return f"✅ تم نشر ردك المعدل"
             return f"✅ Your edited response posted"
 
-    # Interpret the command via the inference router. Goes to MiniMax M2.7
+    # ── Status check ──
+    # Owner is asking "are you working / alive / there". Reply conversationally
+    # with the last brief timestamp so they know the cron is healthy.
+    if any(kw in cmd_lower for kw in [
+        "are you working", "are you alive", "are you there", "are you online",
+        "you working", "you alive", "you there", "you online", "you up",
+        "still there", "still working", "still alive", "you ok",
+        "هل تعمل", "هل أنت هنا", "أنت موجود", "شغال",
+    ]):
+        last = await _last_brief_line(client_id, lang)
+        if lang == "ar":
+            return f"نعم — أنا أعمل. {last} في ايش أقدر أساعدك؟".strip()
+        return f"Yes — I'm working. {last} What can I help with?".strip()
+
+    # ── Brief check / resend ──
+    if any(kw in cmd_lower for kw in [
+        "today's brief", "todays brief", "the brief", "show brief", "resend brief",
+        "did you send the brief", "send brief",
+        "وش الموجز", "أرسلت الموجز", "أعد الموجز",
+    ]):
+        body = await _last_brief_body(client_id)
+        if body:
+            return body
+        if lang == "ar":
+            return "ما عندي موجز محفوظ لليوم. سأرسل التالي حسب جدولك."
+        return "No brief on record for today yet — next one ships on schedule."
+
+    # ── Chitchat / acknowledgments ──
+    _CHITCHAT_TOKENS = {
+        "hi", "hello", "hey", "yo", "sup", "ok", "okay", "k", "kk", "👍", "🙏",
+        "thanks", "thank you", "thx", "ty", "great", "good", "nice", "perfect",
+        "morning", "good morning", "good evening", "good night",
+        "مرحبا", "أهلا", "السلام عليكم", "شكرا", "شكراً", "تمام", "حسنا", "ممتاز", "زين",
+    }
+    if cmd_lower in _CHITCHAT_TOKENS or any(
+        cmd_lower.startswith(t + " ") or cmd_lower.startswith(t + "!") or cmd_lower.startswith(t + ".")
+        for t in ["hi", "hey", "hello", "thanks", "thank", "ok", "morning"]
+    ):
+        if lang == "ar":
+            return "أهلاً! أنا هنا متى ما احتجتني."
+        return "Hey — I'm here whenever you need me."
+
+    # Interpret the message via the inference router. Goes to MiniMax M2.7
     # by default for the "owner_brain" role; flipping to Claude Haiku for
     # cost in the future is a one-line config change in inference.ROUTING.
+    #
+    # The prompt classifies into update / query / chitchat / unknown so that
+    # natural questions like "how many bookings today?" don't hit the
+    # business-update parser and return a confused "command was provided" reply.
+    lang_label = "Arabic" if lang == "ar" else "English"
     try:
         content = await inference.chat(
             "owner_brain",
             [
-                {"role": "system", "content": f"""You are a business management assistant. The owner sent a command to update their business. Interpret the command and output ONLY a JSON object.
+                {"role": "system", "content": f"""You are the owner's AI teammate — a warm, capable colleague, NOT a command parser. The owner just messaged you. First classify intent, then respond.
 
-Commands can be:
-- Update price: {{"action": "update_price", "item": "item name", "new_price": "price"}}
-- Add special: {{"action": "add_special", "name": "dish name", "price": "price", "description": "desc"}}
-- Remove item: {{"action": "remove_item", "item": "item name"}}
-- Update hours: {{"action": "update_hours", "new_hours": "hours string"}}
-- Update info: {{"action": "update_info", "field": "field name", "value": "new value"}}
-- Unknown: {{"action": "unknown", "message": "what you understood"}}
+Intents:
+- "update": owner wants to change business data (price, special, hours, info)
+- "query": owner asks for information ("how many bookings?", "today's revenue?", "who's at risk?")
+- "chitchat": greeting, thanks, casual remark
+- "unknown": unclear what they want
+
+Output a JSON object.
+
+If intent is "update", output:
+{{"intent": "update", "action": "update_price"|"add_special"|"remove_item"|"update_hours"|"update_info", "item": "...", "new_price": "...", "name": "...", "price": "...", "description": "...", "new_hours": "...", "field": "...", "value": "..."}}
+(only include fields relevant to the action)
+
+If intent is "query", "chitchat", or "unknown", output:
+{{"intent": "query"|"chitchat"|"unknown", "response": "a natural reply in {lang_label}, under 2 sentences"}}
+
+Rules for the "response" field:
+- Sound like a teammate, never like a system
+- NEVER say "command was provided" or "be more specific"
+- For queries you can't answer directly, suggest the right command (e.g. "Try 'bookings' to see today's covers")
+- For unknown, ask a friendly follow-up that helps them tell you what they need
+- Always brief, never robotic
 
 Output ONLY the JSON."""},
                 {"role": "user", "content": command},
             ],
-            max_tokens=200,
+            max_tokens=400,
         )
 
         json_match = re.search(r'\{[\s\S]*\}', content)
         if json_match:
             parsed = json.loads(json_match.group())
         else:
-            return f"Could not understand: {command}" if lang == "en" else f"ما فهمت الأمر: {command}"
+            if lang == "ar":
+                return "ما فهمت بالضبط — ممكن تقولي ايش تحتاج؟"
+            return "I didn't quite catch that — what did you want to do?"
+
+        # Conversational intents return a natural-language response directly.
+        if parsed.get("response") and parsed.get("intent") in ("query", "chitchat", "unknown"):
+            return parsed["response"]
     except Exception as e:
         return f"Error: {e}"
 
@@ -1187,8 +1313,13 @@ Output ONLY the JSON."""},
         result = f"✅ Updated {field}: {value}" if lang == "en" else f"✅ تم تحديث {field}: {value}"
 
     else:
-        msg = parsed.get("message", command)
-        result = f"🤔 Understood: {msg}. Can you be more specific?" if lang == "en" else f"🤔 فهمت: {msg}. ممكن توضح أكثر؟"
+        # Fallback when the LLM returns an action we don't dispatch. Reply
+        # naturally instead of the old "command was provided" robot voice —
+        # if we got here without a "response" field, prompt them warmly.
+        if lang == "ar":
+            result = "ما فهمت بالضبط — ممكن تقولي ايش تحتاج؟ جرب /help"
+        else:
+            result = "I didn't quite catch that — what did you want to do? Try /help for what I can do."
 
     # ── Store for idempotency ──
     if client_id not in _recent_commands:

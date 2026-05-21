@@ -2191,6 +2191,34 @@ async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
                                 "text": {"body": command_result[:4000]},
                             },
                         )
+
+                    # ── Voice reply for the owner ──
+                    # Mirror the daily-brief pattern: synthesize the same reply
+                    # via Supertonic and send as a WhatsApp voice note. Failure
+                    # here NEVER blocks the text reply (which has already been
+                    # sent above). Mirrors owner_brief_fanout.py:265+.
+                    try:
+                        from tts import synthesize as _tts_synth
+                        from voice import send_voice_note as _send_voice_note
+
+                        # Strip emojis/markdown only — TTS sanitizer handles
+                        # variation selectors etc. internally.
+                        audio_text = (command_result or "").strip()[:1800]
+                        if audio_text and phone_number_id:
+                            arabic_chars = len(re.findall(r'[\u0600-\u06FF]', audio_text))
+                            lang_for_voice = "ar" if arabic_chars > len(re.findall(r'[a-zA-Z]', audio_text)) else "en"
+                            tts_result = await _tts_synth(
+                                text=audio_text,
+                                lang=lang_for_voice,
+                                voice="F1",
+                                format="ogg",
+                            )
+                            await _send_voice_note(
+                                phone_number_id, phone, tts_result["audio_bytes"]
+                            )
+                    except Exception as _ve:
+                        _logger.warning(f"[webhook] owner voice reply failed (text sent): {_ve}")
+
                     return {"status": "ok", "note": "owner command handled"}
             except Exception as e:
                 _logger.exception(f"[webhook] process_owner_command failed: {e}")
