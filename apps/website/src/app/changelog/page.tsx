@@ -28,6 +28,55 @@ interface ShipEntry {
 
 const SHIP_LOG: ShipEntry[] = [
   {
+    date: "2026-05-20",
+    tag: "feat",
+    title: "Property-scraper showcase + DLD public data ingester",
+    body: "Pluggable real-estate scraping service. Pydantic ListingRecord schema, async fan-out registry, SSE streaming, per-row auth_basis governance. First registered source: Dubai Land Department open data. Bayut + Property Finder slots documented as future partnership work — not shipped without explicit data-feed authorization.",
+    commit: "9ec1622",
+  },
+  {
+    date: "2026-05-20",
+    tag: "feat",
+    title: "Real-estate vertical teardown + Gmail OAuth dashboard",
+    body: "Teardown now detects Bayut / Property Finder / Dubizzle Property URLs and produces broker-shaped audits (search profile, viewings, RERA schema, mortgage). New /dashboard/integrations/gmail OAuth page unblocks the Gmail-triage cron.",
+    commit: "149fefb",
+  },
+  {
+    date: "2026-05-20",
+    tag: "feat",
+    title: "Gmail triage wired into the owner brief + DAQ",
+    body: "9am brief now folds in '📧 Email queue: N urgent · M hot leads'. Hot-lead threads with needs_reply auto-queue email_reply_draft rows in the daily action queue — owner approves via WhatsApp letter codes.",
+    commit: "9ab6cd3",
+  },
+  {
+    date: "2026-05-20",
+    tag: "feat",
+    title: "Composio Gmail triage agent",
+    body: "Reads the tenant's existing Gmail every morning, classifies threads into 8 buckets (urgent / hot lead / supplier / receipt / etc.). FastAPI endpoints + cron + migration. Cost ~$0.18/month/tenant.",
+    commit: "48eadb0",
+  },
+  {
+    date: "2026-05-19",
+    tag: "feat",
+    title: "Real-estate teardown scaffold",
+    body: "TeardownCategory union with real_estate first-class. URL detection for Bayut, Property Finder, Dubizzle Property, Propspace, .realtor.ae. RealEstateAgent + RealEstateListing schema audit. Broker-tuned B2B prompt examples.",
+    commit: "13b13a7",
+  },
+  {
+    date: "2026-05-19",
+    tag: "ux",
+    title: "Pricing collapsed to one offer · AED 5K/mo + AED 3.5K setup",
+    body: "No tiers, no friction. Cost-comparison panel anchored against verified UAE salary medians (GulfTalent, Indeed, PayScale). Founding-customer rate AED 2.5K/mo for case-study trade.",
+    commit: "e02ee62",
+  },
+  {
+    date: "2026-05-19",
+    tag: "feat",
+    title: "WhatsApp-native hero · /vs/chatbase · /changelog · sticky CTA",
+    body: "Hero rewritten to lead with the structural wedges (WhatsApp-native, Arabic-first, done-for-you). New comparison page targeting the chatbase-alternative long tail. Public ship-log page. Floating WhatsApp-demo CTA on every page.",
+    commit: "f047577",
+  },
+  {
     date: "2026-05-19",
     tag: "feat",
     title: "Customer-memory wired to brief segmentation",
