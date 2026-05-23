@@ -62,7 +62,7 @@ Two onboarding paths (see spec §1):
 |-------|-----------|
 | Frontend (dashboard) | Next.js 15 + React 19 + Tailwind CSS 3.4 |
 | Frontend (website) | Next.js 15 + Framer Motion + dark theme |
-| Database | Self-hosted PostgreSQL 17 + pgvector on VPS (`/opt/agents-platform`) |
+| Database | Self-hosted PostgreSQL 17 + pgvector on VPS (`agents-postgres` Docker container) |
 | Auth | Custom Resend OTP magic-link service + HS256 JWT (jose) at `auth.agents.dcp.sa` |
 | Postgres client (Node) | `postgres` (porsager/postgres-js) with SSL |
 | Postgres client (Python) | `asyncpg` with JSONB type codecs |
@@ -116,51 +116,91 @@ This is the demand-bringer hook for DCP: every role rerouted to `api.dcp.sa` bec
 
 | App | URL | Source |
 |-----|-----|--------|
-| Marketing Website | https://agents.dcp.sa/ | apps/website (Vercel project `marketing-website`) |
-| Client Dashboard | https://agents.dcp.sa/app/* | apps/client-dashboard (Vercel project `project-agent`, mounted via cross-project rewrite, basePath `/app`) |
+| Marketing Website | https://agents.dcp.sa/ | apps/website (Vercel project `marketing-website`, auto-deploys on push to main) |
+| Client Dashboard | https://agents.dcp.sa/app/* | apps/client-dashboard (Vercel project `project-agent`, mounted via cross-project rewrite, basePath `/app`, auto-deploys on push to main) |
 | Dashboard direct (origin) | https://project-agent-dc11.vercel.app | rewrite target — do not link directly |
+| Prompt-builder API | http://76.13.179.86:8200 | `backend/prompt-builder/` — runs as `prompt-builder.service` (systemd) on the VPS |
 | GitHub | github.com/dhnpmp-tech/project-agent | monorepo root |
+
+### VPS prompt-builder deploy
+As of 2026-05-23 the production VPS deployment is git-managed:
+
+- Live path: `/opt/prompt-builder/` is a symlink → `/opt/agents-platform/backend/prompt-builder/`
+- Deploy: `ssh root@76.13.179.86 'cd /opt/agents-platform && git pull && systemctl restart prompt-builder'`
+- Service: `prompt-builder.service` (systemd), `EnvironmentFile=/etc/prompt-builder/secrets.env`
+- Rollback: `/opt/prompt-builder.backup-2026-05-23/` holds the pre-cutover snapshot (delete after one soak week without regressions)
+- Static assets (logos, widget.js) sync via rsync from the backup; they are now committed to git too as of 2026-05-23
 
 ## Database (Postgres on VPS)
 
-- Host: VPS 76.13.179.86 (Docker compose stack at `/opt/agents-platform/`)
+- Host: VPS 76.13.179.86 (`agents-postgres` Docker container, peer to the other platform services)
 - Image: `pgvector/pgvector:pg17`
-- App role: `agents_app` (SCRAM-SHA-256, SSL required)
-- Migrations: `infrastructure/agents-platform/migrations/out/*.sql` (14 files, adapted from Supabase originals — RLS replaced with app-layer `client_id` scoping in `server-queries.ts`)
+- App role: `agents_admin` (the deployed credential — `agents_app` from the original spec was never created)
+- Migrations: `packages/supabase/migrations/001-010` (foundational) + `supabase/migrations/009-020` (feature work). Numbering overlaps at 009/010 across the two directories — historical artifact of the two waves.
 - Auth service: Express + jose + Resend at `auth.agents.dcp.sa` (port 8201 behind Traefik)
 - JWT shape: `{sub, email, client_id, role}` — `user_metadata.client_id` preserves the legacy Supabase contract for downstream code
+- RLS replaced with app-layer `client_id` scoping in `apps/client-dashboard/src/lib/server-queries.ts` (every helper auto-injects `WHERE client_id = session.clientId`).
 
 ### Historical note
 Until 2026-05-10 the platform ran on hosted Supabase (`sybzqktipimbmujtowoz.supabase.co`). After the project was abandoned upstream we cut over to self-hosted Postgres + custom OTP. Migration log: `docs/migrations/2026-05-10-supabase-to-postgres.md`.
 
-### Tables (21 — see spec §19 for full reconciliation across migrations 001-013)
+### Tables (~35 on production · grouped by feature)
 
-**Core (packages/supabase/migrations/ 001-009):**
-1. clients — tenant accounts
-2. agent_deployments — agent instances per client
-3. activity_logs — event stream
-4. api_keys — client API authentication
-5. rls_policies — row level security
-6. calendar_configs — encrypted calendar credentials
-7. business_knowledge — centralized knowledge base (FAQ, services, social, reviews, industry config)
-8. customer_memory + conversation_summaries — long-term customer profiles
-9. booking_state — per-conversation booking flow state (replaced n8n state)
+This list reflects what's actually in `agents-postgres` as of 2026-05-23, not the aspirational spec from earlier docs.
 
-**Vault + coordination (backend/prompt-builder/migrations/ 010-012):**
-10. vault_notes — 8 categories (business/products/customers/skills/learnings/research/pending/prompts) + pgvector embeddings
-11. vault_categories — category metadata
-12. composio_connections — per-agent OAuth tokens
-13. composio_tool_whitelist — per-agent allowed tool scopes
-14. karpathy_rules — nightly behavioral rule generation
-15. gepa_runs — prompt evolution history
-16. owner_actions — owner approval queue
-17. owner_briefings — morning brief delivery log
-18. agent_health — per-agent uptime + cost tracking
+**Tenancy + identity:**
+- clients — tenant accounts
+- agent_deployments — agent instances per client
+- api_keys — client API authentication
+- auth_users, auth_otp_codes, auth_refresh_tokens — Resend-OTP magic link + JWT session (replaces Supabase Auth)
 
-**Rami CEO chat (backend/prompt-builder/migrations/ 011):**
-19. ceo_chat_sessions — Rami chat sessions per visitor
-20. ceo_chat_messages — Rami chat history
-21. ceo_chat_rate_limit — sliding-window IP rate limit (composite PK: ip + bucket_start_minute)
+**Customer comms + memory:**
+- conversation_messages, conversation_summaries — message history + LLM-generated index
+- customer_memory — long-term per-customer profile (preferences, tags, sentiment)
+- customer_locks — per-customer mutex for concurrent message handling
+- business_knowledge — FAQ + services + crawl_data per tenant
+- calendar_configs — encrypted calendar credentials
+
+**Bookings + deposits:**
+- active_bookings — current booking flow state (replaces the planned `booking_state`)
+- deposit_requests — deposit-flow state machine
+- no_show_log — no-show recovery cron output
+
+**Daily plan + owner brief:**
+- agent_action_queue — daily-plan rows (pending_approval → approved → executed → rejected) (replaces the planned `owner_actions`)
+- owner_briefings — morning brief delivery log
+- gmail_triage_snapshots — daily Gmail classification output
+- cron_runs — every cron's start/finish heartbeat (replaces the planned `agent_health`)
+- scheduled_actions — future-dated outbound queue
+- outcome_tracking — conversion + revenue attribution per agent action
+
+**Knowledge + governance:**
+- vault_notes — 8-category long-term store with pgvector embeddings
+- prompt_versions — prompt history + GEPA-evolution snapshots (replaces the planned `gepa_runs`)
+- eval_suites — automated quality regression cases
+- research_queue — pending research tasks queued by the brain
+- activity_logs — generic event stream
+- expenses — receipt OCR + categorization output
+
+**Public-facing:**
+- public_teardowns — `/teardown` page output, keyed by slug
+- teardown_rate_limit — IP-bucketed throttle for the public endpoint
+- scraped_listings — property scraper output with `auth_basis` governance tag
+
+**Rami CEO persona:**
+- ceo_chat_sessions, ceo_chat_messages, ceo_chat_rate_limit — Rami chat UX
+- ceo_conversations, ceo_drafts, ceo_activity_log — outbound + draft pipeline
+
+**Tables previously specified but not built (Composio handles OAuth state on its own backend; Karpathy rules are stored as vault_notes; RLS was replaced by app-layer scoping):**
+- ~~rls_policies~~ — RLS dropped, app-layer scoping in `server-queries.ts`
+- ~~booking_state~~ — `active_bookings` does this job
+- ~~vault_categories~~ — vault_notes carries the category inline
+- ~~composio_connections~~ — Composio's hosted backend stores the OAuth state, keyed by tenant `entity_id`
+- ~~composio_tool_whitelist~~ — whitelist is checked in code, no DB row
+- ~~karpathy_rules~~ — generated rules land in `vault_notes` with type=rule
+- ~~gepa_runs~~ — superseded by `prompt_versions`
+- ~~owner_actions~~ — superseded by `agent_action_queue`
+- ~~agent_health~~ — superseded by `cron_runs`
 
 ## Project Structure
 

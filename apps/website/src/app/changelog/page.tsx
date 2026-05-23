@@ -28,6 +28,27 @@ interface ShipEntry {
 
 const SHIP_LOG: ShipEntry[] = [
   {
+    date: "2026-05-23",
+    tag: "infra",
+    title: "Production deployment moved into git · 9 files recovered",
+    body: "/opt/prompt-builder on the VPS is now a symlink to a real git checkout — future deploys are 'git pull + systemctl restart' instead of scp. Recovered voice.py, ai_video.py, arabic_tts.py, video_maker.py, requirements.txt, and 4 cron wrappers that had only ever lived on the production disk. Stripped two hardcoded Supabase JWTs left over from the pre-cutover era while we were in there.",
+    commit: "cf1e3c7",
+  },
+  {
+    date: "2026-05-22",
+    tag: "ux",
+    title: "Agent board · watch your teammates work in real time",
+    body: "/dashboard/agent-queue is now a four-column assignment board (Awaiting your nod · Doing now · Drafts ready · Skipped). Cards move across as the cron loop picks them up and drafts the work. Auto-refreshes every 30s while the tab is visible. Same approve/skip API as before — pure presentation upgrade.",
+    commit: "33687e4",
+  },
+  {
+    date: "2026-05-22",
+    tag: "fix",
+    title: "Owner brain stopped treating questions as commands",
+    body: "\"are you working?\" used to come back as a confused refusal. Now the brain has three new intent branches (status check, brief resend, chitchat) and the LLM fallback is reframed as a 4-way classifier — update / query / chitchat / unknown — that responds like a teammate, never like a parser. Reactive WhatsApp replies also synthesize a voice note now, mirroring the daily brief.",
+    commit: "32b7b5e",
+  },
+  {
     date: "2026-05-20",
     tag: "feat",
     title: "Property-scraper showcase + DLD public data ingester",
@@ -214,7 +235,7 @@ function ChangelogList() {
       <div className="container">
         <SectionMeta idx="01" label="ship log" />
         <h2 className="display tight" style={{ marginBottom: 32 }}>
-          The <em>last 14 days</em>
+          The <em>last 17 days</em>
         </h2>
         <div className="ship-log">
           {SHIP_LOG.map((entry) => (
