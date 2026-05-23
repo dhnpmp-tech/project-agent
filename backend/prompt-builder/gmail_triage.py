@@ -34,7 +34,13 @@ from inference import chat as inference_chat
 logger = logging.getLogger("gmail_triage")
 
 _COMPOSIO_KEY = os.environ.get("COMPOSIO_API_KEY", "")
-_COMPOSIO_BASE = "https://backend.composio.dev/api/v1"
+_COMPOSIO_BASE = "https://backend.composio.dev/api/v3"
+
+# Composio v3 requires an auth_config_id (UUID issued when an admin creates
+# the Gmail integration in the Composio dashboard). It is NOT the literal
+# string "gmail" the v1 API accepted. Set this in /etc/prompt-builder/secrets.env
+# after creating the integration once per environment.
+_COMPOSIO_GMAIL_AUTH_CONFIG_ID = os.environ.get("COMPOSIO_GMAIL_AUTH_CONFIG_ID", "")
 
 # How many recent threads to pull per triage run. Composio paginates
 # Gmail results; this caps the LLM cost per tenant per day. At ~30
@@ -61,41 +67,58 @@ TRIAGE_BUCKETS = (
 
 
 async def _composio_gmail_available(client_id: str) -> bool:
-    """Check whether this tenant has an active Composio Gmail connection."""
-    if not _COMPOSIO_KEY:
+    """Check whether this tenant has an active Composio Gmail connection.
+
+    v3 endpoint: GET /api/v3/connected_accounts?user_id=X&auth_config_id=Y
+    (v1 used /connectedAccounts with integrationId="gmail" + entityId.)
+    """
+    if not _COMPOSIO_KEY or not _COMPOSIO_GMAIL_AUTH_CONFIG_ID:
         return False
     try:
         async with httpx.AsyncClient(timeout=10) as http:
             r = await http.get(
-                f"{_COMPOSIO_BASE}/connectedAccounts",
+                f"{_COMPOSIO_BASE}/connected_accounts",
                 headers={"x-api-key": _COMPOSIO_KEY},
                 params={
-                    "integration_id": "gmail",
-                    "status": "active",
-                    # Composio scopes connections by entityId — we pass the
-                    # client_id so the right tenant's account surfaces.
-                    "entityId": str(client_id),
+                    "user_id": str(client_id),
+                    "auth_config_id": _COMPOSIO_GMAIL_AUTH_CONFIG_ID,
                 },
             )
             if r.status_code != 200:
                 return False
-            items = (r.json() or {}).get("items", [])
-            return len(items) > 0
+            payload = r.json() or {}
+            # v3 returns either {items: [...]} or {data: [...]} depending on
+            # endpoint; check both. An account counts as "available" only
+            # when it's in the ACTIVE state.
+            items = payload.get("items") or payload.get("data") or []
+            for it in items:
+                state = (it.get("status") or it.get("state") or "").upper()
+                if state in ("ACTIVE", "CONNECTED"):
+                    return True
+            return False
     except Exception as e:
         logger.warning("composio gmail availability check failed: %s", e)
         return False
 
 
 async def _composio_action(action: str, params: dict[str, Any], client_id: str) -> dict[str, Any]:
-    """Generic Composio action wrapper, scoped to a tenant's entityId."""
+    """Generic Composio tool wrapper, scoped to a tenant.
+
+    v3 endpoint: POST /api/v3/tools/execute with {tool, user_id, input}
+    (v1 used POST /actions/{name}/execute with {entityId, input}.)
+    """
     if not _COMPOSIO_KEY:
         return {"error": "COMPOSIO_API_KEY not set"}
     try:
         async with httpx.AsyncClient(timeout=30) as http:
             r = await http.post(
-                f"{_COMPOSIO_BASE}/actions/{action}/execute",
+                f"{_COMPOSIO_BASE}/tools/execute",
                 headers={"x-api-key": _COMPOSIO_KEY, "Content-Type": "application/json"},
-                json={"entityId": str(client_id), "input": params},
+                json={
+                    "tool": action,
+                    "user_id": str(client_id),
+                    "input": params,
+                },
             )
             if r.status_code >= 400:
                 return {"error": f"composio {r.status_code}", "detail": r.text[:200]}
@@ -204,35 +227,51 @@ async def _classify_thread(meta: dict[str, Any]) -> dict[str, Any]:
 async def initiate_gmail_connection(client_id: str, redirect_uri: str) -> dict:
     """Kick off the Composio Gmail OAuth flow.
 
-    Returns a dict containing the Composio-issued redirectUrl. The
-    dashboard opens this URL in a new tab; the user authorizes Gmail
-    via Google's consent screen, Composio finalizes the connection,
-    and the redirect lands the user back on `redirect_uri`. From there
-    the dashboard can poll /connections/gmail/status to flip the UI to
-    'connected'.
+    Returns a dict containing the Composio-issued setup URL. The dashboard
+    opens this URL in a new tab; the user authorizes Gmail via Google's
+    consent screen, Composio finalizes the connection, and the redirect
+    lands the user back on `redirect_uri`. From there the dashboard polls
+    /connections/gmail/status to flip the UI to 'connected'.
+
+    v3 endpoint: POST /api/v3/connected_accounts/initiate with
+    {auth_config_id, user_id, redirect_url}.
     """
     if not _COMPOSIO_KEY:
         return {"status": "error", "message": "COMPOSIO_API_KEY not set on prompt-builder"}
+    if not _COMPOSIO_GMAIL_AUTH_CONFIG_ID:
+        return {
+            "status": "error",
+            "message": "COMPOSIO_GMAIL_AUTH_CONFIG_ID not set — admin must create the Gmail integration in the Composio dashboard and add the resulting UUID to /etc/prompt-builder/secrets.env",
+        }
     try:
         async with httpx.AsyncClient(timeout=15) as http:
             r = await http.post(
-                f"{_COMPOSIO_BASE}/connectedAccounts",
+                f"{_COMPOSIO_BASE}/connected_accounts/initiate",
                 headers={
                     "x-api-key": _COMPOSIO_KEY,
                     "Content-Type": "application/json",
                 },
                 json={
-                    "integrationId": "gmail",
-                    "entityId": str(client_id),
-                    "redirectUri": redirect_uri,
+                    "auth_config_id": _COMPOSIO_GMAIL_AUTH_CONFIG_ID,
+                    "user_id": str(client_id),
+                    "redirect_url": redirect_uri,
                 },
             )
             if r.status_code in (200, 201):
                 data = r.json() or {}
+                # v3 response shape isn't fully documented — accept the
+                # common variants seen in the migration guide threads.
+                setup_url = (
+                    data.get("redirect_url")
+                    or data.get("redirectUrl")
+                    or data.get("auth_url")
+                    or data.get("connectionUrl")
+                    or ""
+                )
                 return {
                     "status": "pending",
-                    "setup_url": data.get("redirectUrl") or data.get("connectionUrl") or "",
-                    "connection_id": data.get("id", ""),
+                    "setup_url": setup_url,
+                    "connection_id": data.get("id") or data.get("connected_account_id") or "",
                 }
             return {
                 "status": "error",
@@ -248,26 +287,31 @@ async def get_gmail_connection_status(client_id: str) -> dict:
 
     {connected: bool, connection_id: str | None, last_snapshot_date: str | None,
      last_snapshot_total: int | None}
+
+    v3 endpoint: GET /api/v3/connected_accounts?user_id=X&auth_config_id=Y
     """
     connected = False
     connection_id: str | None = None
-    if _COMPOSIO_KEY:
+    if _COMPOSIO_KEY and _COMPOSIO_GMAIL_AUTH_CONFIG_ID:
         try:
             async with httpx.AsyncClient(timeout=10) as http:
                 r = await http.get(
-                    f"{_COMPOSIO_BASE}/connectedAccounts",
+                    f"{_COMPOSIO_BASE}/connected_accounts",
                     headers={"x-api-key": _COMPOSIO_KEY},
                     params={
-                        "integration_id": "gmail",
-                        "status": "active",
-                        "entityId": str(client_id),
+                        "user_id": str(client_id),
+                        "auth_config_id": _COMPOSIO_GMAIL_AUTH_CONFIG_ID,
                     },
                 )
                 if r.status_code == 200:
-                    items = (r.json() or {}).get("items", [])
-                    if items:
-                        connected = True
-                        connection_id = items[0].get("id")
+                    payload = r.json() or {}
+                    items = payload.get("items") or payload.get("data") or []
+                    for it in items:
+                        state = (it.get("status") or it.get("state") or "").upper()
+                        if state in ("ACTIVE", "CONNECTED"):
+                            connected = True
+                            connection_id = it.get("id") or it.get("connected_account_id")
+                            break
         except Exception as e:
             logger.warning("status check failed: %s", e)
 
