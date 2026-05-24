@@ -374,18 +374,41 @@ async def generate_and_send_voice_reply(
 ) -> bool:
     """Generate a voice reply from text and send it as a WhatsApp voice note.
 
-    Called AFTER the text pipeline generates a reply.
-    The text reply is sent separately by the main pipeline.
-    This adds a voice note as a follow-up.
-    """
-    # Pick voice based on language
-    if lang == "ar" and voice_id.startswith("default_"):
-        voice = "default_female_ar"
-    else:
-        voice = voice_id
+    Called AFTER the text pipeline generates a reply. The text reply is
+    sent separately by the main pipeline; this adds a voice note as a
+    follow-up.
 
-    # Generate speech
-    mp3_bytes = await generate_speech(reply_text, voice)
+    Provider routing via voice_id prefix:
+        "el:<id>"      -> ElevenLabs (per-business premium voice)
+        "mm:<id>"      -> MiniMax (explicit override)
+        "default_*"    -> MiniMax via VOICE_MAP (legacy)
+        no prefix      -> MiniMax (legacy)
+
+    ElevenLabs synth failures fall back to MiniMax so we never lose
+    the voice note entirely — the customer gets *some* audio reply even
+    if the premium voice times out.
+    """
+    from elevenlabs_tts import parse_provider_voice, generate_speech as el_synth, is_configured as el_configured
+
+    provider, raw_voice = parse_provider_voice(voice_id)
+
+    # Pick voice based on language for legacy default_* aliases
+    if provider == "minimax" and lang == "ar" and raw_voice.startswith("default_"):
+        raw_voice = "default_female_ar"
+
+    mp3_bytes = b""
+
+    if provider == "elevenlabs" and el_configured():
+        mp3_bytes = await el_synth(reply_text, raw_voice)
+        if not mp3_bytes:
+            print(f"[voice] ElevenLabs synth failed, falling back to MiniMax for {voice_id}")
+            # Fall back to MiniMax default for this language so the
+            # customer still gets *a* voice note.
+            fallback = "default_female_ar" if lang == "ar" else "default_female_en"
+            mp3_bytes = await generate_speech(reply_text, fallback)
+    else:
+        mp3_bytes = await generate_speech(reply_text, raw_voice)
+
     if not mp3_bytes:
         print("[voice] TTS failed, text-only reply")
         return False
