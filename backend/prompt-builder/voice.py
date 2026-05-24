@@ -399,7 +399,15 @@ async def generate_and_send_voice_reply(
     mp3_bytes = b""
 
     if provider == "elevenlabs" and el_configured():
-        mp3_bytes = await el_synth(reply_text, raw_voice)
+        # Language-aware model selection on the same voice. eleven_multilingual_v2
+        # produces meaningfully better Arabic than the default flash model — it's
+        # 2× more expensive per char but only fires when reply is actually Arabic.
+        # eleven_flash_v2_5 stays the default for English (cheaper + faster).
+        # When/if we get access to native Saudi voices (currently paid-tier-only
+        # on this account), swap raw_voice here based on lang instead of just the
+        # model.
+        model_id = "eleven_multilingual_v2" if lang == "ar" else "eleven_flash_v2_5"
+        mp3_bytes = await el_synth(reply_text, raw_voice, model_id=model_id)
         if not mp3_bytes:
             print(f"[voice] ElevenLabs synth failed, falling back to MiniMax for {voice_id}")
             # Fall back to MiniMax default for this language so the
