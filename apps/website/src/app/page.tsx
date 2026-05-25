@@ -454,6 +454,217 @@ interface ThreadMsg {
   typing?: number;
 }
 
+function HireResumeCard() {
+  const { lang } = useLang();
+  return (
+    <div
+      style={{
+        border: "1px solid var(--line, rgba(255,255,255,0.12))",
+        borderRadius: 14,
+        overflow: "hidden",
+        background: "var(--card-bg, rgba(255,255,255,0.02))",
+        backdropFilter: "blur(8px)",
+        maxWidth: 420,
+        marginLeft: "auto",
+      }}
+    >
+      {/* Resume header — letterhead style */}
+      <div
+        style={{
+          padding: "16px 20px",
+          borderBottom: "1px solid var(--line, rgba(255,255,255,0.08))",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div
+          className="mono"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+            opacity: 0.55,
+          }}
+        >
+          {lang === "ar" ? "السيرة الذاتية · نادية" : "Resume · Nadia"}
+        </div>
+        <span
+          className="mono"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "var(--green, #5d8a4a)",
+            padding: "3px 10px",
+            border: "1px solid var(--green, #5d8a4a)",
+            borderRadius: 999,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green, #5d8a4a)" }} />
+          {lang === "ar" ? "متاحة الآن" : "Available now"}
+        </span>
+      </div>
+
+      {/* Portrait + identity */}
+      <div style={{ display: "grid", gridTemplateColumns: "112px 1fr", gap: 18, padding: 20, alignItems: "center" }}>
+        <a href="/team/nadia" aria-label="Nadia full CV" style={{ display: "block" }}>
+          <div
+            style={{
+              width: 112,
+              height: 112,
+              borderRadius: 12,
+              overflow: "hidden",
+              background: "linear-gradient(180deg, rgba(212,146,75,0.22), transparent)",
+            }}
+          >
+            <img
+              src="/team/nadia.jpg"
+              alt="Nadia"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+          </div>
+        </a>
+        <div>
+          <div
+            style={{
+              fontSize: 28,
+              fontFamily: "var(--serif, Georgia, serif)",
+              fontWeight: 400,
+              lineHeight: 1.05,
+              marginBottom: 4,
+            }}
+          >
+            {lang === "ar" ? "نادية" : "Nadia"}
+          </div>
+          <div
+            className="mono"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              opacity: 0.6,
+              marginBottom: 10,
+            }}
+          >
+            {lang === "ar" ? "موظفة استقبال · مضيفة عملاء" : "Front-of-house · Customer host"}
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {(lang === "ar"
+              ? ["عربية خليجية", "إنجليزية", "٢٤/٧"]
+              : ["Gulf Arabic", "English", "24/7"]
+            ).map((b) => (
+              <span
+                key={b}
+                className="mono"
+                style={{
+                  fontSize: 9,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  padding: "3px 8px",
+                  border: "1px solid var(--line, rgba(255,255,255,0.1))",
+                  borderRadius: 4,
+                  opacity: 0.7,
+                }}
+              >
+                {b}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Voice sample */}
+      <div
+        style={{
+          padding: "0 20px 16px",
+        }}
+      >
+        <div
+          className="mono"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            opacity: 0.55,
+            marginBottom: 8,
+          }}
+        >
+          {lang === "ar" ? "صوتها (نموذج)" : "Her voice (sample)"}
+        </div>
+        <audio
+          controls
+          preload="none"
+          src="/team/nadia-en.mp3"
+          style={{ width: "100%", height: 36 }}
+        />
+      </div>
+
+      {/* Bio + sample line */}
+      <div style={{ padding: "0 20px 16px", borderTop: "1px solid var(--line, rgba(255,255,255,0.06))", paddingTop: 16 }}>
+        <div
+          className="mono"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            opacity: 0.55,
+            marginBottom: 8,
+          }}
+        >
+          {lang === "ar" ? "نموذج رد" : "Sample reply"}
+        </div>
+        <p
+          style={{
+            fontSize: 13,
+            lineHeight: 1.55,
+            margin: 0,
+            opacity: 0.88,
+            fontFamily: "var(--serif, Georgia, serif)",
+            fontStyle: "italic",
+          }}
+        >
+          {lang === "ar"
+            ? '«مرحبا أحمد! تم — تراس، ٨ مساءً، ٤ أشخاص. ساحفظ لك الموقع وأرسله قبل ساعة. نشوفك الليلة 🌿»'
+            : "\u201cHi Ahmad! Done — terrace, 8pm, party of 4. I'll send the location pin an hour before. See you tonight 🌿\u201d"}
+        </p>
+      </div>
+
+      {/* CTA */}
+      <a
+        href="/team/nadia"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "14px 20px",
+          borderTop: "1px solid var(--line, rgba(255,255,255,0.06))",
+          color: "inherit",
+          textDecoration: "none",
+        }}
+      >
+        <span
+          className="mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "var(--green, #5d8a4a)",
+          }}
+        >
+          {lang === "ar" ? "اقرأ السيرة الكاملة" : "Read full CV"}
+        </span>
+        <span style={{ color: "var(--green, #5d8a4a)" }}>
+          <Arrow size={14} />
+        </span>
+      </a>
+    </div>
+  );
+}
+
 function LiveThread() {
   const { lang } = useLang();
   const thread = useMemo<ThreadMsg[]>(
@@ -626,10 +837,10 @@ function Hero() {
             </Reveal>
 
             <Reveal as="div" className="cta-row tight" delay={200}>
-              <a className="btn primary lg" href="#team">
+              <a className="btn primary lg" href="/team">
                 {lang === "ar"
-                  ? "تعرّف على موظفتك"
-                  : "Meet your hire"}{" "}
+                  ? "تعرّف على الفريق"
+                  : "Meet the team"}{" "}
                 <Arrow size={14} />
               </a>
               <a className="btn ghost lg" href="/teardown">
@@ -658,7 +869,7 @@ function Hero() {
           </div>
           <div className="hero-right">
             <Reveal delay={250}>
-              <LiveThread />
+              <HireResumeCard />
             </Reveal>
           </div>
         </div>
@@ -2290,11 +2501,11 @@ function AgentsFooter() {
 function HomeApp() {
   const { lang } = useLang();
   const navLinks: NavLink[] = [
-    { href: "/", label: lang === "ar" ? "الخدمات" : "Services", key: "home" },
-    { href: "/teardown", label: lang === "ar" ? "التشريح" : "Teardown", key: "teardown" },
+    { href: "/", label: lang === "ar" ? "الرئيسية" : "Home", key: "home" },
+    { href: "/team", label: lang === "ar" ? "الفريق" : "Team", key: "team" },
     { href: "/pricing", label: lang === "ar" ? "الأسعار" : "Pricing", key: "pricing" },
-    { href: "/demo", label: lang === "ar" ? "العملية" : "Process", key: "process" },
-    { href: "/app", label: lang === "ar" ? "اللوحة" : "Dashboard", key: "dash" },
+    { href: "/teardown", label: lang === "ar" ? "التشريح" : "Teardown", key: "teardown" },
+    { href: "/changelog", label: lang === "ar" ? "السجل" : "Changelog", key: "changelog" },
   ];
   return (
     <div className="page">

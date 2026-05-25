@@ -28,6 +28,13 @@ interface ShipEntry {
 
 const SHIP_LOG: ShipEntry[] = [
   {
+    date: "2026-05-26",
+    tag: "ux",
+    title: "Najim — the staffing-agency restructure",
+    body: "Marketing site rebuilt around the verb HIRE. New hero (\"Hire your first AI employee\"), \"The Math\" section comparing AED 25,500 (three-hire status quo) vs AED 5K+3.5K (us), per-agent CV pages at /team/nadia · /team/omar · /team/layla, and a /pricing page rebuilt as a literal job-offer letter (letterhead, salary block, benefits package, founding-customer rate, signature). First appearance of the proposed brand name Najim (نجم — \"star employee\" in Riyadh dialect).",
+    commit: "1e5241e",
+  },
+  {
     date: "2026-05-25",
     tag: "feat",
     title: "Per-language voice routing · Saudi-Arabic voice ready for Nadia",
@@ -249,7 +256,7 @@ function ChangelogList() {
       <div className="container">
         <SectionMeta idx="01" label="ship log" />
         <h2 className="display tight" style={{ marginBottom: 32 }}>
-          The <em>last 19 days</em>
+          The <em>last 20 days</em>
         </h2>
         <div className="ship-log">
           {SHIP_LOG.map((entry) => (
