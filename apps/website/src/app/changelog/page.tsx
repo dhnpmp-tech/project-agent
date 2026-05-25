@@ -28,6 +28,20 @@ interface ShipEntry {
 
 const SHIP_LOG: ShipEntry[] = [
   {
+    date: "2026-05-25",
+    tag: "feat",
+    title: "Per-language voice routing · Saudi-Arabic voice ready for Nadia",
+    body: "voice_id now carries a primary + Arabic-override pair (Jessica for English, Heba Mansuri for Saudi-accent Arabic). When the reply language is detected as Arabic, the agent speaks in a native Saudi customer-care voice. Falls back to the English voice + multilingual model when library voices are tier-gated. Activates instantly the moment the ElevenLabs subscription clears.",
+    commit: "3aa2286",
+  },
+  {
+    date: "2026-05-24",
+    tag: "feat",
+    title: "Nadia gets a face and a voice · ElevenLabs wired per business",
+    body: "Saffron's customer agent now has a real face (Recraft-generated portrait) and a real voice (ElevenLabs Jessica · warm, conversational). voice.py routes by provider prefix — el: for ElevenLabs, mm: for MiniMax. The architecture supports a unique voice per tenant — every business hires their own Nadia, not a shared template.",
+    commit: "a74fbcd",
+  },
+  {
     date: "2026-05-23",
     tag: "infra",
     title: "Production deployment moved into git · 9 files recovered",
@@ -235,7 +249,7 @@ function ChangelogList() {
       <div className="container">
         <SectionMeta idx="01" label="ship log" />
         <h2 className="display tight" style={{ marginBottom: 32 }}>
-          The <em>last 17 days</em>
+          The <em>last 19 days</em>
         </h2>
         <div className="ship-log">
           {SHIP_LOG.map((entry) => (

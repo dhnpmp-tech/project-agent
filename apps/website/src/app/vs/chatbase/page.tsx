@@ -31,8 +31,14 @@ const COMPARE: CompareRow[] = [
   },
   {
     label: "Arabic language",
-    us: "Native Gulf Arabic on inbound and outbound. Voice notes synthesized in Arabic. RTL UI throughout.",
+    us: "Native Gulf Arabic on inbound and outbound. Voice notes synthesized in Saudi-accent female voice. RTL UI throughout.",
     them: "Multi-language auto-detect via the LLM. No dialect awareness. English-first UI.",
+    wins: "us",
+  },
+  {
+    label: "Named agent · face · voice",
+    us: "Every business gets a bespoke teammate — name, face, voice, and a one-page CV. The agent sends WhatsApp voice notes in her own voice. Owner can text the founder line to retune her tone in plain language.",
+    them: "A chatbot with your logo. No persona, no face, no voice. The end user types into a generic widget and gets generic replies.",
     wins: "us",
   },
   {

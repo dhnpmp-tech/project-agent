@@ -616,11 +616,11 @@ function Hero() {
             <Reveal as="p" className="lede-strong" delay={120}>
               {lang === "ar" ? (
                 <>
-                  مبني على واتساب — <b>مو ملصق عليه</b>. مصمم للإمارات والسعودية. نتولى إعداد ميتا، الرسائل الصوتية بعربية خليجية، الفروع المتعددة، والتكامل مع <b>فودكس وتابي وتمارا</b>. أنت تركز على عملك — هي تخدم عملاءك. على مدار الساعة، بلا توقف، بلا نسيان.
+                  مبني على واتساب — <b>مو ملصق عليه</b>. مصمم للإمارات والسعودية. لكل عمل <b>موظفة مخصّصة</b> — لها اسم، وجه، صوت، وسيرة ذاتية. نتولى إعداد ميتا، الرسائل الصوتية بعربية خليجية، الفروع المتعددة، والتكامل مع <b>فودكس وتابي وتمارا</b>. أنت تركز على عملك — هي تخدم عملاءك. على مدار الساعة، بلا توقف، بلا نسيان.
                 </>
               ) : (
                 <>
-                  Built <b>on WhatsApp</b>, not bolted onto it. Designed for UAE &amp; Saudi SMBs. We handle Meta verification, native voice notes, multi-outlet operations, and integrations with <b>Foodics, Tabby &amp; Tamara</b> — so you focus on the business while she handles the customers. Around the clock, in Arabic and English.
+                  Built <b>on WhatsApp</b>, not bolted onto it. Designed for UAE &amp; Saudi SMBs. Every business gets a <b>bespoke teammate</b> — her own name, face, voice, and one-page CV. We handle Meta verification, Gulf-Arabic voice notes, multi-outlet operations, and integrations with <b>Foodics, Tabby &amp; Tamara</b> — so you focus on the business while she handles the customers. Around the clock, in Arabic and English.
                 </>
               )}
             </Reveal>
@@ -866,8 +866,8 @@ function AgentsSection() {
           </h2>
           <p className="ss strong" style={{ maxWidth: "44ch" }}>
             {lang === "ar"
-              ? "ليسوا روبوتات بنصوص جاهزة. شخصيّات بقصص خلفيّة، وخبرة، وذاكرة تمتدّ لشهور. يعملون معاً، ويتشاركون الذكاء، ويتحسّنون من غير ما تلمس شي."
-              : "Not bots with scripts. Personalities with backstories, expertise, and memory that spans months. They work together, share intelligence, and get better without you touching anything."}
+              ? "ليسوا روبوتات بنصوص جاهزة. شخصيّات بأسماء، ووجوه، وأصوات خاصّة، وذاكرة تمتدّ لشهور. يعملون معاً، ويتشاركون الذكاء، ويتحسّنون من غير ما تلمس شي."
+              : "Not bots with scripts. Personalities with names, faces, voices, and memory that spans months. They work together, share intelligence, and get better without you touching anything."}
           </p>
         </div>
         <div className="agent-grid">
