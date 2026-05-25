@@ -12,8 +12,6 @@ import { SectionMeta } from "@/components/dcp/chrome";
 import { Arrow, Check } from "@/components/dcp/icons";
 import { useTweaks } from "@/components/dcp/lib";
 import {
-  TIERS,
-  type Tier,
   type Currency,
   CURRENCY_SYMBOL,
   rateFor,
@@ -28,17 +26,17 @@ function PricingHero() {
         <div className="hero-head">
           <span className="eyebrow">
             <span className="d" />
-            one plan · no tiers · no friction
+            the offer · one price · no tiers
           </span>
         </div>
         <div className="pricing-hero-grid">
           <div>
             <Reveal as="h1" className="display tight">
-              One offer. <em>Everything</em><br />
-              included. Done for you.
+              Like an actual <em>hire</em>.<br />
+              Not a SaaS pricing page.
             </Reveal>
             <Reveal as="p" className="lede-strong" delay={120}>
-              We do not sell you tokens, credits, or a menu of features. You get the entire AI ops team — <b>five agents, unlimited customers and messages, dedicated infrastructure, weekly workflow tuning, and a direct line to our founders</b>. We run it. You run your business.
+              We do not sell tokens, credits, or feature menus. We sell a <b>job offer</b> — a bespoke AI teammate trained on your business, with a name, face, voice, and CV, ready to work WhatsApp in 10 working days. <b>AED 5,000/month. AED 3,500 one-time setup.</b> No surprise bills. No tiers to compare. No quotas.
             </Reveal>
           </div>
           <PricingHeroPanel />
@@ -89,13 +87,29 @@ function PricingHeroPanel() {
   );
 }
 
-/* ─── TIERS ────────────────────────────────────────────────────── */
+/* ─── THE OFFER LETTER ─────────────────────────────────────────── */
 
 function Tiers() {
   const { state } = useTweaks();
   const cur = ((state.currency as Currency | undefined) || "AED");
   const rate = rateFor(cur);
   const sym = CURRENCY_SYMBOL[cur];
+
+  const monthly = Math.round(5000 * rate);
+  const setup = Math.round(3500 * rate);
+  const founding = Math.round(2500 * rate);
+  const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+
+  const benefits: { title: string; sub: string }[] = [
+    { title: "Bespoke name, face, voice, CV", sub: "Recraft portrait + ElevenLabs voice + one-page printable resume" },
+    { title: "WhatsApp text + voice replies", sub: "Customer agents reply in Gulf Arabic or English, with voice notes in her own voice" },
+    { title: "Foodics · SevenRooms · Tabby · Tamara · Fresha", sub: "Direct integrations into the booking + payment + POS layer" },
+    { title: "9am daily WhatsApp owner brief", sub: "Text + voice note. VIP / at-risk / lapsed customer segmentation included" },
+    { title: "Customer memory dashboard", sub: "Every customer carries tags, sentiment, last visit, preferences — refreshed every message" },
+    { title: "Self-improving every night", sub: "GEPA prompt evolution + Karpathy rule generation. The agent gets better while you sleep" },
+    { title: "Meta verification handled", sub: "We do the green-tick application, the business manager setup, and the BSP plumbing" },
+    { title: "Direct line to the founders", sub: "WhatsApp the founder directly to tune tone, retire a phrase, or add an integration" },
+  ];
 
   return (
     <section className="section section-tight">
@@ -109,62 +123,262 @@ function Tiers() {
             </div>
           }
         />
-        <div className="tiers-grid">
-          {TIERS.map((tier, i) => (
-            <Reveal key={tier.id} delay={i * 80}>
-              <TierCard tier={tier} sym={sym} rate={rate} />
-            </Reveal>
-          ))}
+
+        <div
+          style={{
+            maxWidth: 880,
+            margin: "0 auto",
+            border: "1px solid var(--line, rgba(255,255,255,0.12))",
+            borderRadius: 14,
+            overflow: "hidden",
+            background: "var(--card-bg, rgba(255,255,255,0.02))",
+          }}
+        >
+          {/* Letterhead */}
+          <div
+            style={{
+              padding: "28px 36px 22px",
+              borderBottom: "1px solid var(--line, rgba(255,255,255,0.08))",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+              gap: 18,
+            }}
+          >
+            <div>
+              <div
+                className="mono"
+                style={{
+                  fontSize: 9,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  opacity: 0.5,
+                  marginBottom: 6,
+                }}
+              >
+                Job offer · Najim by Project Agent
+              </div>
+              <div
+                style={{
+                  fontSize: 30,
+                  fontFamily: "var(--serif, Georgia, serif)",
+                  fontWeight: 400,
+                  lineHeight: 1.1,
+                }}
+              >
+                AI Employee · bespoke for your business
+              </div>
+              <div className="mono" style={{ fontSize: 11, opacity: 0.5, marginTop: 6 }}>
+                Issued {today} · Valid until accepted
+              </div>
+            </div>
+            <span
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "var(--green, #5d8a4a)",
+                padding: "5px 12px",
+                border: "1px solid var(--green, #5d8a4a)",
+                borderRadius: 999,
+              }}
+            >
+              ● Available now
+            </span>
+          </div>
+
+          {/* Compensation panel */}
+          <div
+            style={{
+              padding: "30px 36px",
+              borderBottom: "1px solid var(--line, rgba(255,255,255,0.06))",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 28,
+            }}
+          >
+            <div>
+              <div
+                className="mono"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  opacity: 0.55,
+                  marginBottom: 6,
+                }}
+              >
+                Monthly salary
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span className="mono" style={{ fontSize: 14, opacity: 0.6 }}>{sym}</span>
+                <span style={{ fontSize: 56, fontFamily: "var(--serif, Georgia, serif)", lineHeight: 1, fontWeight: 400 }}>
+                  {monthly.toLocaleString()}
+                </span>
+              </div>
+              <div className="mono" style={{ fontSize: 11, opacity: 0.5, marginTop: 6 }}>
+                Includes inference, voice, hosting, owner brief
+              </div>
+            </div>
+            <div>
+              <div
+                className="mono"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  opacity: 0.55,
+                  marginBottom: 6,
+                }}
+              >
+                Setup (one-time)
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span className="mono" style={{ fontSize: 14, opacity: 0.6 }}>{sym}</span>
+                <span style={{ fontSize: 56, fontFamily: "var(--serif, Georgia, serif)", lineHeight: 1, fontWeight: 400 }}>
+                  {setup.toLocaleString()}
+                </span>
+              </div>
+              <div className="mono" style={{ fontSize: 11, opacity: 0.5, marginTop: 6 }}>
+                Meta verification · training · integrations · 10 working days
+              </div>
+            </div>
+            <div>
+              <div
+                className="mono"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  opacity: 0.55,
+                  marginBottom: 6,
+                }}
+              >
+                Start date
+              </div>
+              <div style={{ fontSize: 28, fontFamily: "var(--serif, Georgia, serif)", lineHeight: 1.2 }}>
+                Day 10
+              </div>
+              <div className="mono" style={{ fontSize: 11, opacity: 0.5, marginTop: 6 }}>
+                On WhatsApp · live in 10 working days from kickoff
+              </div>
+            </div>
+          </div>
+
+          {/* Job description */}
+          <div style={{ padding: "30px 36px", borderBottom: "1px solid var(--line, rgba(255,255,255,0.06))" }}>
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                opacity: 0.55,
+                marginBottom: 16,
+              }}
+            >
+              Job description
+            </div>
+            <p style={{ fontSize: 15, lineHeight: 1.65, opacity: 0.88, maxWidth: "62ch", margin: 0 }}>
+              Your hire reports to <b>you</b> on WhatsApp. She handles the customer-facing channel of your business — bookings, FAQ, complaints, lead qualification, voice notes, follow-ups — in <b>Arabic and English</b>, around the clock, with months of memory per customer. She never quits, never sleeps, never asks for a raise. We hire, train, and supervise her. You text the founder when you want her tone adjusted.
+            </p>
+          </div>
+
+          {/* Benefits */}
+          <div style={{ padding: "30px 36px", borderBottom: "1px solid var(--line, rgba(255,255,255,0.06))" }}>
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                opacity: 0.55,
+                marginBottom: 18,
+              }}
+            >
+              Benefits package
+            </div>
+            <ul
+              style={{
+                listStyle: "none",
+                margin: 0,
+                padding: 0,
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: 16,
+              }}
+            >
+              {benefits.map((b) => (
+                <li key={b.title} style={{ display: "flex", gap: 12 }}>
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      width: 18,
+                      height: 18,
+                      borderRadius: 4,
+                      background: "rgba(93,138,74,0.16)",
+                      color: "var(--green, #5d8a4a)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginTop: 2,
+                    }}
+                  >
+                    <Check size={11} />
+                  </span>
+                  <div>
+                    <div style={{ fontSize: 14, lineHeight: 1.4, marginBottom: 3 }}>{b.title}</div>
+                    <div className="mono" style={{ fontSize: 11, opacity: 0.55, lineHeight: 1.45 }}>{b.sub}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Terms / founding-customer note */}
+          <div style={{ padding: "24px 36px", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+            <div className="mono" style={{ fontSize: 11, opacity: 0.55, maxWidth: "44ch", lineHeight: 1.5 }}>
+              Founding-customer rate: {sym} {founding.toLocaleString()}/month for the first 5 businesses, in trade for a case study. No long-term lock-in. Cancel any month.
+            </div>
+            <a className="btn primary lg" href="/teardown">
+              Accept &amp; schedule kickoff <Arrow size={14} />
+            </a>
+          </div>
+
+          {/* Signature footer */}
+          <div
+            style={{
+              padding: "20px 36px 28px",
+              borderTop: "1px solid var(--line, rgba(255,255,255,0.06))",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              flexWrap: "wrap",
+              gap: 16,
+              opacity: 0.65,
+            }}
+          >
+            <div>
+              <div className="mono" style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.6, marginBottom: 6 }}>
+                Issued by
+              </div>
+              <div style={{ fontSize: 15, fontFamily: "var(--serif, Georgia, serif)", fontStyle: "italic" }}>
+                Najim · the founders' line
+              </div>
+              <div className="mono" style={{ fontSize: 10, opacity: 0.55, marginTop: 4 }}>
+                +1 (205) 858-2516 · agents.dcp.sa
+              </div>
+            </div>
+            <div className="mono" style={{ fontSize: 10, opacity: 0.5, textAlign: "right" }}>
+              Project Agent FZ-LLC<br />
+              Dubai · Riyadh
+            </div>
+          </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function TierCard({ tier, sym, rate }: { tier: Tier; sym: string; rate: number }) {
-  const monthly = Math.round(tier.monthly_aed * rate);
-  const setup = Math.round(tier.setup_aed * rate);
-  const hasSetup = setup > 0;
-  return (
-    <div className={`tier-card ${tier.popular ? "tier-pop" : ""}`}>
-      {tier.popular && <div className="tier-badge mono">DONE FOR YOU</div>}
-      <div className="tier-hd">
-        <div className="tier-name">{tier.name}</div>
-        <div className="tier-sub mono">{tier.sub}</div>
-      </div>
-      <div className="tier-price">
-        <span className="tier-cur mono">{sym}</span>
-        <span className="tier-num">{monthly.toLocaleString()}</span>
-        <span className="tier-per mono">/ month</span>
-      </div>
-      {hasSetup ? (
-        <div className="tier-setup mono">
-          + {sym} {setup.toLocaleString()} one-time setup · founding-customer rate {sym} {Math.round(2500 * rate).toLocaleString()}/mo
-        </div>
-      ) : (
-        <div className="tier-setup mono">
-          no setup fee · founding-customer rate {sym} {Math.round(2500 * rate).toLocaleString()}/mo
-        </div>
-      )}
-      <a
-        className={`btn ${tier.popular ? "primary" : "ghost"} lg tier-cta`}
-        href="/app/onboarding"
-      >
-        Get started <Arrow size={13} />
-      </a>
-      <div className="tier-divider" />
-      <div className="tier-incl-t mono">Includes</div>
-      <ul className="tier-incl">
-        {tier.includes.map((it, i) => (
-          <li key={i}>
-            <span className="tier-check">
-              <Check size={11} />
-            </span>
-            <span>{it}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 

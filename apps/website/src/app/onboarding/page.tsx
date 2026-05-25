@@ -25,16 +25,10 @@ interface OnbData {
 }
 
 const TIER_LABEL_EN: Record<TierId, string> = {
-  starter: "Starter",
-  growth: "Growth",
-  pro: "Pro",
-  enterprise: "Enterprise",
+  core: "Project Agent",
 };
 const TIER_LABEL_AR: Record<TierId, string> = {
-  starter: "البداية",
-  growth: "النموّ",
-  pro: "الاحتراف",
-  enterprise: "المؤسّسات",
+  core: "بروجكت إيجنت",
 };
 
 /* ─── PAGE ────────────────────────────────────────────────────── */
@@ -52,7 +46,7 @@ function OnboardingShell() {
   const [data, setData] = useState<OnbData>({
     kind: "restaurant",
     region: "RUH",
-    tier: "growth",
+    tier: "core",
     name: "Saffron Riyadh",
   });
 

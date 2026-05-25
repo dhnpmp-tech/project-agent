@@ -66,7 +66,7 @@ interface MemoryCard {
   fields: MemoryField[];
 }
 interface PricingTier {
-  id: AgentTier;
+  id: string;
   name: BiString;
   sub: BiString;
   monthly_aed: number;
