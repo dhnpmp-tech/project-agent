@@ -25,10 +25,10 @@ interface OnbData {
 }
 
 const TIER_LABEL_EN: Record<TierId, string> = {
-  core: "Project Agent",
+  core: "Najim",
 };
 const TIER_LABEL_AR: Record<TierId, string> = {
-  core: "بروجكت إيجنت",
+  core: "نجم",
 };
 
 /* ─── PAGE ────────────────────────────────────────────────────── */

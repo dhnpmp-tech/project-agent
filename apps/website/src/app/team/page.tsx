@@ -203,7 +203,7 @@ function TeamIndexApp() {
         active="team"
         status={{ label: lang === "ar" ? "متاحون للتوظيف · الإمارات والسعودية" : "HIRING · UAE & SAUDI" }}
         ctaLabel={lang === "ar" ? "احجز موعد التشغيل" : "Schedule kickoff"}
-        ctaHref="/teardown"
+        ctaHref="/kickoff"
       />
       <TeamIndex />
     </div>

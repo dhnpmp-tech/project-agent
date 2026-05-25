@@ -30,6 +30,13 @@ const SHIP_LOG: ShipEntry[] = [
   {
     date: "2026-05-26",
     tag: "ux",
+    title: "Brand rollout · Najim live across the site + /kickoff form",
+    body: "Najim wordmark replaces the DCP·sa lockup in the nav (with a ★ glyph in saffron gradient). Marquee header rewritten to lead with the staffing-agency pitch in both EN and AR. \"Project Agent\" → \"Najim\" across consumer copy on homepage, pricing, /vs/chatbase, and onboarding (legal entity \"Project Agent FZ-LLC\" stays on the pricing-page signature footer). New /kickoff intake page wires every \"Schedule kickoff\" CTA into a 3-field form that opens WhatsApp with a pre-filled message to the founders — no Calendly needed yet.",
+    commit: "ec2f510",
+  },
+  {
+    date: "2026-05-26",
+    tag: "ux",
     title: "Najim — the staffing-agency restructure",
     body: "Marketing site rebuilt around the verb HIRE. New hero (\"Hire your first AI employee\"), \"The Math\" section comparing AED 25,500 (three-hire status quo) vs AED 5K+3.5K (us), per-agent CV pages at /team/nadia · /team/omar · /team/layla, and a /pricing page rebuilt as a literal job-offer letter (letterhead, salary block, benefits package, founding-customer rate, signature). First appearance of the proposed brand name Najim (نجم — \"star employee\" in Riyadh dialect).",
     commit: "1e5241e",

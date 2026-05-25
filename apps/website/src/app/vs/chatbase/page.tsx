@@ -116,7 +116,7 @@ function VsHero() {
         <div className="hero-head">
           <span className="eyebrow">
             <span className="d" />
-            Project Agent vs Chatbase · honest comparison
+            Najim vs Chatbase · honest comparison
           </span>
         </div>
         <Reveal as="h1" className="display tight">
@@ -162,7 +162,7 @@ function VsTable() {
                   <h4>{row.label}</h4>
                 </div>
                 <div className="vs-cell vs-us">
-                  <div className="vs-cell-h">Project Agent</div>
+                  <div className="vs-cell-h">Najim</div>
                   <p>{row.us}</p>
                 </div>
                 <div className="vs-cell vs-them">
@@ -197,7 +197,7 @@ function VsVerdict() {
             </ul>
           </div>
           <div className="vs-verdict-card vs-verdict-us">
-            <h3>Pick Project Agent if…</h3>
+            <h3>Pick Najim if…</h3>
             <ul>
               <li><Check size={14} /> Your customers are in the UAE or Saudi Arabia and message in Arabic or both.</li>
               <li><Check size={14} /> WhatsApp <em>is</em> where the business runs — voice notes, bookings, complaints, the lot.</li>

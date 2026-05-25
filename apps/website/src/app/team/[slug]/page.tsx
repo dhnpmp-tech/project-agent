@@ -537,7 +537,7 @@ function HireCv({ member }: { member: TeamMember }) {
                 : "Book a 15-min kickoff call. We handle setup and training. Your hire is on WhatsApp in 10 working days."}
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-              <a className="btn primary lg" href="/teardown" style={{ background: accent, borderColor: accent, color: "#000" }}>
+              <a className="btn primary lg" href="/kickoff" style={{ background: accent, borderColor: accent, color: "#000" }}>
                 {lang === "ar" ? "احجز موعد التشغيل" : "Schedule kickoff"} <Arrow size={14} />
               </a>
               <Link className="btn ghost lg" href="/team">
@@ -568,7 +568,7 @@ function TeamMemberApp() {
         active="team"
         status={{ label: lang === "ar" ? "متاحون للتوظيف · الإمارات والسعودية" : "HIRING · UAE & SAUDI" }}
         ctaLabel={lang === "ar" ? "احجز موعد التشغيل" : "Schedule kickoff"}
-        ctaHref="/teardown"
+        ctaHref="/kickoff"
       />
       <HireCv member={member!} />
     </div>

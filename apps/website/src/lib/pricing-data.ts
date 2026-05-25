@@ -38,7 +38,7 @@ export interface Tier {
  */
 export const OFFER: Tier = {
   id: "core",
-  name: "Project Agent",
+  name: "Najim",
   sub: "Your AI ops team — done for you",
   monthly_aed: 5000,
   setup_aed: 3500,

@@ -342,7 +342,7 @@ const MEMORY_CARD: MemoryCard = {
 const TIERS: PricingTier[] = [
   {
     id: "core",
-    name: { en: "Project Agent", ar: "بروجكت إيجنت" },
+    name: { en: "Najim", ar: "نجم" },
     sub: { en: "Your AI ops team — done for you", ar: "فريق الذكاء الكامل — جاهز عندك" },
     monthly_aed: 5000,
     setup_aed: 3500,
@@ -1120,7 +1120,7 @@ function TheMath() {
                 marginBottom: 14,
               }}
             >
-              {lang === "ar" ? "مع موظفي الذكاء" : "With Project Agent"}
+              {lang === "ar" ? "مع نجم" : "With Najim"}
             </div>
             <h3
               style={{
@@ -1951,7 +1951,7 @@ function HireVsAgent() {
             <span>{lang === "ar" ? "المعيار" : "Dimension"}</span>
             <span>{lang === "ar" ? "موظف بشري" : "Human hire"}</span>
             <span style={{ color: "var(--green, #5d8a4a)" }}>
-              {lang === "ar" ? "موظف الذكاء" : "Project Agent"}
+              {lang === "ar" ? "موظف نجم" : "Najim hire"}
             </span>
           </div>
           {COMPARE.map((row, i) => (
@@ -2051,7 +2051,7 @@ function Pricing() {
                   marginBottom: 4,
                 }}
               >
-                {lang === "ar" ? "عرض توظيف" : "Job offer · Project Agent"}
+                {lang === "ar" ? "عرض توظيف · نجم" : "Job offer · Najim"}
               </div>
               <div
                 style={{
@@ -2157,7 +2157,7 @@ function Pricing() {
                 ? "سعر العميل المؤسّس: ٢٬٥٠٠ د.إ/شهر للخمس شركات الأولى (مقابل دراسة حالة)."
                 : "Founding-customer rate: AED 2,500/mo for the first 5 businesses (case-study trade)."}
             </div>
-            <a className="btn primary" href="/teardown">
+            <a className="btn primary" href="/kickoff">
               {lang === "ar" ? "احجز موعد التشغيل" : "Schedule kickoff"}{" "}
               <Arrow size={12} />
             </a>
@@ -2515,7 +2515,7 @@ function HomeApp() {
         active="home"
         status={{ label: lang === "ar" ? "متاحون للتوظيف · الإمارات والسعودية" : "HIRING · UAE & SAUDI" }}
         ctaLabel={lang === "ar" ? "احجز موعد التشغيل" : "Schedule kickoff"}
-        ctaHref="/teardown"
+        ctaHref="/kickoff"
       />
       <Hero />
       <TheMath />

@@ -58,7 +58,7 @@ function PricingHeroPanel() {
     { k: "Sales coordinator", v: "AED 7,000", d: "+ commission · CRM-only", n: "human" },
     { k: "Customer-service rep", v: "AED 4,500", d: "single channel · no nights", n: "human" },
     { k: "Generic AI chatbot", v: "AED 1,200", d: "1 channel · no memory", n: "tool" },
-    { k: "Project Agent", v: "AED 5,000", d: "five agents · all channels · 24/7", n: "us" },
+    { k: "Najim hire", v: "AED 5,000", d: "named teammate · all channels · 24/7", n: "us" },
   ];
   return (
     <div className="ph-panel">
@@ -157,7 +157,7 @@ function Tiers() {
                   marginBottom: 6,
                 }}
               >
-                Job offer · Najim by Project Agent
+                Job offer · Najim · the AI staffing agency
               </div>
               <div
                 style={{
@@ -342,7 +342,7 @@ function Tiers() {
             <div className="mono" style={{ fontSize: 11, opacity: 0.55, maxWidth: "44ch", lineHeight: 1.5 }}>
               Founding-customer rate: {sym} {founding.toLocaleString()}/month for the first 5 businesses, in trade for a case study. No long-term lock-in. Cancel any month.
             </div>
-            <a className="btn primary lg" href="/teardown">
+            <a className="btn primary lg" href="/kickoff">
               Accept &amp; schedule kickoff <Arrow size={14} />
             </a>
           </div>

@@ -30,14 +30,30 @@ export function Marquee({ text }: { text?: string }) {
 
 export function Brand({ href = "/", compact = false }: { href?: string; compact?: boolean }) {
   return (
-    <a href={href} className="brand">
-      <span className="brand-mark">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/dcp-logo-square.jpeg" alt="DCP" />
+    <a href={href} className="brand" aria-label="Najim — AI staffing for UAE & Saudi">
+      <span
+        className="brand-mark"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          background: "linear-gradient(135deg, #d4924b 0%, #c47a37 100%)",
+          color: "#0a0b0d",
+          fontWeight: 600,
+          fontSize: 18,
+          lineHeight: 1,
+          letterSpacing: "-0.02em",
+        }}
+        aria-hidden="true"
+      >
+        ★
       </span>
       {!compact && (
         <span className="brand-name">
-          DCP<i>·sa</i>
+          Najim<i>·ai</i>
         </span>
       )}
     </a>
