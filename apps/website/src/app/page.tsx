@@ -593,8 +593,8 @@ function Hero() {
           >
             <span className="d" />
             {lang === "ar"
-              ? "واتساب أصلي · عربية أصلية · جاهز خلال ١٠ دقائق"
-              : "WhatsApp-native · Arabic-native · live in 10 minutes"}
+              ? "وكالة توظيف ذكاء · الإمارات والسعودية · إطلاق في ١٠ أيام"
+              : "AI staffing · UAE & Saudi · 10-day hires"}
           </span>
         </div>
         <div className="hero-grid">
@@ -602,13 +602,13 @@ function Hero() {
             <Reveal as="h1" className="display tight">
               {lang === "ar" ? (
                 <>
-                  <em>موظفك</em> على واتساب.<br />
-                  عربي. جاهز اليوم.
+                  وظّف أول <em>موظفة ذكاء</em><br />
+                  لعملك.
                 </>
               ) : (
                 <>
-                  Your <em>employee</em> on WhatsApp.<br />
-                  Arabic. Live today.
+                  Hire your first<br />
+                  <em>AI employee.</em>
                 </>
               )}
             </Reveal>
@@ -616,31 +616,26 @@ function Hero() {
             <Reveal as="p" className="lede-strong" delay={120}>
               {lang === "ar" ? (
                 <>
-                  مبني على واتساب — <b>مو ملصق عليه</b>. مصمم للإمارات والسعودية. لكل عمل <b>موظفة مخصّصة</b> — لها اسم، وجه، صوت، وسيرة ذاتية. نتولى إعداد ميتا، الرسائل الصوتية بعربية خليجية، الفروع المتعددة، والتكامل مع <b>فودكس وتابي وتمارا</b>. أنت تركز على عملك — هي تخدم عملاءك. على مدار الساعة، بلا توقف، بلا نسيان.
+                  موظفة مخصّصة لعملك — لها اسم، وجه، صوت، وسيرة ذاتية من صفحة واحدة. مدرّبة على عملك خلال <b>١٠ أيام عمل</b>. تحلّ محلّ موظف خدمة عملاء براتب <b>٧٬٠٠٠ درهم</b> — بسعر <b>٥٬٠٠٠ درهم/شهر</b>. لا تستقيل، لا تنام، تتقن العربية الخليجية والإنجليزية. نحن نوظّفها ونُعدّها — أنت تدير العمل.
                 </>
               ) : (
                 <>
-                  Built <b>on WhatsApp</b>, not bolted onto it. Designed for UAE &amp; Saudi SMBs. Every business gets a <b>bespoke teammate</b> — her own name, face, voice, and one-page CV. We handle Meta verification, Gulf-Arabic voice notes, multi-outlet operations, and integrations with <b>Foodics, Tabby &amp; Tamara</b> — so you focus on the business while she handles the customers. Around the clock, in Arabic and English.
+                  A bespoke teammate for your business — her own name, face, voice, and one-page CV. Trained on your operations in <b>10 working days</b>. Replaces a <b>AED 7,000</b> customer-service hire — for <b>AED 5,000/month</b>. Never quits, never sleeps, fluent in Gulf Arabic and English. We do the hiring and training. You run the business.
                 </>
               )}
             </Reveal>
 
             <Reveal as="div" className="cta-row tight" delay={200}>
-              <a className="btn primary lg" href="/teardown">
+              <a className="btn primary lg" href="#team">
                 {lang === "ar"
-                  ? "احصل على تشريح مجاني لعملك · ٦٠ ثانية"
-                  : "Free 60-second teardown of your business"}{" "}
+                  ? "تعرّف على موظفتك"
+                  : "Meet your hire"}{" "}
                 <Arrow size={14} />
               </a>
-              <a
-                className="btn ghost lg"
-                href="https://wa.me/12058582516?text=Hi"
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a className="btn ghost lg" href="/teardown">
                 {lang === "ar"
-                  ? "كلّم نديا الآن على واتساب"
-                  : "Text Nadia live on WhatsApp →"}
+                  ? "تشريح مجاني لعملك · ٦٠ ثانية"
+                  : "Audit my business · 60s"}
               </a>
             </Reveal>
 
@@ -789,6 +784,186 @@ function Teardown() {
   );
 }
 
+function TheMath() {
+  const { lang } = useLang();
+
+  const oldWay = [
+    { role: lang === "ar" ? "موظف خدمة عملاء" : "Customer-service rep", cost: 7000, src: "GulfTalent 2026" },
+    { role: lang === "ar" ? "منسّق تسويق" : "Marketing coordinator", cost: 14000, src: "GulfTalent 2026" },
+    { role: lang === "ar" ? "موظف استقبال ثنائي اللغة" : "Bilingual receptionist", cost: 4500, src: "Indeed UAE" },
+  ];
+  const oldTotal = oldWay.reduce((acc, r) => acc + r.cost, 0);
+
+  return (
+    <section className="section">
+      <div className="container">
+        <SectionMeta
+          idx="01"
+          label={lang === "ar" ? "الحساب" : "the math"}
+          right={<span className="mono">{lang === "ar" ? "د.إ · شهرياً" : "AED · MONTHLY"}</span>}
+        />
+        <div className="sec-title-row">
+          <h2 className="display-2">
+            {lang === "ar" ? (
+              <>
+                نفس الوظيفة. <em>ثُلث التكلفة.</em>
+              </>
+            ) : (
+              <>
+                Same job. <em>One-fifth the cost.</em>
+              </>
+            )}
+          </h2>
+          <p className="ss strong" style={{ maxWidth: "44ch" }}>
+            {lang === "ar"
+              ? "كم تكلّفك خدمة العملاء فعلياً اليوم — مقابل ما تدفعه معنا. أرقام رواتب فعلية من جلف تالنت وإنديد."
+              : "What customer service actually costs you today, vs. what you pay us. Real salary medians from GulfTalent and Indeed."}
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: 20,
+          }}
+        >
+          {/* Old way */}
+          <div
+            style={{
+              border: "1px solid var(--line, rgba(255,255,255,0.08))",
+              borderRadius: 10,
+              padding: "28px 28px 24px",
+              background: "var(--card-bg, rgba(255,255,255,0.015))",
+              opacity: 0.78,
+            }}
+          >
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                opacity: 0.6,
+                marginBottom: 14,
+              }}
+            >
+              {lang === "ar" ? "الطريقة القديمة" : "The old way"}
+            </div>
+            <h3
+              style={{
+                fontSize: 24,
+                margin: "0 0 18px",
+                fontFamily: "var(--serif, Georgia, serif)",
+                fontWeight: 400,
+                lineHeight: 1.2,
+              }}
+            >
+              {lang === "ar"
+                ? "وظّف ثلاثة موظفين. ادفع ٢٥٬٥٠٠ د.إ."
+                : "Hire three people. Pay AED 25,500."}
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+              {oldWay.map((r) => (
+                <div key={r.role} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 14, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <div>
+                    <div>{r.role}</div>
+                    <div className="mono" style={{ fontSize: 10, opacity: 0.5, marginTop: 2 }}>{r.src}</div>
+                  </div>
+                  <span className="mono" style={{ opacity: 0.8 }}>AED {r.cost.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+              <span className="mono" style={{ fontSize: 11, opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                {lang === "ar" ? "إجمالي شهري" : "Monthly total"}
+              </span>
+              <span style={{ fontSize: 28, fontFamily: "var(--serif, Georgia, serif)", fontWeight: 400 }}>
+                AED {oldTotal.toLocaleString()}
+              </span>
+            </div>
+            <p style={{ fontSize: 12, lineHeight: 1.55, opacity: 0.55, margin: 0 }}>
+              {lang === "ar"
+                ? "+ تأشيرات + مكافأة نهاية الخدمة + ٦ أسابيع توظيف. أغلبهم يستقيل خلال ٦ أشهر، فتُكرّر الدورة."
+                : "+ visas + EOS gratuities + 6-week recruiting cycle. Most quit within 6 months. You repeat the cycle."}
+            </p>
+          </div>
+
+          {/* New way */}
+          <div
+            style={{
+              border: "1px solid var(--green, #5d8a4a)",
+              borderRadius: 10,
+              padding: "28px 28px 24px",
+              background: "linear-gradient(180deg, rgba(93,138,74,0.06) 0%, rgba(93,138,74,0.015) 100%)",
+              position: "relative",
+            }}
+          >
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "var(--green, #5d8a4a)",
+                marginBottom: 14,
+              }}
+            >
+              {lang === "ar" ? "مع موظفي الذكاء" : "With Project Agent"}
+            </div>
+            <h3
+              style={{
+                fontSize: 24,
+                margin: "0 0 18px",
+                fontFamily: "var(--serif, Georgia, serif)",
+                fontWeight: 400,
+                lineHeight: 1.2,
+              }}
+            >
+              {lang === "ar"
+                ? "موظفة واحدة. ١٠ أيام. للأبد."
+                : "One teammate. Ten days. Forever."}
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 14, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <div>
+                  <div>{lang === "ar" ? "موظفة ذكاء مخصّصة لعملك" : "Bespoke AI teammate"}</div>
+                  <div className="mono" style={{ fontSize: 10, opacity: 0.5, marginTop: 2 }}>
+                    {lang === "ar" ? "اسم · وجه · صوت · سيرة ذاتية" : "name · face · voice · CV"}
+                  </div>
+                </div>
+                <span className="mono" style={{ opacity: 0.8 }}>AED 5,000</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 14, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <div>
+                  <div>{lang === "ar" ? "تركيب لمرة واحدة" : "One-time setup"}</div>
+                  <div className="mono" style={{ fontSize: 10, opacity: 0.5, marginTop: 2 }}>
+                    {lang === "ar" ? "إعداد ميتا + تدريب + تكاملات" : "Meta verification + training + integrations"}
+                  </div>
+                </div>
+                <span className="mono" style={{ opacity: 0.8 }}>AED 3,500</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+              <span className="mono" style={{ fontSize: 11, opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                {lang === "ar" ? "إجمالي شهري" : "Monthly total"}
+              </span>
+              <span style={{ fontSize: 28, fontFamily: "var(--serif, Georgia, serif)", fontWeight: 400, color: "var(--green, #5d8a4a)" }}>
+                AED 5,000
+              </span>
+            </div>
+            <p style={{ fontSize: 12, lineHeight: 1.55, opacity: 0.7, margin: 0 }}>
+              {lang === "ar"
+                ? "بلا تأشيرات · بلا مكافأة نهاية خدمة · بلا توظيف · بلا استقالات · جاهزة على واتساب خلال ١٠ أيام."
+                : "No visas · no EOS · no recruiting · never quits · live on WhatsApp in 10 working days."}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Pain() {
   const { lang } = useLang();
   return (
@@ -835,18 +1010,15 @@ function Pain() {
 
 function AgentsSection() {
   const { lang } = useLang();
-  // Re-ported from /tmp/dcp-design/assets/home.jsx (Agents) using the
-  // designed AgentCard primitive from screens.jsx (lines 38-53), which now
-  // lives in components/dcp/screens.tsx. Wrapped in section-dark per brief.
   return (
-    <section className="section section-dark">
+    <section id="team" className="section section-dark">
       <div className="container">
         <SectionMeta
-          idx="03"
-          label={lang === "ar" ? "الفريق" : "your AI team"}
+          idx="02"
+          label={lang === "ar" ? "تعرّف على الفريق" : "meet your team"}
           right={
             <span className="mono">
-              {AGENTS.length}/{AGENTS.length}
+              {AGENTS.length} {lang === "ar" ? "متاحون للتوظيف" : "AVAILABLE FOR HIRE"}
             </span>
           }
         />
@@ -854,20 +1026,20 @@ function AgentsSection() {
           <h2 className="display-2">
             {lang === "ar" ? (
               <>
-                <em>{AGENTS.length} موظفين</em> أذكياء. لكلٍ منهم اسم.
+                <em>{AGENTS.length} موظفين</em> جاهزون<br />
+                للالتحاق بعملك.
               </>
             ) : (
               <>
-                <em>{AGENTS.length} AI employees.</em>
-                <br />
-                Each one has a name.
+                <em>{AGENTS.length} hires</em> ready<br />
+                to start Monday.
               </>
             )}
           </h2>
           <p className="ss strong" style={{ maxWidth: "44ch" }}>
             {lang === "ar"
-              ? "ليسوا روبوتات بنصوص جاهزة. شخصيّات بأسماء، ووجوه، وأصوات خاصّة، وذاكرة تمتدّ لشهور. يعملون معاً، ويتشاركون الذكاء، ويتحسّنون من غير ما تلمس شي."
-              : "Not bots with scripts. Personalities with names, faces, voices, and memory that spans months. They work together, share intelligence, and get better without you touching anything."}
+              ? "كل واحد منهم سيرة ذاتية. اسم. وجه. صوت. تخصّص. لا روبوتات بنصوص جاهزة — شخصيّات حقيقية بذاكرة تمتدّ لأشهر، تتدرّب على عملك، وتتحسّن كل ليلة."
+              : "Each one has a CV. A name. A face. A voice. A specialty. Not bots running scripts — real personalities with months-long memory, trained on your business, getting better every night."}
           </p>
         </div>
         <div className="agent-grid">
@@ -1382,11 +1554,11 @@ function HowItWorks() {
     <section className="section" id="how">
       <div className="container">
         <SectionMeta
-          idx="08"
-          label={lang === "ar" ? "كيف يعمل" : "how it works"}
+          idx="03"
+          label={lang === "ar" ? "كيف يجري التوظيف" : "how the hire works"}
           right={
             <span className="mono">
-              {lang === "ar" ? "١٠ دقائق · ليس ١٠ أسابيع" : "10 MIN · NOT 10 WEEKS"}
+              {lang === "ar" ? "١٠ أيام · لا ١٠ أسابيع" : "10 DAYS · NOT 10 WEEKS"}
             </span>
           }
         />
@@ -1394,20 +1566,18 @@ function HowItWorks() {
           <h2 className="display-2">
             {lang === "ar" ? (
               <>
-                جاهز في <em>عشر دقائق</em>.<br />
-                وليس عشرة أسابيع.
+                موظفتك تباشر العمل <em>خلال ١٠ أيام</em>.
               </>
             ) : (
               <>
-                Live in <em>10 minutes</em>.<br />
-                Not 10 weeks.
+                Your hire starts in <em>10 working days.</em>
               </>
             )}
           </h2>
           <p className="ss strong" style={{ maxWidth: "44ch" }}>
             {lang === "ar"
-              ? "بدون مطوّرين. بدون إعداد تقني. ذكاؤنا يبني قاعدة معرفتك من موقعك تلقائياً."
-              : "No developers. No technical setup. Our AI builds your knowledge base from your website automatically."}
+              ? "بدون مطوّرين. بدون إعداد تقني. مكالمة كيكأوف يوم الأول، تعرف على موظفتك يوم الثالث، إطلاق فعلي يوم العاشر. كل شيء بين هذين الموعدين نتولّاه نحن."
+              : "No developers. No technical setup. Kickoff call on Day 1, meet your hire on Day 3, live on Day 10. Everything between we handle for you."}
           </p>
         </div>
         <div className="how-grid">
@@ -1609,11 +1779,11 @@ function Pricing() {
     <section className="section">
       <div className="container">
         <SectionMeta
-          idx="10"
-          label={lang === "ar" ? "الأسعار" : "pricing"}
+          idx="04"
+          label={lang === "ar" ? "عرض التوظيف" : "the offer"}
           right={
             <span className="mono">
-              {lang === "ar" ? "د.إ · بلا مفاجآت" : "AED · NO SURPRISES"}
+              {lang === "ar" ? "عرض واحد · بلا تَدرّجات" : "ONE OFFER · NO TIERS"}
             </span>
           }
         />
@@ -1621,26 +1791,166 @@ function Pricing() {
           <h2 className="display-2">
             {lang === "ar" ? (
               <>
-                أسعار <em>شفافة</em>.<br />
-                بدون مفاجآت.
+                سعر واحد. <em>كموظفة فعلية.</em>
               </>
             ) : (
               <>
-                Transparent <em>pricing</em>.<br />
-                No surprises.
+                One price. <em>Like an actual hire.</em>
               </>
             )}
           </h2>
           <p className="ss strong" style={{ maxWidth: "44ch" }}>
             {lang === "ar"
-              ? "أقلّ من راتب موظف واحد. ومخرجات فريق من ستّة."
-              : "Less than the cost of one employee. More output than a team of six."}
+              ? "بلا تَدرّجات. بلا حسابات حسب الرسائل. بلا مفاجآت في الفاتورة. نفس السعر الذي تدفعه شهر التشغيل الأول وشهر السنة الثالثة."
+              : "No tiers. No message-credit math. No surprise bills. Same price month one as month thirty-six."}
           </p>
         </div>
-        <div className="pricev2-grid">
-          {TIERS.map((tier) => (
-            <PricingCardV2 key={tier.id} tier={tier} lang={lang} />
-          ))}
+
+        <div
+          style={{
+            maxWidth: 720,
+            margin: "0 auto",
+            border: "1px solid var(--line, rgba(255,255,255,0.12))",
+            borderRadius: 12,
+            padding: 0,
+            background: "var(--card-bg, rgba(255,255,255,0.02))",
+            overflow: "hidden",
+          }}
+        >
+          {/* Letter-header */}
+          <div
+            style={{
+              padding: "20px 32px",
+              borderBottom: "1px solid var(--line, rgba(255,255,255,0.08))",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              flexWrap: "wrap",
+              gap: 12,
+            }}
+          >
+            <div>
+              <div
+                className="mono"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  opacity: 0.55,
+                  marginBottom: 4,
+                }}
+              >
+                {lang === "ar" ? "عرض توظيف" : "Job offer · Project Agent"}
+              </div>
+              <div
+                style={{
+                  fontSize: 22,
+                  fontFamily: "var(--serif, Georgia, serif)",
+                }}
+              >
+                {lang === "ar" ? "موظفة ذكاء اصطناعي · مخصّصة لعملك" : "AI Employee · bespoke for your business"}
+              </div>
+            </div>
+            <span
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "var(--green, #5d8a4a)",
+                padding: "4px 10px",
+                border: "1px solid var(--green, #5d8a4a)",
+                borderRadius: 999,
+              }}
+            >
+              ● {lang === "ar" ? "متاحة الآن" : "Available now"}
+            </span>
+          </div>
+
+          {/* Price block */}
+          <div style={{ padding: "32px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.55, marginBottom: 6 }}>
+                {lang === "ar" ? "راتب شهري" : "Monthly salary"}
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span className="mono" style={{ fontSize: 14, opacity: 0.6 }}>AED</span>
+                <span style={{ fontSize: 56, fontFamily: "var(--serif, Georgia, serif)", lineHeight: 1, fontWeight: 400 }}>5,000</span>
+              </div>
+              <div className="mono" style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
+                {lang === "ar" ? "≈ ١٬٣٦٠ دولاراً · شامل التشغيل والذكاء والصيانة" : "≈ $1,360 · all inference, voice, hosting"}
+              </div>
+            </div>
+            <div>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.55, marginBottom: 6 }}>
+                {lang === "ar" ? "تركيب لمرة واحدة" : "One-time setup"}
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span className="mono" style={{ fontSize: 14, opacity: 0.6 }}>AED</span>
+                <span style={{ fontSize: 56, fontFamily: "var(--serif, Georgia, serif)", lineHeight: 1, fontWeight: 400 }}>3,500</span>
+              </div>
+              <div className="mono" style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
+                {lang === "ar" ? "إعداد ميتا · تدريب · تكاملات · ١٠ أيام عمل" : "Meta verification · training · integrations · 10 working days"}
+              </div>
+            </div>
+          </div>
+
+          {/* Inclusion list */}
+          <div style={{ padding: "0 32px 8px" }}>
+            <div className="mono" style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.55, marginBottom: 12 }}>
+              {lang === "ar" ? "ما يشمله العرض" : "What's in the offer"}
+            </div>
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px 18px" }}>
+              {(lang === "ar" ? [
+                "اسم ووجه وصوت خاصّ بعملك",
+                "سيرة ذاتية من صفحة واحدة (للطباعة)",
+                "ردود على واتساب — نص + رسالة صوتية",
+                "تكامل فودكس · سفنرومز · تابي · تمارا · فريشا",
+                "موجز يومي على واتساب الساعة ٩ صباحاً",
+                "ذاكرة عملاء — VIP / مخاطر / منقطعين",
+                "تحسّن ذاتي ليلي",
+                "إعداد ميتا (نتولّاه كاملاً)",
+              ] : [
+                "Bespoke name, face & voice for your brand",
+                "Printable one-page CV",
+                "WhatsApp replies — text + voice notes",
+                "Foodics · SevenRooms · Tabby · Tamara · Fresha",
+                "9am daily WhatsApp owner brief",
+                "Customer memory — VIP / at-risk / lapsed",
+                "Self-improving every night",
+                "Meta verification (we handle it)",
+              ]).map((item) => (
+                <li key={item} style={{ fontSize: 14, opacity: 0.85, display: "flex", gap: 10 }}>
+                  <span style={{ color: "var(--green, #5d8a4a)", flexShrink: 0 }}>✓</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Footer / CTA */}
+          <div
+            style={{
+              padding: "20px 32px 28px",
+              marginTop: 18,
+              borderTop: "1px solid var(--line, rgba(255,255,255,0.08))",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 14,
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ fontSize: 12, opacity: 0.6 }}>
+              {lang === "ar"
+                ? "سعر العميل المؤسّس: ٢٬٥٠٠ د.إ/شهر للخمس شركات الأولى (مقابل دراسة حالة)."
+                : "Founding-customer rate: AED 2,500/mo for the first 5 businesses (case-study trade)."}
+            </div>
+            <a className="btn primary" href="/teardown">
+              {lang === "ar" ? "احجز موعد التشغيل" : "Schedule kickoff"}{" "}
+              <Arrow size={12} />
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -1992,21 +2302,22 @@ function HomeApp() {
       <Nav
         links={navLinks}
         active="home"
-        status={{ label: lang === "ar" ? "مباشر · الإمارات والسعودية" : "LIVE · UAE & SAUDI" }}
-        ctaLabel={lang === "ar" ? "تشريح مجاني" : "Free teardown"}
+        status={{ label: lang === "ar" ? "متاحون للتوظيف · الإمارات والسعودية" : "HIRING · UAE & SAUDI" }}
+        ctaLabel={lang === "ar" ? "احجز موعد التشغيل" : "Schedule kickoff"}
         ctaHref="/teardown"
       />
       <Hero />
-      <Teardown />
-      <Pain />
+      <TheMath />
       <AgentsSection />
+      <HowItWorks />
+      <Pricing />
+      <Pain />
       <Intelligence />
       <MessageAnatomy />
       <Industries />
       <Memory />
-      <HowItWorks />
       <HireVsAgent />
-      <Pricing />
+      <Teardown />
       <ShippingLog />
       <CTA />
       <AgentsFooter />
