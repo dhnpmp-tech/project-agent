@@ -9,7 +9,7 @@
 
 import { useState, useTransition } from "react";
 
-export function ConnectGmailButton(): JSX.Element {
+export function ConnectGmailButton() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 

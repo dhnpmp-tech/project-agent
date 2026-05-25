@@ -54,7 +54,7 @@ export default async function GmailIntegrationPage({
   searchParams,
 }: {
   searchParams: Promise<{ connected?: string }>;
-}): Promise<JSX.Element> {
+}) {
   const session = await getServerSession();
   if (!session?.clientId) {
     return (
