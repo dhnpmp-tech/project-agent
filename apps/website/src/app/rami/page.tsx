@@ -1,7 +1,7 @@
 // Public /rami page — the demand-engine surface.
 //
 // Rami is the autonomous CEO persona ("Rami Mansour") that runs on the
-// Project Agent stack. He posts to X 3-4×/day, replies to mentions, DMs
+// Najim stack. He posts to X 3-4×/day, replies to mentions, DMs
 // prospects with personalized teardowns, and learns from the results.
 // This page makes his activity visible to potential customers so they
 // can see the agent in action before signing up.
@@ -90,12 +90,13 @@ function RamiHero() {
           Meet <em>Rami</em>. He runs while you sleep.
         </Reveal>
         <Reveal as="p" className="lede" style={{ marginTop: 24, maxWidth: 720 }}>
-          Rami Mansour is an autonomous AI agent built on the Project Agent
-          stack. He posts to X 3–4 times a day, replies to mentions, DMs
-          prospects with personalized teardowns, and learns from the results.
+          Rami Mansour is Najim&apos;s founder agent — an autonomous AI
+          persona built on the same stack we ship to every customer. He
+          posts to X 3–4 times a day, replies to mentions, DMs prospects
+          with personalized teardowns, and learns from the results.
           Everything below is real, generated tonight or this week — no
-          screenshots, no demos. If you like what he&apos;s doing, you can
-          have your own version answering customers within 10 minutes.
+          screenshots, no demos. If you like what he&apos;s doing, your
+          business gets its own version on WhatsApp in 10 working days.
         </Reveal>
       </div>
     </section>

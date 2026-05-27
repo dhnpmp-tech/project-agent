@@ -1,8 +1,8 @@
 import { SubShell } from "@/components/dcp/sub-shell";
 
 export const metadata = {
-  title: "Privacy — Project Agent",
-  description: "How Project Agent handles your data, with UAE PDPL and KSA PDPL alignment.",
+  title: "Privacy — Najim",
+  description: "How Najim handles your data, with UAE PDPL and KSA PDPL alignment.",
 };
 
 export default function PrivacyPage() {
@@ -21,8 +21,8 @@ export default function PrivacyPage() {
       <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 24 }}>Privacy</h1>
 
       <p>
-        Project Agent operates in the United Arab Emirates and the Kingdom of Saudi Arabia.
-        We align our data handling with the{" "}
+        Najim (operated by Project Agent FZ-LLC) serves businesses in the United Arab
+        Emirates and the Kingdom of Saudi Arabia. We align our data handling with the{" "}
         <strong>UAE PDPL</strong> (Federal Decree-Law No. 45 of 2021) and the{" "}
         <strong>KSA PDPL</strong> (Royal Decree M/19 of 2021).
       </p>

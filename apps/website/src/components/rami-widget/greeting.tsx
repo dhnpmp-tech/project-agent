@@ -17,7 +17,7 @@ interface GreetingPayload {
 }
 
 const FALLBACK: GreetingPayload = {
-  greeting: "I'm Rami. Ask me anything about Project Agent.",
+  greeting: "I'm Rami. Ask me anything about Najim — the AI staffing agency.",
   chips: [],
 };
 

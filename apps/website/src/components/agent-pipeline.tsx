@@ -297,10 +297,10 @@ function OutputDashboard({ progress }: { progress: number }) {
             Every business has repetitive tasks draining time and revenue. Let&apos;s find yours.
           </p>
           <a
-            href="/book-audit/"
+            href="/kickoff"
             className="group inline-flex items-center gap-2 mt-4 rounded-full bg-brand-500 hover:bg-brand-400 px-6 py-2.5 text-[13px] font-semibold text-white transition-all duration-500 active:scale-[0.97] shadow-[0_0_24px_rgba(34,197,94,0.25)] hover:shadow-[0_0_40px_rgba(34,197,94,0.35)]"
           >
-            Get your free automation audit
+            Schedule your kickoff
             <svg className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
           </a>
         </div>

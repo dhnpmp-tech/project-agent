@@ -28,6 +28,13 @@ interface ShipEntry {
 
 const SHIP_LOG: ShipEntry[] = [
   {
+    date: "2026-05-27",
+    tag: "ux",
+    title: "Cut the drift pages · tight navigation only",
+    body: "Deleted 7 routes that didn't fit the staffing-agency narrative: /admin (marketing mockup of internal ops dashboard), /book-audit (duplicated /kickoff), and 5× /preview/* (design exploration variants). Rebranded the keepers — /privacy now reads \"Najim (operated by Project Agent FZ-LLC)\", /rami body copy reframes him as \"Najim's founder agent\", and the Ask-Rami greeting widget now answers \"Ask me anything about Najim\". Inspired by workshq.com.au — they ship five focused routes, no drift, every link earns its slot.",
+    commit: "f581083",
+  },
+  {
     date: "2026-05-26",
     tag: "ux",
     title: "Brand rollout · Najim live across the site + /kickoff form",
@@ -263,7 +270,7 @@ function ChangelogList() {
       <div className="container">
         <SectionMeta idx="01" label="ship log" />
         <h2 className="display tight" style={{ marginBottom: 32 }}>
-          The <em>last 20 days</em>
+          The <em>last 21 days</em>
         </h2>
         <div className="ship-log">
           {SHIP_LOG.map((entry) => (
