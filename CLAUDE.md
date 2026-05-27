@@ -1,5 +1,42 @@
 # CLAUDE.md — Project Agent Platform
 
+# ⭐ NAJIM BRAIN — HARDWIRED SPEC (READ FIRST)
+
+**Before any work that touches gbrain, the Najim Brain, `customer_memory`,
+`vault_notes`, retrieval, or the knowledge-graph layer — read the
+canonical spec:**
+
+- 📄 `docs/architecture/najim-brain.md` — the canonical doc (markdown)
+- 🌐 `apps/website/public/spec/najim-brain.html` — styled HTML rendering (served at https://agents.dcp.sa/spec/najim-brain.html)
+- 📋 `docs/architecture/najim-brain-versions.json` — pinned versions (single source of truth for SHAs, ports, env vars, model names)
+- ✅ `docs/architecture/najim-brain-checklist.md` — 5-phase implementation tracker
+- 🟢 `scripts/najim-brain/bootstrap.sh` — executable §5 (one-time VPS install)
+- 🟢 `scripts/najim-brain/provision-tenant.sh` — executable §6 (per-tenant deploy)
+- 🐍 `backend/prompt-builder/gbrain.py` — locked Python integration signatures
+- 🗄️ `packages/supabase/migrations/021_clients_gbrain.sql` — committed schema migration
+- 🧪 `backend/prompt-builder/tests/test_najim_brain.py` — verification suite (pytest)
+
+**Three hardwiring rules (NON-NEGOTIABLE):**
+
+1. **Spec hierarchy:** If the doc, `versions.json`, and the code
+   disagree → the doc wins. Then the JSON. Then the code. Bump
+   `spec_version` in `najim-brain-versions.json` for any meaningful
+   change.
+2. **Co-edit rule:** Never edit `bootstrap.sh` or
+   `provision-tenant.sh` without updating §5 or §6 of the spec in
+   the same commit. Never invent new function signatures in
+   `gbrain.py` without updating §7.
+3. **Done = green pytest.** A `[fatal]` marker in any bash script's
+   output is a stop. A failing `pytest` case is a stop. "Looks
+   fine to me" is NOT a done signal.
+
+If you (Claude or any other agent) propose anything that violates
+these rules, surface the violation explicitly and stop. Do not "fix
+the spec" silently. Do not invent shortcuts. The spec exists so the
+implementation cannot drift.
+
+---
+
 # Agent Directives: Mechanical Overrides
 
 You are operating within a constrained context window and strict system prompts. To produce production-grade code, you MUST adhere to these overrides:

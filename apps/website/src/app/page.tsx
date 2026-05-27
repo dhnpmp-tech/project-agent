@@ -3245,6 +3245,7 @@ function HomeApp() {
     { href: "/brain", label: lang === "ar" ? "الدماغ" : "The Brain", key: "brain" },
     { href: "/pricing", label: lang === "ar" ? "العرض" : "The offer", key: "pricing" },
     { href: "/teardown", label: lang === "ar" ? "تشريح مجاني" : "Free audit", key: "teardown" },
+    { href: "/spec", label: lang === "ar" ? "المواصفات" : "Spec", key: "spec" },
     { href: "/changelog", label: lang === "ar" ? "السجل" : "Changelog", key: "changelog" },
   ];
   return (

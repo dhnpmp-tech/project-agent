@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Najim Brain — architecture + deploy runbook · spec v1.0.0</title>
+<meta name="description" content="The Najim Brain — canonical architecture document. Hardwired to implementation via versions.json, executable bash scripts, locked Python signatures, committed SQL migration, and pytest verification.">
+<style>
+:root {
+  --bg: #0a0b0d;
+  --bg-elev: #111316;
+  --bg-card: #15181c;
+  --border: #1f2329;
+  --border-strong: #2a2f37;
+  --fg: #e8eaed;
+  --fg-mute: #a4abb5;
+  --fg-dim: #6b7280;
+  --saffron: #d4924b;
+  --emerald: #5d8a4a;
+  --violet: #9f87f0;
+  --azure: #7da8d4;
+  --red: #c47373;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --serif: "Instrument Serif", Georgia, serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.65;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Top bar */
+.spec-bar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(10,11,13,0.92);
+  backdrop-filter: saturate(160%) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.spec-bar-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 28px; max-width: 1280px; margin: 0 auto;
+  flex-wrap: wrap; gap: 12px;
+}
+.spec-brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 12px; letter-spacing: -0.01em;
+  color: var(--fg); text-decoration: none;
+}
+.spec-brand .star {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--saffron) 0%, #c47a37 100%);
+  color: #0a0b0d; font-weight: 600; font-size: 14px; line-height: 1;
+}
+.spec-meta {
+  display: flex; align-items: center; gap: 16px;
+  font-family: var(--mono); font-size: 11px; color: var(--fg-dim);
+}
+.spec-meta .pin {
+  padding: 4px 10px; border: 1px solid var(--border-strong);
+  border-radius: 999px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.spec-meta .pin.canonical {
+  color: var(--saffron); border-color: rgba(212,146,75,0.4);
+  background: rgba(212,146,75,0.06);
+}
+
+/* Layout */
+.spec-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  max-width: 1280px;
+  margin: 0 auto;
+  gap: 48px;
+  padding: 40px 28px 100px;
+}
+.spec-toc {
+  position: sticky; top: 80px; align-self: start;
+  border-right: 1px solid var(--border);
+  padding-right: 24px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  font-size: 13px;
+}
+.spec-toc h4 {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--fg-dim); margin-bottom: 14px;
+}
+.spec-toc ul { list-style: none; }
+.spec-toc li { margin-bottom: 4px; }
+.spec-toc a { color: var(--fg-mute); text-decoration: none; line-height: 1.5; display: block; padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; transition: all 150ms; }
+.spec-toc a:hover { color: var(--saffron); border-left-color: var(--saffron); }
+.spec-toc ul ul { padding-left: 12px; margin-top: 2px; font-size: 12px; opacity: 0.78; }
+.spec-toc ul ul ul { display: none; }
+
+.spec-body { min-width: 0; }
+
+/* Header banner */
+.spec-hero {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 36px 36px 32px;
+  background: linear-gradient(180deg, rgba(212,146,75,0.04) 0%, transparent 100%);
+  margin-bottom: 40px;
+}
+.spec-hero .eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--saffron);
+  margin-bottom: 14px;
+}
+.spec-hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(36px, 4vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  font-weight: 400;
+  margin-bottom: 18px;
+}
+.spec-hero .lede {
+  font-size: 17px; line-height: 1.55; color: var(--fg-mute);
+  max-width: 64ch;
+}
+.spec-hero .lede strong { color: var(--fg); }
+.spec-hero .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.spec-hero .pill {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 12px; border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--fg-mute);
+}
+.spec-hero .pill.active {
+  color: var(--emerald);
+  background: rgba(93,138,74,0.06);
+  border-color: rgba(93,138,74,0.4);
+}
+
+/* Markdown content */
+.spec-body h1 { display: none; }  /* heading-1 already in hero */
+.spec-body h2 {
+  font-family: var(--serif);
+  font-size: 32px; font-weight: 400;
+  margin: 56px 0 18px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+  letter-spacing: -0.01em;
+}
+.spec-body h2:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.spec-body h3 {
+  font-family: var(--sans);
+  font-size: 18px; font-weight: 600;
+  margin: 32px 0 14px;
+  color: var(--fg);
+}
+.spec-body h4 {
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--saffron); margin: 24px 0 10px;
+}
+.spec-body p { margin-bottom: 16px; color: var(--fg-mute); }
+.spec-body p strong { color: var(--fg); font-weight: 600; }
+.spec-body ul, .spec-body ol { margin: 0 0 18px 22px; color: var(--fg-mute); }
+.spec-body ul li, .spec-body ol li { margin-bottom: 6px; }
+.spec-body a { color: var(--saffron); text-decoration: none; border-bottom: 1px solid rgba(212,146,75,0.3); }
+.spec-body a:hover { border-bottom-color: var(--saffron); }
+.spec-body code {
+  font-family: var(--mono); font-size: 13px;
+  background: rgba(255,255,255,0.06);
+  padding: 2px 7px; border-radius: 4px;
+  color: var(--saffron);
+}
+.spec-body pre {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 22px;
+  margin: 18px 0 22px;
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.spec-body pre code {
+  background: transparent; padding: 0; color: var(--fg);
+  font-size: inherit;
+}
+.spec-body blockquote {
+  border-left: 3px solid var(--saffron);
+  margin: 22px 0;
+  padding: 12px 22px;
+  background: rgba(212,146,75,0.04);
+  border-radius: 0 6px 6px 0;
+  color: var(--fg-mute);
+}
+.spec-body blockquote p:last-child { margin-bottom: 0; }
+.spec-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0 28px;
+  font-size: 13.5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.spec-body thead { background: var(--bg-elev); }
+.spec-body th {
+  text-align: left;
+  padding: 12px 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+}
+.spec-body td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--fg-mute);
+  vertical-align: top;
+}
+.spec-body td:first-child { color: var(--fg); font-weight: 500; }
+.spec-body td code { font-size: 11.5px; }
+.spec-body tr:last-child td { border-bottom: none; }
+.spec-body hr {
+  border: none; border-top: 1px solid var(--border);
+  margin: 40px 0;
+}
+
+/* ASCII diagrams (pre with no language) — give them breathing room */
+.spec-body pre { font-family: var(--mono); }
+
+/* Footer */
+.spec-foot {
+  max-width: 1280px;
+  margin: 80px auto 0;
+  padding: 32px 28px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-family: var(--mono); font-size: 11px; color: var(--fg-dim);
+}
+.spec-foot a { color: var(--saffron); text-decoration: none; }
+
+@media (max-width: 880px) {
+  .spec-shell { grid-template-columns: 1fr; gap: 24px; }
+  .spec-toc { position: static; max-height: none; border-right: none; padding-right: 0; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<div class="spec-bar">
+  <div class="spec-bar-row">
+    <a class="spec-brand" href="/">
+      <span class="star">★</span>
+      <span>Najim · spec library</span>
+    </a>
+    <div class="spec-meta">
+      <span class="pin canonical">canonical · spec v1.0.0</span>
+      <span class="pin">2026-05-27</span>
+      <a href="/spec/najim-brain.html" style="color:var(--fg-mute); text-decoration:none;">/spec/najim-brain.html</a>
+    </div>
+  </div>
+</div>
+
+<div class="spec-shell">
+  <aside class="spec-toc">
+    <h4>Contents</h4>
+    <div class="toc">
+<ul>
+<li><a href="#the-najim-brain-architecture-deploy-runbook">The Najim Brain — architecture + deploy runbook</a><ul>
+<li><a href="#0-how-this-document-is-hardwired-to-implementation">0. How this document is hardwired to implementation</a></li>
+<li><a href="#1-goal">1. Goal</a></li>
+<li><a href="#2-architecture">2. Architecture</a></li>
+<li><a href="#3-current-state-inventory-vps-761317986">3. Current state inventory (VPS 76.13.179.86)</a></li>
+<li><a href="#4-the-decision">4. The decision</a></li>
+<li><a href="#5-bootstrap-one-time-performed-once-per-vps">5. Bootstrap (one-time, performed once per VPS)</a><ul>
+<li><a href="#51-clone-gbrain">5.1 Clone gbrain</a></li>
+<li><a href="#52-provision-the-postgres-role-database">5.2 Provision the Postgres role + database</a></li>
+<li><a href="#53-configure-secrets">5.3 Configure secrets</a></li>
+<li><a href="#54-install-gbrain-as-a-systemd-service">5.4 Install gbrain as a systemd service</a></li>
+<li><a href="#55-expose-gbrain-through-traefik-internal-only">5.5 Expose gbrain through Traefik (internal-only)</a></li>
+<li><a href="#56-wire-the-dream-cycle-cron">5.6 Wire the Dream Cycle cron</a></li>
+<li><a href="#57-smoke-test">5.7 Smoke-test</a></li>
+</ul>
+</li>
+<li><a href="#6-per-tenant-provisioning-the-replicable-procedure">6. Per-tenant provisioning — the replicable procedure</a><ul>
+<li><a href="#step-1-create-the-gbrain-source">Step 1 — Create the gbrain source</a></li>
+<li><a href="#step-2-issue-oauth-scope-for-the-agent">Step 2 — Issue OAuth scope for the agent</a></li>
+<li><a href="#step-3-seed-initial-knowledge">Step 3 — Seed initial knowledge</a></li>
+<li><a href="#step-4-backfill-customer-memory">Step 4 — Backfill customer memory</a></li>
+<li><a href="#step-5-backfill-the-vault">Step 5 — Backfill the vault</a></li>
+<li><a href="#step-6-enable-dream-cycle-for-this-tenant">Step 6 — Enable Dream Cycle for this tenant</a></li>
+<li><a href="#step-7-verify-the-customer-agent-retrieves-from-gbrain">Step 7 — Verify the customer agent retrieves from gbrain</a></li>
+</ul>
+</li>
+<li><a href="#7-integration-backendprompt-builder-python">7. Integration: backend/prompt-builder (Python)</a></li>
+<li><a href="#8-integration-appswebsitesrcappbrainpagetsx">8. Integration: apps/website/src/app/brain/page.tsx</a></li>
+<li><a href="#9-schema-additions">9. Schema additions</a><ul>
+<li><a href="#92-python-helper-scripts-to-write">9.2 Python helper scripts to write</a></li>
+</ul>
+</li>
+<li><a href="#10-verification-smoke-tests">10. Verification &amp; smoke tests</a></li>
+<li><a href="#11-rollback">11. Rollback</a></li>
+<li><a href="#12-monitoring">12. Monitoring</a></li>
+<li><a href="#13-future-work-out-of-scope-for-v1">13. Future work (out of scope for v1)</a></li>
+<li><a href="#14-operational-facts">14. Operational facts</a></li>
+<li><a href="#15-what-this-document-is-not">15. What this document is NOT</a></li>
+<li><a href="#change-log">Change log</a></li>
+</ul>
+</li>
+</ul>
+</div>
+
+  </aside>
+
+  <main class="spec-body">
+    <div class="spec-hero">
+      <div class="eyebrow">Architecture · deploy runbook · hardwired execution</div>
+      <h1>The Najim Brain</h1>
+      <p class="lede">
+        The per-tenant memory + knowledge graph layer for every Najim customer agent.
+        <strong>Hardwired</strong> via pinned versions, executable bash scripts, locked Python signatures, committed SQL, and pytest verification — implementation cannot drift from this document without bumping the spec version.
+      </p>
+      <div class="pills">
+        <span class="pill active">● Spec v1.0.0</span>
+        <span class="pill">gbrain + Graphiti + pgvector</span>
+        <span class="pill">Bootstrap ≈ 30 min</span>
+        <span class="pill">Per-tenant ≈ 10 min</span>
+      </div>
+    </div>
+
+    <h1 id="the-najim-brain-architecture-deploy-runbook">The Najim Brain — architecture + deploy runbook</h1>
+<blockquote>
+<p>One-line summary: every Najim tenant gets a per-tenant memory + knowledge graph layer running on <strong>gbrain</strong> (Garry Tan's OpenClaw/Hermes brain). This document defines the architecture, the bootstrap sequence (one-time), and the per-tenant provisioning procedure (replicable).</p>
+<p><strong>Status as of 2026-05-27:</strong> the architecture below is the target. The current state of the VPS is <code>gbrain-postgres</code> is running as an empty pgvector database, but gbrain the application is NOT yet installed. Graphiti + Neo4j ARE running (since ~3 weeks ago) and could serve as an interim brain. This runbook is the prescription, not yet the report.</p>
+</blockquote>
+<hr />
+<h2 id="0-how-this-document-is-hardwired-to-implementation">0. How this document is hardwired to implementation</h2>
+<p>The architecture in this file would normally drift between writing<br />
+and building. We block that with five mechanisms:</p>
+<table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>What it does</th>
+<th>Where it lives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Pinned versions</strong></td>
+<td>Every container tag, gbrain SHA, port, env var, model name lives in one JSON. Drift is a git diff.</td>
+<td><code>docs/architecture/najim-brain-versions.json</code></td>
+</tr>
+<tr>
+<td><strong>Executable bootstrap</strong></td>
+<td>§5 below is also a bash script. Implementer runs it; doesn't read prose and translate.</td>
+<td><code>scripts/najim-brain/bootstrap.sh</code></td>
+</tr>
+<tr>
+<td><strong>Executable provisioning</strong></td>
+<td>§6 below is also a bash script. Per-tenant deploy = one command + 4 args.</td>
+<td><code>scripts/najim-brain/provision-tenant.sh</code></td>
+</tr>
+<tr>
+<td><strong>Locked function signatures</strong></td>
+<td>The Python integration in §7 ships as a real module with <code>NotImplementedError</code>-free stubs that callers can import today. The signatures are the contract — implementation fills bodies, can't invent surface.</td>
+<td><code>backend/prompt-builder/gbrain.py</code></td>
+</tr>
+<tr>
+<td><strong>Committed migration</strong></td>
+<td>§9's schema isn't prose. It's a real SQL file ready to apply.</td>
+<td><code>packages/supabase/migrations/021_clients_gbrain.sql</code></td>
+</tr>
+<tr>
+<td><strong>Verification as pytest</strong></td>
+<td>§10's smoke tests are real pytest cases. CI / cron / manual runs gate on them. Green tests are the only legitimate "done."</td>
+<td><code>backend/prompt-builder/tests/test_najim_brain.py</code></td>
+</tr>
+<tr>
+<td><strong>Checklist mapped to sections</strong></td>
+<td>One markdown file. Every checkbox links back to a §. Implementation isn't "done" until <code>grep "\[ \]"</code> returns nothing.</td>
+<td><code>docs/architecture/najim-brain-checklist.md</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rules:</strong><br />
+1. If this doc, versions.json, and the code disagree — the doc wins. Then the JSON. Then the code. Bump <code>spec_version</code> in the JSON for any meaningful change.<br />
+2. Never edit <code>bootstrap.sh</code> or <code>provision-tenant.sh</code> without updating §5 or §6 in the same commit.<br />
+3. The pytest suite is the only legitimate "done" signal. A <code>[fatal]</code> in the bash output is also a stop. No shipping around either.</p>
+<hr />
+<h2 id="1-goal">1. Goal</h2>
+<p>A single, replicable system for deploying the Najim Brain (gbrain) so that:</p>
+<ol>
+<li>Every paying tenant has their <strong>own scoped memory + knowledge graph</strong> that no other tenant can read.</li>
+<li>Our customer-facing Python agents (<code>backend/prompt-builder/</code>) can query the brain via a standard protocol (MCP over HTTP, OAuth-scoped per tenant).</li>
+<li>The brain self-enriches nightly (Dream Cycle) without manual intervention.</li>
+<li>A new tenant can be provisioned end-to-end in <strong>under 15 minutes</strong> following this runbook, with no architectural decisions to make.</li>
+</ol>
+<hr />
+<h2 id="2-architecture">2. Architecture</h2>
+<pre><code class="language-text">                 ┌───────────────────────────────────────────────┐
+                 │  Customer WhatsApp number (Kapso webhook)     │
+                 └────────────────────┬──────────────────────────┘
+                                      │
+                                      ▼
+            ┌─────────────────────────────────────────────────┐
+            │  backend/prompt-builder (FastAPI on VPS:8200)   │
+            │  ─────────────────────────────────────────────  │
+            │  - decides intent                                │
+            │  - calls gbrain MCP for context                  │
+            │  - calls Anthropic/MiniMax via inference.chat() │
+            │  - writes reply to Kapso                         │
+            │  - fire-and-forget: append to brain              │
+            └────────┬──────────────────────┬─────────────────┘
+                     │                      │
+                     │ (MCP/HTTP)           │ (MCP/HTTP)
+                     ▼                      ▼
+       ┌────────────────────────┐   ┌───────────────────────┐
+       │   gbrain server       │   │ inference router      │
+       │   ──────────────       │   │ Anthropic / MiniMax / │
+       │   - vector store       │   │ OpenRouter / DCP      │
+       │   - knowledge graph    │   └───────────────────────┘
+       │   - hybrid retrieval   │
+       │   - Dream Cycle (2am)  │
+       │   - MCP (30+ tools)    │
+       └───────────┬────────────┘
+                   │
+                   ▼
+       ┌────────────────────────┐
+       │  gbrain-postgres       │       ┌─────────────────────┐
+       │  pgvector pg16         │       │ Graphiti + Neo4j    │
+       │  per-tenant schemas    │◀─────▶│ temporal graph      │
+       │  vault, customer mem,  │       │ (already running,   │
+       │  facts, insights       │       │  port 8100)         │
+       └────────────────────────┘       └─────────────────────┘
+</code></pre>
+<p><strong>Two complementary stores:</strong><br />
+- <strong>gbrain</strong> is the primary: vector retrieval, multi-hop knowledge graph, MCP surface for agents, Dream Cycle.<br />
+- <strong>Graphiti</strong> is a temporal-event specialist: "what happened in this customer's history, in order, with what actors." Optional layer for tenants where event sequencing matters more than free-text retrieval.</p>
+<hr />
+<h2 id="3-current-state-inventory-vps-761317986">3. Current state inventory (VPS <code>76.13.179.86</code>)</h2>
+<p>Containers actually running today:</p>
+<table>
+<thead>
+<tr>
+<th>Container</th>
+<th>Image</th>
+<th>Purpose</th>
+<th>Status for Najim Brain</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gbrain-postgres</code></td>
+<td><code>pgvector/pgvector:pg16</code></td>
+<td>gbrain's DB backend</td>
+<td>✓ ready, empty schema</td>
+</tr>
+<tr>
+<td><code>brain-graphiti</code></td>
+<td><code>zepai/graphiti:latest</code> (port 8100)</td>
+<td>Temporal KG via Neo4j</td>
+<td>✓ running, candidate adjunct</td>
+</tr>
+<tr>
+<td><code>brain-neo4j-graphiti</code></td>
+<td><code>neo4j:5.26.2</code></td>
+<td>Neo4j backing Graphiti</td>
+<td>✓ healthy</td>
+</tr>
+<tr>
+<td><code>agentmemory</code></td>
+<td><code>coolify-agentmemory</code></td>
+<td>Existing memory layer</td>
+<td>⚠ undocumented, audit before deciding role</td>
+</tr>
+<tr>
+<td><code>hermes-agent</code></td>
+<td><code>nousresearch/hermes-agent:latest</code></td>
+<td>Hermes agent runtime</td>
+<td>adjacent, not in this path</td>
+</tr>
+<tr>
+<td><code>nexus2-openclaw-gateway-1</code></td>
+<td><code>ghcr.io/openclaw/openclaw:2026.5.7</code></td>
+<td>OpenClaw gateway</td>
+<td>adjacent, not in this path</td>
+</tr>
+</tbody>
+</table>
+<p>Filesystem:<br />
+- <code>/opt/ai-brain/</code> — <code>docker-compose.yml</code> for Graphiti + Neo4j (already deployed). Plus <code>mem0-repo/</code> clone.<br />
+- <code>/opt/gbrain/</code> — <strong>does not exist yet</strong>. Will be created in Bootstrap step 3.</p>
+<p>Application paths:<br />
+- <code>/opt/agents-platform/</code> — git checkout of project-agent (this repo)<br />
+- <code>/opt/prompt-builder</code> — symlink → <code>/opt/agents-platform/backend/prompt-builder/</code></p>
+<hr />
+<h2 id="4-the-decision">4. The decision</h2>
+<p><strong>Primary brain: gbrain.</strong> Reasons:<br />
+- It's a unified spec — vector + graph + MCP + Dream Cycle in one product.<br />
+- Standard protocol (MCP) lets our Python agents talk to it without bespoke glue.<br />
+- Multi-tenant model (federated source mounts, OAuth-scoped) is purpose-built for our use case.<br />
+- The Najim Brain marketing surface (<code>/brain</code> page, the homepage section) is already named after it.</p>
+<p><strong>Keep Graphiti</strong> as the temporal-event layer for tenants where it adds value (multi-outlet restaurants, brokerages with long-running deals). Sunset if it doesn't earn its slot within 90 days post-gbrain-go-live.</p>
+<p><strong>Audit <code>agentmemory</code> container</strong> in the first week — determine if it carries any data we need to migrate.</p>
+<hr />
+<h2 id="5-bootstrap-one-time-performed-once-per-vps">5. Bootstrap (one-time, performed once per VPS)</h2>
+<p>Run end-to-end on the VPS as root. Total time ~30 minutes including verification.</p>
+<h3 id="51-clone-gbrain">5.1  Clone gbrain</h3>
+<pre><code class="language-bash">ssh root@76.13.179.86
+cd /opt
+git clone https://github.com/garrytan/gbrain.git gbrain
+cd /opt/gbrain
+git log --oneline -1  # pin the SHA used below for reproducibility
+</code></pre>
+<h3 id="52-provision-the-postgres-role-database">5.2  Provision the Postgres role + database</h3>
+<p>The <code>gbrain-postgres</code> container already runs <code>pg16</code> with <code>pgvector</code>. Use the existing container:</p>
+<pre><code class="language-bash">docker exec -it gbrain-postgres psql -U gbrain -d gbrain &lt;&lt;SQL
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;        -- for BM25-style trigram search
+CREATE SCHEMA IF NOT EXISTS gbrain;
+GRANT ALL ON SCHEMA gbrain TO gbrain;
+SQL
+</code></pre>
+<p>Then run gbrain's migrations against this database. From inside <code>/opt/gbrain</code>:</p>
+<pre><code class="language-bash"># Exact command depends on gbrain's release — verify in their README at the pinned SHA
+node ./scripts/migrate.js --url postgres://gbrain:${GBRAIN_DB_PW}@127.0.0.1:5432/gbrain
+</code></pre>
+<p>Verify with:</p>
+<pre><code class="language-bash">docker exec gbrain-postgres psql -U gbrain -d gbrain -c &quot;\dt gbrain.*&quot; | head -20
+# Expect tables: pages · edges · embeddings · sources · users · jobs · audit_log
+</code></pre>
+<h3 id="53-configure-secrets">5.3  Configure secrets</h3>
+<p>Append to <code>/etc/prompt-builder/secrets.env</code>:</p>
+<pre><code class="language-bash">GBRAIN_HTTP_URL=http://127.0.0.1:8300
+GBRAIN_ADMIN_KEY=&lt;generate-32-byte-random&gt;
+GBRAIN_OAUTH_ISSUER=https://auth.najim.ai      # placeholder until domain registered
+GBRAIN_DEFAULT_EMBEDDING_MODEL=nomic-embed-text   # reuse Ollama already running for Graphiti
+</code></pre>
+<p>Generate <code>GBRAIN_ADMIN_KEY</code>:</p>
+<pre><code class="language-bash">openssl rand -hex 32
+</code></pre>
+<h3 id="54-install-gbrain-as-a-systemd-service">5.4  Install gbrain as a systemd service</h3>
+<p>Modeled on the existing <code>prompt-builder.service</code>:</p>
+<pre><code class="language-ini"># /etc/systemd/system/gbrain.service
+[Unit]
+Description=Najim Brain (gbrain) MCP + HTTP server
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/gbrain
+EnvironmentFile=/etc/prompt-builder/secrets.env
+ExecStart=/usr/bin/node ./bin/gbrain-serve --port 8300 --bind 127.0.0.1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p>Activate:</p>
+<pre><code class="language-bash">systemctl daemon-reload
+systemctl enable --now gbrain
+sleep 5
+systemctl is-active gbrain  # expect: active
+curl -sS http://127.0.0.1:8300/health  # expect: {&quot;ok&quot;:true,...}
+</code></pre>
+<h3 id="55-expose-gbrain-through-traefik-internal-only">5.5  Expose gbrain through Traefik (internal-only)</h3>
+<p>We do NOT make gbrain publicly accessible. Add a Traefik rule that exposes it only to localhost so the prompt-builder service can hit it via <code>http://127.0.0.1:8300</code>. No external route.</p>
+<h3 id="56-wire-the-dream-cycle-cron">5.6  Wire the Dream Cycle cron</h3>
+<p>Append to root's crontab:</p>
+<pre><code class="language-cron"># Najim Brain · Dream Cycle · every night at 02:00 Asia/Dubai
+0 2 * * *  curl -sS -X POST -H &quot;X-Admin-Key: ${GBRAIN_ADMIN_KEY}&quot; http://127.0.0.1:8300/dream-cycle/run &gt;&gt; /var/log/gbrain-dream.log 2&gt;&amp;1
+</code></pre>
+<p>Verify with:</p>
+<pre><code class="language-bash">curl -sS -X POST -H &quot;X-Admin-Key: ${GBRAIN_ADMIN_KEY}&quot; http://127.0.0.1:8300/dream-cycle/run
+# Expect: {&quot;started&quot;:true,&quot;job_id&quot;:&quot;...&quot;,&quot;tenants&quot;:0}
+</code></pre>
+<h3 id="57-smoke-test">5.7  Smoke-test</h3>
+<pre><code class="language-bash"># Health
+curl -sS http://127.0.0.1:8300/health
+
+# Create a test source (cleanup at end)
+curl -sS -X POST http://127.0.0.1:8300/sources \
+  -H &quot;X-Admin-Key: ${GBRAIN_ADMIN_KEY}&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;slug&quot;:&quot;smoke-test&quot;,&quot;name&quot;:&quot;Bootstrap smoke test&quot;}'
+
+# Ingest a fact
+curl -sS -X POST http://127.0.0.1:8300/pages \
+  -H &quot;X-Admin-Key: ${GBRAIN_ADMIN_KEY}&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;source&quot;:&quot;smoke-test&quot;,&quot;title&quot;:&quot;hours&quot;,&quot;body&quot;:&quot;Open 12-11 daily&quot;}'
+
+# Search it back
+curl -sS &quot;http://127.0.0.1:8300/search?q=opening+hours&amp;source=smoke-test&quot; \
+  -H &quot;X-Admin-Key: ${GBRAIN_ADMIN_KEY}&quot;
+# Expect: results array with our page
+
+# Cleanup
+curl -sS -X DELETE http://127.0.0.1:8300/sources/smoke-test \
+  -H &quot;X-Admin-Key: ${GBRAIN_ADMIN_KEY}&quot;
+</code></pre>
+<p>Bootstrap complete when all 4 calls succeed.</p>
+<hr />
+<h2 id="6-per-tenant-provisioning-the-replicable-procedure">6. Per-tenant provisioning — the replicable procedure</h2>
+<p>Run this <strong>for every new tenant</strong>. Each step has a verification command. Total time: <strong>~10 minutes per tenant.</strong></p>
+<p>Set the tenant variables once at the top of your shell session:</p>
+<pre><code class="language-bash">TENANT_ID=&quot;3bd50557-6680-43b9-bb8e-261c7f8a19d2&quot;  # from clients table
+TENANT_SLUG=&quot;saffron-kitchen&quot;
+TENANT_NAME=&quot;Saffron Kitchen&quot;
+OWNER_EMAIL=&quot;owner@saffron.ae&quot;
+KEY=$(grep '^GBRAIN_ADMIN_KEY=' /etc/prompt-builder/secrets.env | cut -d= -f2)
+</code></pre>
+<h3 id="step-1-create-the-gbrain-source">Step 1 — Create the gbrain source</h3>
+<pre><code class="language-bash">curl -sS -X POST http://127.0.0.1:8300/sources \
+  -H &quot;X-Admin-Key: $KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &quot;{\&quot;slug\&quot;:\&quot;${TENANT_SLUG}\&quot;,\&quot;name\&quot;:\&quot;${TENANT_NAME}\&quot;,\&quot;tenant_id\&quot;:\&quot;${TENANT_ID}\&quot;,\&quot;owner_email\&quot;:\&quot;${OWNER_EMAIL}\&quot;}&quot;
+
+# Verify:
+curl -sS &quot;http://127.0.0.1:8300/sources/${TENANT_SLUG}&quot; -H &quot;X-Admin-Key: $KEY&quot;
+</code></pre>
+<h3 id="step-2-issue-oauth-scope-for-the-agent">Step 2 — Issue OAuth scope for the agent</h3>
+<pre><code class="language-bash">curl -sS -X POST http://127.0.0.1:8300/oauth/tokens \
+  -H &quot;X-Admin-Key: $KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &quot;{\&quot;source\&quot;:\&quot;${TENANT_SLUG}\&quot;,\&quot;scopes\&quot;:[\&quot;read\&quot;,\&quot;write\&quot;],\&quot;ttl_days\&quot;:365}&quot; \
+  | tee /tmp/tenant-token.json
+
+TENANT_TOKEN=$(jq -r .token /tmp/tenant-token.json)
+</code></pre>
+<p>Store <code>TENANT_TOKEN</code> against the tenant row in <code>agents-postgres</code>:</p>
+<pre><code class="language-bash">docker exec agents-postgres psql -U agents_admin -d agents -c &quot;
+UPDATE clients
+SET gbrain_token = '$TENANT_TOKEN'
+WHERE id = '$TENANT_ID';
+&quot;
+</code></pre>
+<p>(Requires a one-time schema migration to add the <code>clients.gbrain_token</code> column — see §9.)</p>
+<h3 id="step-3-seed-initial-knowledge">Step 3 — Seed initial knowledge</h3>
+<p>Pipe the tenant's existing <code>business_knowledge</code> row into gbrain as pages:</p>
+<pre><code class="language-bash">docker exec agents-postgres psql -U agents_admin -d agents -A -t -c &quot;
+SELECT crawl_data-&gt;'menu_highlights', crawl_data-&gt;'faq', crawl_data-&gt;'hours', crawl_data-&gt;'persona'
+FROM business_knowledge WHERE client_id = '$TENANT_ID';
+&quot; | python3 /opt/agents-platform/backend/prompt-builder/scripts/seed_gbrain.py \
+    --tenant &quot;$TENANT_SLUG&quot; \
+    --token &quot;$TENANT_TOKEN&quot;
+</code></pre>
+<p><code>seed_gbrain.py</code> (to be written — see §9.2) turns each JSON field into a typed page. Verify the seed:</p>
+<pre><code class="language-bash">curl -sS &quot;http://127.0.0.1:8300/sources/${TENANT_SLUG}/stats&quot; \
+  -H &quot;Authorization: Bearer $TENANT_TOKEN&quot;
+# Expect: pages &gt; 10, embeddings &gt; 10
+</code></pre>
+<h3 id="step-4-backfill-customer-memory">Step 4 — Backfill customer memory</h3>
+<p>Walk the tenant's existing <code>customer_memory</code> + <code>conversation_summaries</code> rows and write each as a brain page:</p>
+<pre><code class="language-bash">python3 /opt/agents-platform/backend/prompt-builder/scripts/backfill_gbrain.py \
+  --tenant &quot;$TENANT_SLUG&quot; \
+  --token &quot;$TENANT_TOKEN&quot; \
+  --client-id &quot;$TENANT_ID&quot;
+</code></pre>
+<h3 id="step-5-backfill-the-vault">Step 5 — Backfill the vault</h3>
+<p>Same shape for <code>vault_notes</code>:</p>
+<pre><code class="language-bash">python3 /opt/agents-platform/backend/prompt-builder/scripts/backfill_gbrain.py \
+  --tenant &quot;$TENANT_SLUG&quot; \
+  --token &quot;$TENANT_TOKEN&quot; \
+  --client-id &quot;$TENANT_ID&quot; \
+  --table vault_notes
+</code></pre>
+<h3 id="step-6-enable-dream-cycle-for-this-tenant">Step 6 — Enable Dream Cycle for this tenant</h3>
+<p>The cron from §5.6 runs nightly across all tenants. To add this one to the rotation:</p>
+<pre><code class="language-bash">curl -sS -X POST &quot;http://127.0.0.1:8300/sources/${TENANT_SLUG}/dream-cycle/enable&quot; \
+  -H &quot;X-Admin-Key: $KEY&quot;
+</code></pre>
+<p>Run it manually once for smoke-test:</p>
+<pre><code class="language-bash">curl -sS -X POST &quot;http://127.0.0.1:8300/sources/${TENANT_SLUG}/dream-cycle/run&quot; \
+  -H &quot;X-Admin-Key: $KEY&quot;
+</code></pre>
+<h3 id="step-7-verify-the-customer-agent-retrieves-from-gbrain">Step 7 — Verify the customer agent retrieves from gbrain</h3>
+<p>Send a synthetic message through the prompt-builder pipeline and check the trace:</p>
+<pre><code class="language-bash">curl -sS -X POST &quot;http://127.0.0.1:8200/owner/command/${TENANT_ID}&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;command&quot;:&quot;what hours are we open&quot;}'
+
+# Check the prompt-builder log for &quot;gbrain_context&quot; entries
+journalctl -u prompt-builder -n 50 --no-pager | grep gbrain_context
+# Expect at least one retrieval hit with the hours page
+</code></pre>
+<p><strong>If step 7 returns a brain hit, the tenant is provisioned. Otherwise rollback (§11) and triage.</strong></p>
+<hr />
+<h2 id="7-integration-backendprompt-builder-python">7. Integration: <code>backend/prompt-builder</code> (Python)</h2>
+<p>A single new module owns the gbrain client:</p>
+<pre><code class="language-python"># backend/prompt-builder/gbrain.py  (TO BE WRITTEN)
+
+import os, httpx
+from typing import Optional
+
+_GBRAIN_URL = os.environ.get(&quot;GBRAIN_HTTP_URL&quot;, &quot;http://127.0.0.1:8300&quot;)
+
+async def get_context(token: str, query: str, k: int = 8) -&gt; list[dict]:
+    &quot;&quot;&quot;Hybrid-retrieval against the tenant's brain. Returns up to `k`
+    ranked snippets ready to inject into the agent prompt.&quot;&quot;&quot;
+    async with httpx.AsyncClient(timeout=4) as http:
+        r = await http.get(
+            f&quot;{_GBRAIN_URL}/search&quot;,
+            params={&quot;q&quot;: query, &quot;k&quot;: k},
+            headers={&quot;Authorization&quot;: f&quot;Bearer {token}&quot;},
+        )
+        if r.status_code != 200:
+            return []
+        return (r.json() or {}).get(&quot;hits&quot;, [])
+
+async def append_fact(token: str, title: str, body: str, kind: str = &quot;memory&quot;) -&gt; None:
+    &quot;&quot;&quot;Fire-and-forget write. Called from the customer-memory analyzer
+    after every inbound message.&quot;&quot;&quot;
+    try:
+        async with httpx.AsyncClient(timeout=4) as http:
+            await http.post(
+                f&quot;{_GBRAIN_URL}/pages&quot;,
+                headers={&quot;Authorization&quot;: f&quot;Bearer {token}&quot;, &quot;Content-Type&quot;: &quot;application/json&quot;},
+                json={&quot;title&quot;: title, &quot;body&quot;: body, &quot;kind&quot;: kind},
+            )
+    except Exception:
+        # Never block the customer reply on a brain write
+        pass
+</code></pre>
+<p><strong>Integration points in the existing code:</strong></p>
+<ol>
+<li><code>app.py</code> webhook handler — before the LLM call, fetch <code>get_context(token, text)</code> and append to the system prompt under a clearly-labeled <code>## Memory</code> section.</li>
+<li><code>customer_memory_analyzer.py</code> — after writing to Postgres, mirror to gbrain via <code>append_fact()</code>.</li>
+<li><code>owner_brain.py</code> <code>process_owner_command</code> — same dual-write pattern when the owner adds vault notes.</li>
+<li><code>inference.py</code> — no change. Gbrain feeds the <em>prompt</em>, not the inference layer.</li>
+</ol>
+<p>All three integration points are <strong>non-blocking</strong> — gbrain failures degrade gracefully to Postgres-only behavior.</p>
+<hr />
+<h2 id="8-integration-appswebsitesrcappbrainpagetsx">8. Integration: <code>apps/website/src/app/brain/page.tsx</code></h2>
+<p>Today <code>/brain</code> renders a synthetic demo dataset. Once tenant data is live, swap the rendered dataset:</p>
+<ol>
+<li>Add a tenant query param: <code>/brain?tenant=saffron-kitchen</code> (or default to Saffron for the demo).</li>
+<li>Server-fetch <code>/sources/${tenant}/graph?limit=200</code> from gbrain on page load (Najim admin OAuth token, server-side only — never expose to browser).</li>
+<li>Pass real nodes + edges into <code>&lt;BrainCanvas&gt;</code> in the existing shape.</li>
+</ol>
+<p>Reusable. No new component needed.</p>
+<hr />
+<h2 id="9-schema-additions">9. Schema additions</h2>
+<p>One-time <code>agents-postgres</code> migration before the first tenant is provisioned:</p>
+<pre><code class="language-sql">-- packages/supabase/migrations/021_clients_gbrain.sql
+
+ALTER TABLE clients
+  ADD COLUMN IF NOT EXISTS gbrain_token TEXT,
+  ADD COLUMN IF NOT EXISTS gbrain_source_slug TEXT,
+  ADD COLUMN IF NOT EXISTS gbrain_provisioned_at TIMESTAMPTZ;
+</code></pre>
+<h3 id="92-python-helper-scripts-to-write">9.2 Python helper scripts to write</h3>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/seed_gbrain.py</code></td>
+<td>Translate <code>business_knowledge.crawl_data</code> JSON into gbrain pages. Idempotent: skip pages already present by source-id.</td>
+</tr>
+<tr>
+<td><code>scripts/backfill_gbrain.py</code></td>
+<td>Read any table (<code>customer_memory</code>, <code>vault_notes</code>, <code>conversation_summaries</code>) and post each row as a brain page. Resumable on failure.</td>
+</tr>
+<tr>
+<td><code>scripts/diff_gbrain.py</code></td>
+<td>Compare Postgres truth to gbrain projection; emit a diff so we can detect drift. Run weekly via cron.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-verification-smoke-tests">10. Verification &amp; smoke tests</h2>
+<p>After every per-tenant provisioning:</p>
+<ol>
+<li><strong>Stats endpoint:</strong> <code>/sources/${slug}/stats</code> returns pages &gt; 10, embeddings &gt; 10.</li>
+<li><strong>Retrieval test:</strong> <code>/search?q=&lt;owner-known-phrase&gt;&amp;source=${slug}</code> returns at least one hit with relevance &gt; 0.6.</li>
+<li><strong>Agent reply test:</strong> post a customer message via the Kapso simulator OR direct webhook stub; verify the prompt-builder log shows <code>gbrain_context_hits &gt;= 1</code>.</li>
+<li><strong>Dream Cycle dry-run:</strong> <code>/sources/${slug}/dream-cycle/run</code> returns <code>{"completed":true,...}</code> within 60 seconds.</li>
+</ol>
+<p>If any of these fail: rollback (§11).</p>
+<hr />
+<h2 id="11-rollback">11. Rollback</h2>
+<p>Reversal procedure if a tenant's gbrain integration misbehaves:</p>
+<pre><code class="language-bash"># Disable retrieval for this tenant (still safe — agents fall back to Postgres)
+docker exec agents-postgres psql -U agents_admin -d agents -c &quot;
+UPDATE clients SET gbrain_token = NULL WHERE id = '$TENANT_ID';
+&quot;
+
+# Optionally delete the gbrain source (keeps the data on Postgres untouched)
+curl -sS -X DELETE &quot;http://127.0.0.1:8300/sources/${TENANT_SLUG}&quot; \
+  -H &quot;X-Admin-Key: $KEY&quot;
+
+# Restart the prompt-builder so it re-reads the clients table
+systemctl restart prompt-builder
+</code></pre>
+<p>The customer-facing agent continues to work — it just stops calling gbrain. No customer-visible regression.</p>
+<hr />
+<h2 id="12-monitoring">12. Monitoring</h2>
+<p>Add to the existing <code>cron_runs</code> cadence:</p>
+<table>
+<thead>
+<tr>
+<th>Probe</th>
+<th>Frequency</th>
+<th>Alert threshold</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /health</code> on gbrain</td>
+<td>every 60s</td>
+<td>2 consecutive failures → page founder</td>
+</tr>
+<tr>
+<td>Dream Cycle completion</td>
+<td>nightly</td>
+<td>not-completed by 03:00 local → page</td>
+</tr>
+<tr>
+<td>Per-tenant retrieval latency p95</td>
+<td>every 15min</td>
+<td>&gt; 800ms → soft warning</td>
+</tr>
+<tr>
+<td>Embedding queue depth</td>
+<td>every 5min</td>
+<td>&gt; 1000 → scale Ollama</td>
+</tr>
+</tbody>
+</table>
+<p>Surface in the <code>cron_runs</code> table so we can graph it from the existing dashboard.</p>
+<hr />
+<h2 id="13-future-work-out-of-scope-for-v1">13. Future work (out of scope for v1)</h2>
+<ul>
+<li><strong>Per-tenant isolated containers</strong> for compliance-sensitive customers (govt, healthcare, banking)</li>
+<li><strong>Graphiti integration</strong> for tenants where temporal-event sequencing matters</li>
+<li><strong>Tenant-facing <code>/dashboard/brain</code> page</strong> — owner sees their own brain growing</li>
+<li><strong>Cross-tenant insight library</strong> — patterns learned at one tenant offered (anonymized) to others</li>
+<li><strong>Replace <code>agentmemory</code> container</strong> entirely once we've audited what it carries</li>
+<li><strong>Migrate from Ollama-hosted embeddings to OpenAI text-embedding-3-small</strong> for higher quality (and pay-per-call cost) — config flip</li>
+</ul>
+<hr />
+<h2 id="14-operational-facts">14. Operational facts</h2>
+<ul>
+<li><strong>Backup target:</strong> <code>gbrain-postgres</code> joins the existing pg_dump nightly backup. Add the schema to the dump script in <code>infrastructure/backup/</code>.</li>
+<li><strong>Disaster recovery RPO:</strong> 24 hours (next nightly dump).</li>
+<li><strong>DR RTO:</strong> 30 minutes (restore from dump, re-run §5).</li>
+<li><strong>Cost per tenant per month:</strong> ~$1.20 (Ollama inference + Postgres storage + Dream Cycle compute).</li>
+<li><strong>Single point of failure:</strong> gbrain-postgres. Mitigation: WAL streaming to a hot standby (Q3 2026).</li>
+</ul>
+<hr />
+<h2 id="15-what-this-document-is-not">15. What this document is NOT</h2>
+<ul>
+<li>Not a sales artifact. Use <code>/brain</code> on the website for that.</li>
+<li>Not a substitute for reading gbrain's own README at the pinned SHA.</li>
+<li>Not a guarantee gbrain's API matches the examples here — pin a SHA in §5.1 and update this doc when the SHA bumps.</li>
+</ul>
+<hr />
+<h2 id="change-log">Change log</h2>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Author</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-05-27</td>
+<td>Architecture draft v1</td>
+<td>Initial document. gbrain not yet bootstrapped.</td>
+</tr>
+</tbody>
+</table>
+  </main>
+</div>
+
+<footer class="spec-foot">
+  <span>© 2026 Najim · operated by Project Agent FZ-LLC · the canonical spec</span>
+  <span><a href="/">← back to najim.ai</a></span>
+</footer>
+
+</body>
+</html>
