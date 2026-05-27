@@ -29,6 +29,13 @@ interface ShipEntry {
 const SHIP_LOG: ShipEntry[] = [
   {
     date: "2026-05-27",
+    tag: "infra",
+    title: "Najim Brain architecture · deploy runbook · replicable",
+    body: "Before building the real gbrain integration we wrote the architecture. docs/architecture/najim-brain.md is the canonical reference — system goal, ASCII architecture diagram of how gbrain fits with the FastAPI prompt-builder + Kapso webhook + Graphiti adjacent layer, current-state inventory of what's on the VPS today, bootstrap procedure (one-time, ~30 min: clone gbrain, run migrations against gbrain-postgres, configure secrets, systemd service, Traefik localhost-only, Dream Cycle cron, smoke test), and the per-tenant provisioning procedure as 7 numbered steps with exact curl commands and verifications. Plus schema migration (clients.gbrain_token), three Python helper scripts to write next (seed_gbrain.py, backfill_gbrain.py, diff_gbrain.py), code integration points in the prompt-builder, the /brain page swap, rollback, monitoring, DR RPO/RTO, and future work. ~600 lines, copy-pasteable commands throughout. Next sprint: execute §5 then §6 against Saffron first.",
+    commit: "f074979",
+  },
+  {
+    date: "2026-05-27",
     tag: "feat",
     title: "The Najim Brain · two delivery modes · system, not founder",
     body: "Named our shared knowledge layer the Najim Brain — like WorksHQ's Works Brain but built on gbrain + Graphiti + pgvector (all three already running on our VPS as gbrain-postgres / brain-graphiti / brain-neo4j-graphiti containers). New homepage section walks the six layers: customer memory · business knowledge · the vault · knowledge graph · dream cycle (2am enrichment) · MCP protocol. Open-source stack, hosted on infrastructure we own in UAE & Saudi. Also new: 'Two ways we ship' section makes the delivery choice explicit — REMOTE (default, 10 days, AED 5K+3.5K) vs ON-SITE SPRINT (30 days, ~3× price, a Najim operator embeds inside the business — for brokerages, multi-outlet restaurants, clinics). Footer de-Petered — 'WhatsApp Peter' is now 'WhatsApp the team' / hello@najim.ai. Updated §06 of the Najim Laws to lead the system-not-person framing: 'The Brain is the team that stays. Not the person you called.'",
@@ -291,7 +298,7 @@ function ChangelogList() {
       <div className="container">
         <SectionMeta idx="01" label="ship log" />
         <h2 className="display tight" style={{ marginBottom: 32 }}>
-          The <em>last 23 days</em>
+          The <em>last 24 days</em>
         </h2>
         <div className="ship-log">
           {SHIP_LOG.map((entry) => (
