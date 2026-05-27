@@ -129,7 +129,7 @@ export function BrainCanvas() {
               opacity: 0.55,
             }}
           >
-            {lang === "ar" ? "دماغ نجم · مثال زعفران (مباشر)" : "Najim Brain · Saffron Kitchen demo (live)"}
+            {lang === "ar" ? "دماغ نجم · مطعم زعفران · مباشر" : "Najim Brain · Saffron Kitchen · live"}
           </div>
           <div style={{ fontSize: 32, fontFamily: "var(--serif, Georgia, serif)", lineHeight: 1.1, marginTop: 4 }}>
             <span style={{ color: "#d4924b" }}>{visibleCount}</span>

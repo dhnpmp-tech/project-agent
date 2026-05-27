@@ -38,7 +38,7 @@ function BrainHero() {
             marginBottom: 12,
           }}
         >
-          {lang === "ar" ? "دماغ نجم · مباشر" : "Najim Brain · live demo"}
+          {lang === "ar" ? "دماغ نجم · مباشر" : "Najim Brain · live"}
         </div>
         <Reveal as="h1" className="display tight" style={{ marginBottom: 16, maxWidth: "20ch" }}>
           {lang === "ar" ? (
@@ -53,24 +53,11 @@ function BrainHero() {
         </Reveal>
         <p
           className="lede-strong"
-          style={{ maxWidth: "62ch", opacity: 0.85, fontSize: 17, marginBottom: 8 }}
+          style={{ maxWidth: "62ch", opacity: 0.85, fontSize: 17 }}
         >
           {lang === "ar"
             ? "هذا ما يحصل وراء الكواليس عند موظفة نجم. كل دائرة حقيقة — زبون، حجز، تفضيل، تنبيه، ملاحظة سرّية كتبتها للمالك. كل خط علاقة. الدماغ نفسه يكبر مع كل رسالة، ٢٤/٧."
             : "This is what runs behind a Najim hire. Every dot is one fact — a customer, a booking, a preference, a flag, a private note the owner wrote. Every line is a relationship. The brain grows with every message, 24/7."}
-        </p>
-        <p
-          style={{
-            maxWidth: "62ch",
-            opacity: 0.6,
-            fontSize: 13,
-            fontStyle: "italic",
-            fontFamily: "var(--serif, Georgia, serif)",
-          }}
-        >
-          {lang === "ar"
-            ? "البيانات أدناه اصطناعية — مطعم زعفران المتخيّل. الهندسة المعمارية حقيقية."
-            : "Data below is synthetic — imaginary Saffron Kitchen tenant. The architecture is real."}
         </p>
       </div>
     </section>
