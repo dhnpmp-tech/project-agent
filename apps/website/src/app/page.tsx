@@ -995,6 +995,336 @@ function Teardown() {
   );
 }
 
+function NajimLaws() {
+  const { lang } = useLang();
+  const LAWS_EN = [
+    "The unit is a hire, not a tool.",
+    "If she doesn't sound like your business in 10 days, you don't pay.",
+    "Voice notes ship in her own voice, or they don't ship.",
+    "She doesn't say she's AI unless your customer asks.",
+    "Arabic isn't a setting. It's the default.",
+    "We hire and train. You run the business.",
+  ];
+  const LAWS_AR = [
+    "الوحدة موظفة، مو أداة.",
+    "إذا ما طلعت بصوت عملك خلال ١٠ أيام، ما تدفع.",
+    "الرسائل الصوتية تطلع بصوتها هي، أو ما تطلع.",
+    "ما تقول إنها ذكاء اصطناعي إلا إذا سألها الزبون.",
+    "العربية مو إعداد. هي الأصل.",
+    "نحن نوظّف وندرّب. أنت تدير العمل.",
+  ];
+  const laws = lang === "ar" ? LAWS_AR : LAWS_EN;
+  return (
+    <section className="section" style={{ paddingTop: 40, paddingBottom: 40 }}>
+      <div className="container">
+        <SectionMeta
+          idx="LAW"
+          label={lang === "ar" ? "قوانين نجم" : "the Najim laws"}
+          right={
+            <span className="mono">
+              {lang === "ar" ? `${laws.length} التزامات` : `${laws.length} COMMITMENTS`}
+            </span>
+          }
+        />
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 14,
+            marginTop: 18,
+          }}
+        >
+          {laws.map((law, i) => (
+            <Reveal key={i} delay={i * 40}>
+              <div
+                style={{
+                  padding: "20px 22px",
+                  border: "1px solid var(--line, rgba(255,255,255,0.08))",
+                  borderRadius: 8,
+                  background: "var(--card-bg, rgba(255,255,255,0.02))",
+                  display: "flex",
+                  gap: 14,
+                  alignItems: "baseline",
+                  minHeight: 96,
+                }}
+              >
+                <span
+                  className="mono"
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: "0.08em",
+                    color: "#d4924b",
+                    flexShrink: 0,
+                    paddingTop: 2,
+                  }}
+                >
+                  §{String(i + 1).padStart(2, "0")}
+                </span>
+                <p
+                  style={{
+                    fontSize: 15,
+                    lineHeight: 1.45,
+                    margin: 0,
+                    opacity: 0.92,
+                    fontFamily: "var(--serif, Georgia, serif)",
+                  }}
+                >
+                  {law}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WithoutWith() {
+  const { lang } = useLang();
+  const rows = [
+    {
+      bad: lang === "ar" ? "٣ ساعات يومياً على واتساب" : "3 hours a day replying to WhatsApp",
+      good: lang === "ar" ? "ردود في ٩٠ ثانية بالعربية والإنجليزية، ٢٤/٧" : "90-second replies in Arabic + English, 24/7",
+    },
+    {
+      bad: lang === "ar" ? "تخسر الزبائن منتصف الليل لأن ما حد يردّ" : "Leads ghost at midnight because no one answers",
+      good: lang === "ar" ? "كل رسالة لها ردّ خلال ٩٠ ثانية" : "Every message gets a reply within 90 seconds",
+    },
+    {
+      bad: lang === "ar" ? "التوظيف ٦ أسابيع، يستقيل خلال ٦ أشهر" : "Hiring takes 6 weeks. They quit in 6 months",
+      good: lang === "ar" ? "تباشر بعد ١٠ أيام عمل، ما تستقيل" : "Live in 10 working days, never quits",
+    },
+    {
+      bad: lang === "ar" ? "الزبون العربي يحصل ترجمة إنجليزية رديئة" : "Arabic customers get awkward English replies",
+      good: lang === "ar" ? "رسائل صوتية بعربية سعودية كأصل" : "Native Saudi-Arabic voice notes by default",
+    },
+    {
+      bad: lang === "ar" ? "تنسى مين من الزبائن مميّز" : "You forget which customer is a VIP",
+      good: lang === "ar" ? "تتذكّر كل زبون بالاسم وآخر زيارة" : "She remembers every customer by name and last visit",
+    },
+    {
+      bad: lang === "ar" ? "تكتب كابشن وترد على DM بين مكالمات العملاء" : "You write captions + reply to DMs between real work",
+      good: lang === "ar" ? "هي تتولّى الكل — أنت تشتغل على ما لا يستطيعه غيرك" : "She handles all of it — you handle the work only you can do",
+    },
+  ];
+  return (
+    <section className="section" style={{ paddingTop: 40, paddingBottom: 40 }}>
+      <div className="container">
+        <SectionMeta
+          idx="02b"
+          label={lang === "ar" ? "بدون نجم · مع نجم" : "without Najim · with Najim"}
+          right={
+            <span className="mono">
+              {lang === "ar" ? `${rows.length} مقارنات` : `${rows.length} BEHAVIORS`}
+            </span>
+          }
+        />
+        <div className="sec-title-row">
+          <h2 className="display-2">
+            {lang === "ar" ? (
+              <>
+                ست عادات يومية،<br />
+                <em>كلها تختفي.</em>
+              </>
+            ) : (
+              <>
+                Six daily habits,<br />
+                <em>all gone.</em>
+              </>
+            )}
+          </h2>
+          <p className="ss strong" style={{ maxWidth: "44ch" }}>
+            {lang === "ar"
+              ? "كم منها يخصّك؟ كلها سلوكيات حقيقية لأصحاب أعمال في الإمارات والسعودية، ليست أرقام مالية."
+              : "How many of these are you? Behavioral patterns from real UAE / Saudi SMB owners — not financial estimates."}
+          </p>
+        </div>
+
+        <div
+          style={{
+            border: "1px solid var(--line, rgba(255,255,255,0.08))",
+            borderRadius: 10,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              fontFamily: "var(--mono, monospace)",
+              fontSize: 10,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              opacity: 0.55,
+              padding: "12px 20px",
+              borderBottom: "1px solid var(--line, rgba(255,255,255,0.08))",
+            }}
+          >
+            <span>{lang === "ar" ? "بدون نجم" : "Without Najim"}</span>
+            <span style={{ color: "#d4924b" }}>{lang === "ar" ? "مع نجم" : "With Najim"}</span>
+          </div>
+          {rows.map((r, i) => (
+            <div
+              key={i}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                padding: "16px 20px",
+                borderBottom:
+                  i < rows.length - 1
+                    ? "1px solid var(--line, rgba(255,255,255,0.05))"
+                    : "none",
+                alignItems: "baseline",
+                fontSize: 14,
+                lineHeight: 1.5,
+                gap: 16,
+              }}
+            >
+              <span style={{ opacity: 0.6, textDecoration: "line-through", textDecorationColor: "rgba(255,255,255,0.25)" }}>
+                {r.bad}
+              </span>
+              <span style={{ fontWeight: 500, opacity: 0.95 }}>
+                <span style={{ color: "#d4924b", marginRight: 8 }}>→</span>
+                {r.good}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NajimICP() {
+  const { lang } = useLang();
+  const FIT = lang === "ar"
+    ? [
+        "صاحب عمل في الإمارات أو السعودية (١–٥٠ موظف)",
+        "واتساب ≈ ٦٠٪ من محادثات العملاء",
+        "ساعتان يومياً على الأقل ترد فيها بنفسك على الرسائل",
+        "تفضّل التوظيف على البناء التقني",
+        "مرتاح بعلاقة مباشرة مع المؤسّسين على واتساب",
+      ]
+    : [
+        "UAE or Saudi SMB owner (1–50 employees)",
+        "WhatsApp is ~60% of customer conversations",
+        "You spend 2+ hours/day replying yourself",
+        "You'd rather hire than build",
+        "You're comfortable with a founder-direct WhatsApp relationship",
+      ];
+  const NOT_FIT = lang === "ar"
+    ? [
+        "تبحث عن روبوت دردشة تضبطه بنفسك (جرّب Chatbase)",
+        "تريد بناء وكيل الذكاء الخاص بك (المصدر المفتوح متاح)",
+        "تعمل خارج منطقة الخليج (نحن في الإمارات والسعودية فقط لحد الآن)",
+      ]
+    : [
+        "You want a self-serve chatbot you configure (use Chatbase)",
+        "You want to build your own AI agent (the open-source stack is right there)",
+        "You operate outside MENA (we don't ship beyond UAE & KSA yet)",
+      ];
+  return (
+    <section className="section section-dark" style={{ paddingTop: 56, paddingBottom: 56 }}>
+      <div className="container">
+        <SectionMeta
+          idx="ICP"
+          label={lang === "ar" ? "هل أنت من نحن نخدمهم؟" : "is Najim for you?"}
+          right={<span className="mono">{lang === "ar" ? "تأهّل ذاتي" : "SELF-QUALIFY"}</span>}
+        />
+        <div className="sec-title-row">
+          <h2 className="display-2">
+            {lang === "ar" ? (
+              <>
+                <em>نقول لا</em>،<br />
+                إذا ما كنّا الحلّ.
+              </>
+            ) : (
+              <>
+                We&apos;ll <em>say no</em>,<br />
+                if we&apos;re not the fit.
+              </>
+            )}
+          </h2>
+          <p className="ss strong" style={{ maxWidth: "44ch" }}>
+            {lang === "ar"
+              ? "نجم خدمة بشرية، مو منصة. ١٠ أيام من وقت المؤسّسين الفعلي على كل توظيف — لذلك ما نأخذ كل عميل. وفّر علينا الوقت."
+              : "Najim is a hands-on service, not a SaaS. 10 days of real founder time per hire — so we don't take every customer. Save us both the call."}
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 20,
+          }}
+        >
+          <div
+            style={{
+              padding: 28,
+              border: "1px solid rgba(93,138,74,0.3)",
+              borderRadius: 10,
+              background: "rgba(93,138,74,0.04)",
+            }}
+          >
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: "var(--green, #5d8a4a)",
+                marginBottom: 14,
+              }}
+            >
+              {lang === "ar" ? "نجم مناسب لك إذا" : "Najim is for you if"}
+            </div>
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 12 }}>
+              {FIT.map((b, i) => (
+                <li key={i} style={{ display: "flex", gap: 10, fontSize: 14, lineHeight: 1.55 }}>
+                  <span style={{ color: "var(--green, #5d8a4a)", flexShrink: 0 }}>✓</span>
+                  <span style={{ opacity: 0.92 }}>{b}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div
+            style={{
+              padding: 28,
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 10,
+              background: "rgba(255,255,255,0.015)",
+              opacity: 0.78,
+            }}
+          >
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                opacity: 0.65,
+                marginBottom: 14,
+              }}
+            >
+              {lang === "ar" ? "نجم مو مناسب إذا" : "Najim is NOT for you if"}
+            </div>
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 12 }}>
+              {NOT_FIT.map((b, i) => (
+                <li key={i} style={{ display: "flex", gap: 10, fontSize: 14, lineHeight: 1.55 }}>
+                  <span style={{ color: "#888", flexShrink: 0 }}>✗</span>
+                  <span style={{ opacity: 0.75 }}>{b}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PositionLine() {
   const { lang } = useLang();
   return (
@@ -2495,26 +2825,37 @@ function AgentsFooter() {
       <div className="container">
         <div className="af-top">
           <div className="af-brand">
-            <div className="af-mark">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/dcp-logo-square.jpeg" alt="" />
+            <div
+              className="af-mark"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "linear-gradient(135deg, #d4924b 0%, #c47a37 100%)",
+                color: "#0a0b0d",
+                fontWeight: 600,
+                fontSize: 22,
+                lineHeight: 1,
+              }}
+            >
+              ★
             </div>
             <div>
-              <div className="af-name">
-                {lang === "ar" ? "أنظمة الموظفين الذكيين" : "AI Agent Systems"}
-              </div>
-              <div className="af-dom mono">agents.dcp.sa</div>
+              <div className="af-name">{lang === "ar" ? "نجم" : "Najim"}</div>
+              <div className="af-dom mono">{lang === "ar" ? "وكالة توظيف الذكاء" : "AI staffing for UAE & Saudi"}</div>
             </div>
           </div>
           <p className="af-tag">
             {lang === "ar"
-              ? "موظفو ذكاء اصطناعي يديرون عملك على واتساب — بالعربية والإنجليزية. الإمارات والسعودية."
-              : "AI employees that run your business on WhatsApp — in Arabic and English. Live in the UAE and Saudi Arabia."}
+              ? "نوظّف ونُدرّب موظفة ذكاء واحدة لكل عمل. تردّ على واتساب بالعربية والإنجليزية. تباشر العمل خلال ١٠ أيام."
+              : "We hire and train one bespoke AI teammate per business. She answers WhatsApp in Arabic and English. Live in 10 working days."}
           </p>
           <div className="af-status mono">
             <span className="d" />{" "}
-            {lang === "ar" ? "جميع الأنظمة تعمل" : "All systems operational"} ·{" "}
-            <span className="t">RUH 38ms · DXB 41ms</span>
+            {lang === "ar" ? "متاحون للتوظيف · الإمارات والسعودية" : "Hiring · UAE & Saudi"}
           </div>
         </div>
         <div className="af-grid">
@@ -2530,15 +2871,33 @@ function AgentsFooter() {
               </ul>
             </div>
           ))}
+          <div>
+            <h4 className="af-h mono">{lang === "ar" ? "كلّم المؤسّس" : "Direct founder line"}</h4>
+            <ul>
+              <li>
+                <a href="https://wa.me/12058582516?text=Hi%20Peter">
+                  {lang === "ar" ? "كلّم بيتر على واتساب" : "WhatsApp Peter"}
+                </a>
+              </li>
+              <li>
+                <a href="mailto:peter@dc1st.com">peter@dc1st.com</a>
+              </li>
+              <li>
+                <a href="/kickoff">{lang === "ar" ? "احجز موعد كيكأوف" : "Schedule kickoff"}</a>
+              </li>
+            </ul>
+          </div>
         </div>
         <div className="af-bottom mono">
           <span>
             {lang === "ar"
-              ? "© ٢٠٢٦ أنظمة الموظفين الذكيين · دبي، الإمارات · من إنتاج DC Power Solutions"
-              : "© 2026 AI Agent Systems · Dubai, UAE · A product of DC Power Solutions"}
+              ? "© ٢٠٢٦ نجم · مشغّلة من Project Agent FZ-LLC · دبي، الإمارات"
+              : "© 2026 Najim · operated by Project Agent FZ-LLC · Dubai, UAE"}
           </span>
           <span>
-            {lang === "ar" ? "صُنع في الرياض · مستضاف قريباً منك" : "Built in Riyadh · Hosted close to home"}
+            {lang === "ar"
+              ? "صُنع في الرياض · الإمارات والسعودية أولاً · مدعومة من DCP"
+              : "Built in Riyadh · UAE & Saudi-first · backed by DCP"}
           </span>
         </div>
       </div>
@@ -2568,10 +2927,13 @@ function HomeApp() {
       />
       <Hero />
       <PositionLine />
+      <NajimLaws />
       <TheMath />
-      <AgentsSection />
+      <WithoutWith />
       <HowItWorks />
+      <NajimICP />
       <Pricing />
+      <AgentsSection />
       <Pain />
       <Intelligence />
       <MessageAnatomy />

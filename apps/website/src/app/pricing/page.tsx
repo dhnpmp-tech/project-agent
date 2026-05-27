@@ -286,6 +286,81 @@ function Tiers() {
             </p>
           </div>
 
+          {/* Ten-day onboarding phases */}
+          <div style={{ padding: "30px 36px", borderBottom: "1px solid var(--line, rgba(255,255,255,0.06))" }}>
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                opacity: 0.55,
+                marginBottom: 18,
+              }}
+            >
+              The 10-day onboarding · what happens between signature and live
+            </div>
+            <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 16 }}>
+              {[
+                {
+                  d: "Day 1",
+                  t: "Kickoff",
+                  s: "20-min tone interview. Founder-led, no sales rep. We learn your business, your customer rhythm, who you'd hire if you could. Output: a persona brief you sign off on.",
+                },
+                {
+                  d: "Day 2–5",
+                  t: "Build",
+                  s: "Face generated on Recraft against your brand. Voice picked on ElevenLabs (or cloned from a sample). One-page printable CV. Prompt tuned on your actual menu / inventory / FAQ / hours.",
+                },
+                {
+                  d: "Day 6–8",
+                  t: "Plumb",
+                  s: "Meta verification handled. Kapso number provisioned. Foodics / SevenRooms / Tabby / Tamara / Fresha integrations wired into the booking + payment + POS layer. Customer memory seeded from your existing CRM, if any.",
+                },
+                {
+                  d: "Day 9",
+                  t: "Approval",
+                  s: "You hear her voice, see her face, read 20 sample replies. You approve — or we re-tune. Whatever you change, we ship same day.",
+                },
+                {
+                  d: "Day 10",
+                  t: "Live",
+                  s: "She answers her first real customer. You get the first daily owner brief next morning at 9am. The founder line stays open — text us to retune anything.",
+                },
+              ].map((step, i) => (
+                <li
+                  key={step.d}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "84px 1fr",
+                    gap: 18,
+                    paddingBottom: i < 4 ? 16 : 0,
+                    borderBottom: i < 4 ? "1px solid var(--line, rgba(255,255,255,0.04))" : "none",
+                    alignItems: "baseline",
+                  }}
+                >
+                  <div
+                    className="mono"
+                    style={{
+                      fontSize: 11,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "#d4924b",
+                    }}
+                  >
+                    {step.d}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 17, fontFamily: "var(--serif, Georgia, serif)", marginBottom: 4 }}>
+                      {step.t}
+                    </div>
+                    <div style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.78 }}>{step.s}</div>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
           {/* Benefits */}
           <div style={{ padding: "30px 36px", borderBottom: "1px solid var(--line, rgba(255,255,255,0.06))" }}>
             <div

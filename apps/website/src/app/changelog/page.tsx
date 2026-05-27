@@ -30,6 +30,13 @@ const SHIP_LOG: ShipEntry[] = [
   {
     date: "2026-05-27",
     tag: "ux",
+    title: "WorksHQ-inspired voice upgrade · 5 new homepage sections",
+    body: "Adopted five patterns from workshq.com.au's tight Australian voice: (1) The Najim Laws — six declarative commitments (\"The unit is a hire, not a tool · If she doesn't sound like your business in 10 days, you don't pay · Voice notes ship in her own voice, or they don't ship · ...\"). (2) Without/With — a behavioral 6-row table contrasting daily SMB pain with the solved state. (3) NajimICP — explicit \"Najim is for you if / NOT for you if\" qualifier that filters tire-kickers. (4) /pricing offer letter now shows the 10-day onboarding broken into Day 1 / 2-5 / 6-8 / 9 / 10 with concrete deliverables per phase. (5) Footer rebuilt — Najim star mark, Peter named as the founder line (WhatsApp + email), provenance signature (\"operated by Project Agent FZ-LLC · Built in Riyadh · backed by DCP\"). /team route removed last commit; this commit fills the page real estate it freed.",
+    commit: "f11ade9",
+  },
+  {
+    date: "2026-05-27",
+    tag: "ux",
     title: "Tightened the funnel · positioning line · /kickoff in depth",
     body: "Deleted /demo and dropped Nadia from the public /team pages (she lives in the hero now — single canonical surface). Removed /app/onboarding from public CTAs site-wide; every \"start\" button now points at /kickoff. Reframed /teardown as a Najim hire preview (\"Watch a Najim hire read your business in 60 seconds\"). New position line under the hero — \"You don't have an AI problem. You have a hiring problem. We solved hiring.\" /kickoff got a trust strip (response SLA · cities · cancel-anytime), a fast-track WhatsApp shortcut for in-a-hurry visitors, a \"What we'll ask on the call\" 5-question list, and a mono-font privacy/cancel line in fine print.",
     commit: "b0533d3",
@@ -277,7 +284,7 @@ function ChangelogList() {
       <div className="container">
         <SectionMeta idx="01" label="ship log" />
         <h2 className="display tight" style={{ marginBottom: 32 }}>
-          The <em>last 21 days</em>
+          The <em>last 22 days</em>
         </h2>
         <div className="ship-log">
           {SHIP_LOG.map((entry) => (
