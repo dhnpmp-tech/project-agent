@@ -511,7 +511,7 @@ function HireResumeCard() {
 
       {/* Portrait + identity */}
       <div style={{ display: "grid", gridTemplateColumns: "112px 1fr", gap: 18, padding: 20, alignItems: "center" }}>
-        <a href="/team" aria-label="Nadia full CV" style={{ display: "block" }}>
+        <a href="/teardown" aria-label="See Nadia work on your business" style={{ display: "block" }}>
           <div
             style={{
               width: 112,
@@ -635,7 +635,7 @@ function HireResumeCard() {
 
       {/* CTA */}
       <a
-        href="/team"
+        href="/teardown"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -655,7 +655,7 @@ function HireResumeCard() {
             color: "var(--green, #5d8a4a)",
           }}
         >
-          {lang === "ar" ? "اقرأ السيرة الكاملة" : "Read full CV"}
+          {lang === "ar" ? "شاهدها تعمل على عملك" : "See her read your business"}
         </span>
         <span style={{ color: "var(--green, #5d8a4a)" }}>
           <Arrow size={14} />
@@ -837,10 +837,10 @@ function Hero() {
             </Reveal>
 
             <Reveal as="div" className="cta-row tight" delay={200}>
-              <a className="btn primary lg" href="/team">
+              <a className="btn primary lg" href="/kickoff">
                 {lang === "ar"
-                  ? "تعرّف على الفريق"
-                  : "Meet the team"}{" "}
+                  ? "احجز موعد التشغيل"
+                  : "Schedule kickoff"}{" "}
                 <Arrow size={14} />
               </a>
               <a className="btn ghost lg" href="/teardown">
@@ -2457,7 +2457,7 @@ function AgentsFooter() {
       heading: { en: "Najim", ar: "نجم" },
       links: [
         { label: { en: "Home", ar: "الرئيسية" }, href: "/" },
-        { label: { en: "Meet the team", ar: "الفريق" }, href: "/team" },
+        { label: { en: "Free 60-second audit", ar: "تشريح مجاني" }, href: "/teardown" },
         { label: { en: "The offer", ar: "العرض" }, href: "/pricing" },
         { label: { en: "Changelog", ar: "السجل" }, href: "/changelog" },
       ],
@@ -2552,9 +2552,8 @@ function HomeApp() {
   const { lang } = useLang();
   const navLinks: NavLink[] = [
     { href: "/", label: lang === "ar" ? "الرئيسية" : "Home", key: "home" },
-    { href: "/team", label: lang === "ar" ? "الفريق" : "Team", key: "team" },
-    { href: "/pricing", label: lang === "ar" ? "الأسعار" : "Pricing", key: "pricing" },
-    { href: "/teardown", label: lang === "ar" ? "التشريح" : "Teardown", key: "teardown" },
+    { href: "/pricing", label: lang === "ar" ? "العرض" : "The offer", key: "pricing" },
+    { href: "/teardown", label: lang === "ar" ? "تشريح مجاني" : "Free audit", key: "teardown" },
     { href: "/changelog", label: lang === "ar" ? "السجل" : "Changelog", key: "changelog" },
   ];
   return (

@@ -19,9 +19,8 @@ const FOUNDER_WA = "12058582516"; // same number as the StickyDemoCta target
 function buildNavLinks(lang: "en" | "ar"): NavLink[] {
   return [
     { href: "/", label: lang === "ar" ? "الرئيسية" : "Home", key: "home" },
-    { href: "/team", label: lang === "ar" ? "الفريق" : "Team", key: "team" },
-    { href: "/pricing", label: lang === "ar" ? "الأسعار" : "Pricing", key: "pricing" },
-    { href: "/teardown", label: lang === "ar" ? "التشريح" : "Teardown", key: "teardown" },
+    { href: "/pricing", label: lang === "ar" ? "العرض" : "The offer", key: "pricing" },
+    { href: "/teardown", label: lang === "ar" ? "تشريح مجاني" : "Free audit", key: "teardown" },
     { href: "/changelog", label: lang === "ar" ? "السجل" : "Changelog", key: "changelog" },
   ];
 }
@@ -338,7 +337,7 @@ function KickoffForm() {
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Link
-              href="/team"
+              href="/teardown"
               className="mono"
               style={{
                 fontSize: 11,
@@ -348,7 +347,7 @@ function KickoffForm() {
                 textDecoration: "none",
               }}
             >
-              {lang === "ar" ? "← أو شاهد الفريق" : "← Meet the team first"}
+              {lang === "ar" ? "← شاهدها على عملك أولاً" : "← See her on your business first"}
             </Link>
             <Link
               href="/pricing"
