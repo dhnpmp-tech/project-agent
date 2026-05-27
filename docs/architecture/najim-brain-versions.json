@@ -1,0 +1,73 @@
+{
+  "_meta": {
+    "spec_version": "1.0.0",
+    "canonical_doc": "docs/architecture/najim-brain.md",
+    "frozen_at": "2026-05-27",
+    "purpose": "Single source of truth for every version, port, path, and env var the Najim Brain deploy depends on. Implementation reads from here, not from the prose. If you need to bump a version, edit this file AND increment spec_version AND add a row to docs/architecture/najim-brain.md change log."
+  },
+  "gbrain": {
+    "repo": "https://github.com/garrytan/gbrain",
+    "sha": "TO_BE_PINNED_AT_BOOTSTRAP",
+    "_sha_note": "Set this to the exact commit SHA the first bootstrap pinned. After that, never change without bumping spec_version.",
+    "install_path": "/opt/gbrain",
+    "http_port": 8300,
+    "http_bind": "127.0.0.1",
+    "systemd_unit": "gbrain.service",
+    "log_file": "/var/log/gbrain.log"
+  },
+  "postgres": {
+    "container_name": "gbrain-postgres",
+    "image": "pgvector/pgvector:pg16",
+    "db_user": "gbrain",
+    "db_name": "gbrain",
+    "host_port_localhost": 5432,
+    "required_extensions": ["vector", "pg_trgm"]
+  },
+  "graphiti_adjunct": {
+    "container_name": "brain-graphiti",
+    "image": "zepai/graphiti:latest",
+    "_image_note": "Pin to a SHA before relying on this layer in production. Currently :latest is fine because it's adjunct-only.",
+    "http_port": 8100,
+    "neo4j_container": "brain-neo4j-graphiti",
+    "neo4j_image": "neo4j:5.26.2"
+  },
+  "models": {
+    "llm": "qwen3:30b-a3b",
+    "llm_provider": "ollama",
+    "ollama_endpoint": "http://172.17.0.1:11434/v1",
+    "embedding": "nomic-embed-text",
+    "embedding_dim": 768
+  },
+  "cron": {
+    "dream_cycle_schedule": "0 2 * * *",
+    "dream_cycle_timezone": "Asia/Dubai",
+    "dream_cycle_log": "/var/log/gbrain-dream.log"
+  },
+  "integration_points": {
+    "prompt_builder_module": "backend/prompt-builder/gbrain.py",
+    "schema_migration_file": "packages/supabase/migrations/021_clients_gbrain.sql",
+    "seed_script": "backend/prompt-builder/scripts/seed_gbrain.py",
+    "backfill_script": "backend/prompt-builder/scripts/backfill_gbrain.py",
+    "diff_script": "backend/prompt-builder/scripts/diff_gbrain.py",
+    "test_module": "backend/prompt-builder/tests/test_najim_brain.py"
+  },
+  "vps": {
+    "host": "76.13.179.86",
+    "secrets_file": "/etc/prompt-builder/secrets.env",
+    "required_env_vars": [
+      "GBRAIN_HTTP_URL",
+      "GBRAIN_ADMIN_KEY",
+      "GBRAIN_OAUTH_ISSUER",
+      "GBRAIN_DEFAULT_EMBEDDING_MODEL"
+    ]
+  },
+  "operations": {
+    "rpo_hours": 24,
+    "rto_minutes": 30,
+    "cost_per_tenant_per_month_usd": 1.2,
+    "smoke_test_pages_threshold": 10,
+    "smoke_test_embeddings_threshold": 10,
+    "smoke_test_retrieval_score_min": 0.6,
+    "smoke_test_retrieval_latency_p95_ms": 800
+  }
+}

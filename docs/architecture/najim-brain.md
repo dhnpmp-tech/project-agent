@@ -6,6 +6,28 @@
 
 ---
 
+## 0. How this document is hardwired to implementation
+
+The architecture in this file would normally drift between writing
+and building. We block that with five mechanisms:
+
+| Mechanism | What it does | Where it lives |
+|---|---|---|
+| **Pinned versions** | Every container tag, gbrain SHA, port, env var, model name lives in one JSON. Drift is a git diff. | `docs/architecture/najim-brain-versions.json` |
+| **Executable bootstrap** | §5 below is also a bash script. Implementer runs it; doesn't read prose and translate. | `scripts/najim-brain/bootstrap.sh` |
+| **Executable provisioning** | §6 below is also a bash script. Per-tenant deploy = one command + 4 args. | `scripts/najim-brain/provision-tenant.sh` |
+| **Locked function signatures** | The Python integration in §7 ships as a real module with `NotImplementedError`-free stubs that callers can import today. The signatures are the contract — implementation fills bodies, can't invent surface. | `backend/prompt-builder/gbrain.py` |
+| **Committed migration** | §9's schema isn't prose. It's a real SQL file ready to apply. | `packages/supabase/migrations/021_clients_gbrain.sql` |
+| **Verification as pytest** | §10's smoke tests are real pytest cases. CI / cron / manual runs gate on them. Green tests are the only legitimate "done." | `backend/prompt-builder/tests/test_najim_brain.py` |
+| **Checklist mapped to sections** | One markdown file. Every checkbox links back to a §. Implementation isn't "done" until `grep "\[ \]"` returns nothing. | `docs/architecture/najim-brain-checklist.md` |
+
+**Rules:**
+1. If this doc, versions.json, and the code disagree — the doc wins. Then the JSON. Then the code. Bump `spec_version` in the JSON for any meaningful change.
+2. Never edit `bootstrap.sh` or `provision-tenant.sh` without updating §5 or §6 in the same commit.
+3. The pytest suite is the only legitimate "done" signal. A `[fatal]` in the bash output is also a stop. No shipping around either.
+
+---
+
 ## 1. Goal
 
 A single, replicable system for deploying the Najim Brain (gbrain) so that:
