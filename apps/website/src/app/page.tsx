@@ -3265,17 +3265,12 @@ function HomeApp() {
       <WithoutWith />
       <NajimBrain />
       <DeliveryModes />
+      <ShippingLog />
+      <Pain />
+      <Industries />
+      <HireVsAgent />
       <NajimICP />
       <Pricing />
-      <AgentsSection />
-      <Pain />
-      <Intelligence />
-      <MessageAnatomy />
-      <Industries />
-      <Memory />
-      <HireVsAgent />
-      <Teardown />
-      <ShippingLog />
       <CTA />
       <AgentsFooter />
       <TweaksPanel />
