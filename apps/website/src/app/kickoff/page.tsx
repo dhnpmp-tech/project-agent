@@ -251,6 +251,47 @@ function KickoffForm() {
             </ol>
           </div>
 
+          {/* What we'll ask on the call */}
+          <div>
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                opacity: 0.55,
+                marginBottom: 10,
+              }}
+            >
+              {lang === "ar" ? "ما نسأله في المكالمة" : "What we'll ask on the call"}
+            </div>
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
+              {(lang === "ar"
+                ? [
+                    "ما الذي يستهلك أكثر وقتك على واتساب؟",
+                    "كم رسالة تردّ عليها في اليوم؟ ولأي ساعة؟",
+                    "ما الأدوات التي تستخدمها (POS، حجوزات، دفع)؟",
+                    "ما الذي يجعل عملك مختلف — لو رأيتها زبون لأول مرة؟",
+                    "كيف تتكلّم — رسمي أم ودود؟ تفضّل عربي أو إنجليزي؟",
+                  ]
+                : [
+                    "What eats most of your WhatsApp time today?",
+                    "How many messages per day and until what hour?",
+                    "What tools do you run (POS, bookings, payments)?",
+                    "What makes your business different — first-impression-version?",
+                    "Tone you prefer — formal or warm? Arabic-first or English-first?",
+                  ]
+              ).map((q, i) => (
+                <li key={i} style={{ display: "flex", gap: 10, fontSize: 13, lineHeight: 1.55, opacity: 0.85 }}>
+                  <span style={{ color: "#d4924b", flexShrink: 0, fontFamily: "var(--mono, monospace)", fontSize: 11, paddingTop: 1 }}>
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span>{q}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <div
             style={{
               padding: "18px 22px",
@@ -271,6 +312,26 @@ function KickoffForm() {
               <>
                 <b style={{ color: "#5d8a4a" }}>Founding-customer rate:</b> the first 5 businesses
                 pay AED 2,500/month instead of 5,000 — in trade for a launch case study.
+              </>
+            )}
+          </div>
+
+          <div
+            style={{
+              fontSize: 11,
+              lineHeight: 1.6,
+              opacity: 0.5,
+              fontFamily: "var(--mono, monospace)",
+              letterSpacing: "0.02em",
+            }}
+          >
+            {lang === "ar" ? (
+              <>
+                نخزّن فقط ما يُرسل عبر واتساب. لا توجد مدفوعات حتى توقّع عرض التوظيف. إلغاء بنقرة في الشهر التالي.
+              </>
+            ) : (
+              <>
+                We only store what you actually send via WhatsApp. No payment until you accept the offer letter. Cancel any month with one click.
               </>
             )}
           </div>
@@ -456,6 +517,64 @@ function KickoffApp() {
               ? "نأخذ التفاصيل في ٣٠ ثانية. نتولّى كل شيء بعدها — التحقّق من ميتا، التدريب، التكاملات، الصوت، الوجه، والسيرة الذاتية."
               : "We take 30 seconds of details now. We handle everything after — Meta verification, training, integrations, voice, face, CV."}
           </p>
+
+          {/* Trust strip */}
+          <div
+            style={{
+              marginTop: 28,
+              display: "flex",
+              gap: 28,
+              flexWrap: "wrap",
+              alignItems: "center",
+              opacity: 0.78,
+              fontFamily: "var(--mono, monospace)",
+              fontSize: 11,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5d8a4a" }} />
+              {lang === "ar" ? "نرد خلال ساعة · أيام العمل" : "Reply within 1 hour · business hours"}
+            </span>
+            <span>
+              {lang === "ar" ? "مقرّنا الرياض ودبي" : "Based in Riyadh + Dubai"}
+            </span>
+            <span>
+              {lang === "ar" ? "إلغاء بنقرة · بدون عقد" : "Cancel anytime · no contract"}
+            </span>
+          </div>
+
+          {/* Fast-track */}
+          <div style={{ marginTop: 18, fontSize: 13, opacity: 0.65 }}>
+            {lang === "ar" ? (
+              <>
+                مستعجل؟{" "}
+                <a
+                  href={`https://wa.me/${FOUNDER_WA}?text=${encodeURIComponent("Hi Najim — ready to talk now.")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "#d4924b", textDecoration: "underline" }}
+                >
+                  كلّمنا مباشرة على واتساب
+                </a>{" "}
+                بدون نموذج.
+              </>
+            ) : (
+              <>
+                In a hurry?{" "}
+                <a
+                  href={`https://wa.me/${FOUNDER_WA}?text=${encodeURIComponent("Hi Najim — ready to talk now.")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "#d4924b", textDecoration: "underline" }}
+                >
+                  Skip the form and WhatsApp us directly
+                </a>
+                .
+              </>
+            )}
+          </div>
         </div>
       </section>
       <section className="section" style={{ paddingTop: 0, paddingBottom: 100 }}>

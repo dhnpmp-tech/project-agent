@@ -30,6 +30,13 @@ const SHIP_LOG: ShipEntry[] = [
   {
     date: "2026-05-27",
     tag: "ux",
+    title: "Tightened the funnel · positioning line · /kickoff in depth",
+    body: "Deleted /demo and dropped Nadia from the public /team pages (she lives in the hero now — single canonical surface). Removed /app/onboarding from public CTAs site-wide; every \"start\" button now points at /kickoff. Reframed /teardown as a Najim hire preview (\"Watch a Najim hire read your business in 60 seconds\"). New position line under the hero — \"You don't have an AI problem. You have a hiring problem. We solved hiring.\" /kickoff got a trust strip (response SLA · cities · cancel-anytime), a fast-track WhatsApp shortcut for in-a-hurry visitors, a \"What we'll ask on the call\" 5-question list, and a mono-font privacy/cancel line in fine print.",
+    commit: "b0533d3",
+  },
+  {
+    date: "2026-05-27",
+    tag: "ux",
     title: "Cut the drift pages · tight navigation only",
     body: "Deleted 7 routes that didn't fit the staffing-agency narrative: /admin (marketing mockup of internal ops dashboard), /book-audit (duplicated /kickoff), and 5× /preview/* (design exploration variants). Rebranded the keepers — /privacy now reads \"Najim (operated by Project Agent FZ-LLC)\", /rami body copy reframes him as \"Najim's founder agent\", and the Ask-Rami greeting widget now answers \"Ask me anything about Najim\". Inspired by workshq.com.au — they ship five focused routes, no drift, every link earns its slot.",
     commit: "f581083",

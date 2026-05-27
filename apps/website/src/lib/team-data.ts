@@ -53,58 +53,6 @@ export interface TeamMember {
 
 export const TEAM: TeamMember[] = [
   {
-    slug: "nadia",
-    name: { en: "Nadia", ar: "نادية" },
-    role: { en: "Front-of-house · Customer host", ar: "موظفة الاستقبال · مضيفة العملاء" },
-    tagline: {
-      en: "Replies to every WhatsApp message in 90 seconds, in Arabic or English, in your brand's voice.",
-      ar: "ترد على كل رسالة واتساب خلال ٩٠ ثانية، بالعربية أو الإنجليزية، بصوت علامتك التجارية.",
-    },
-    location: { en: "Available now · UAE & Saudi", ar: "متاحة الآن · الإمارات والسعودية" },
-    bio: {
-      en: "Nadia handles the front of your business on WhatsApp. She remembers every customer — their usual order, their last visit, their dietary notes — and replies the way a great host would. Patient with the slow texters, fast with the corporate ones, never robotic. She speaks Gulf Arabic and English fluently, sends voice notes in her own voice, and never says she's an AI unless directly asked.",
-      ar: "تتولّى نادية الواجهة الأمامية لعملك على واتساب. تتذكّر كل عميل — طلبه المعتاد، آخر زيارة، ملاحظاته الغذائية — وترد كأي مضيفة محترفة. صبورة مع الزبائن الذين يكتبون ببطء، سريعة مع زبائن الأعمال، ليست آلية أبداً. تتقن العربية الخليجية والإنجليزية، ترسل رسائل صوتية بصوتها الخاص، ولا تقول إنها ذكاء اصطناعي إلا إذا سُئلت مباشرة.",
-    },
-    does: [
-      { en: "Answers FAQ, takes bookings, sends location pins", ar: "تجيب على الأسئلة، تتلقى الحجوزات، ترسل مواقع المطعم" },
-      { en: "Handles complaints with empathy — escalates to you when needed", ar: "تتعامل مع الشكاوى بتعاطف — تُحوّلها لك عند الحاجة" },
-      { en: "Qualifies leads in the first 3 messages", ar: "تؤهّل العملاء المحتملين خلال ٣ رسائل" },
-      { en: "Sends voice notes in her own voice (Saudi Arabic for Arabic-speaking customers)", ar: "ترسل رسائل صوتية بصوتها (عربية سعودية للعملاء العرب)" },
-      { en: "Knows every regular by name and remembers your menu by heart", ar: "تعرف كل زبون دائم بالاسم وتحفظ قائمتك عن ظهر قلب" },
-      { en: "Reports the day's highlights to you each morning at 9am", ar: "ترفع لك تقرير الأبرز كل صباح الساعة ٩" },
-    ],
-    specialties: [
-      { en: "Restaurants & cafés", ar: "المطاعم والمقاهي" },
-      { en: "Beauty salons", ar: "صالونات التجميل" },
-      { en: "Clinics & wellness", ar: "العيادات والعافية" },
-      { en: "Hotel front-desks", ar: "استقبال الفنادق" },
-    ],
-    industries: [
-      { en: "Hospitality", ar: "الضيافة" },
-      { en: "Beauty & wellness", ar: "التجميل والعافية" },
-      { en: "Healthcare", ar: "الرعاية الصحية" },
-    ],
-    samples: [
-      [
-        { from: "customer", text: { en: "Hi, table for 4 tonight at 8?", ar: "السلام عليكم، طاولة لأربعة الليلة الساعة ٨؟" } },
-        { from: "agent", text: { en: "Hi! Yes — 8pm tonight, table for 4, I've got you. Any window or terrace preference? And shall I save it under your name?", ar: "مرحبا! نعم — الساعة ٨ مساءً، طاولة لأربعة، تم الحجز. تفضّل طاولة بإطلالة أو في التراس؟ وهل أحفظها باسمك؟" } },
-        { from: "customer", text: { en: "Terrace if possible. Yes, Ahmad.", ar: "تراس لو ممكن. نعم، أحمد." } },
-        { from: "agent", text: { en: "Done, Ahmad — terrace, 8pm, party of 4. I'll text you the location pin an hour before. See you tonight 🌿", ar: "تم يا أحمد — تراس، ٨ مساءً، ٤ أشخاص. سأرسل لك الموقع قبل ساعة من الموعد. نشوفك الليلة 🌿" } },
-      ],
-      [
-        { from: "customer", text: { en: "the chicken was cold yesterday", ar: "الدجاج كان بارد أمس" } },
-        { from: "agent", text: { en: "Ahmad I'm really sorry — that's not how we cook it. Can I have the manager call you in the morning? On our end I'll log it so it doesn't happen again, and dessert is on us next visit 🤍", ar: "أحمد آسفة جداً — مو هكذا نطبخه. اسمح لي أبلّغ المدير يكلّمك صباحاً؟ من جهتي سجّلت الموضوع حتى ما يتكرر، والحلى على حسابنا في زيارتك القادمة 🤍" } },
-      ],
-    ],
-    portrait: "/team/nadia.jpg",
-    voiceEn: { provider: "elevenlabs", voiceId: "cgSgspJ2msm6clMCkdW9", voiceName: "Jessica" },
-    voiceAr: { provider: "elevenlabs", voiceId: "QsV9PCczMIklRM6xLPAS", voiceName: "Heba Mansuri" },
-    worksWith: ["omar", "layla"],
-    accent: "#d4924b",
-    monogram: "NA",
-    status: { en: "Available now", ar: "متاحة الآن" },
-  },
-  {
     slug: "omar",
     name: { en: "Omar", ar: "عمر" },
     role: { en: "Compliance Officer · Real estate", ar: "موظف الامتثال · العقارات" },
@@ -147,7 +95,7 @@ export const TEAM: TeamMember[] = [
       ],
     ],
     portrait: "/team/omar.jpg",
-    worksWith: ["layla", "nadia"],
+    worksWith: ["layla"],
     accent: "#7da8d4",
     monogram: "OM",
     status: { en: "Available now", ar: "متاح الآن" },
@@ -189,7 +137,7 @@ export const TEAM: TeamMember[] = [
       ],
     ],
     portrait: "/team/layla.jpg",
-    worksWith: ["omar", "nadia"],
+    worksWith: ["omar"],
     accent: "#9f87f0",
     monogram: "LA",
     status: { en: "Available now", ar: "متاحة الآن" },

@@ -511,7 +511,7 @@ function HireResumeCard() {
 
       {/* Portrait + identity */}
       <div style={{ display: "grid", gridTemplateColumns: "112px 1fr", gap: 18, padding: 20, alignItems: "center" }}>
-        <a href="/team/nadia" aria-label="Nadia full CV" style={{ display: "block" }}>
+        <a href="/team" aria-label="Nadia full CV" style={{ display: "block" }}>
           <div
             style={{
               width: 112,
@@ -635,7 +635,7 @@ function HireResumeCard() {
 
       {/* CTA */}
       <a
-        href="/team/nadia"
+        href="/team"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -989,6 +989,56 @@ function Teardown() {
               ? "آخر مثال · arabianteahouse.com · ٥ فروع · ٤٥٬٧٦١ مراجعة · ★ ٤٫٨١"
               : "Recent example · arabianteahouse.com · 5 outlets · 45,761 reviews · ★ 4.81"}
           </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PositionLine() {
+  const { lang } = useLang();
+  return (
+    <section style={{ padding: "0 0 16px" }}>
+      <div className="container">
+        <div
+          style={{
+            borderTop: "1px solid var(--line, rgba(255,255,255,0.06))",
+            borderBottom: "1px solid var(--line, rgba(255,255,255,0.06))",
+            padding: "28px 0",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <p
+            style={{
+              maxWidth: "44ch",
+              margin: 0,
+              fontSize: "clamp(20px, 2.6vw, 28px)",
+              lineHeight: 1.3,
+              fontFamily: "var(--serif, Georgia, serif)",
+              fontStyle: "italic",
+              textAlign: "center",
+              opacity: 0.92,
+            }}
+          >
+            {lang === "ar" ? (
+              <>
+                ما عندك مشكلة <em style={{ fontStyle: "normal", color: "#d4924b" }}>ذكاء اصطناعي</em>.
+                <br />
+                عندك مشكلة <em style={{ fontStyle: "normal", color: "#d4924b" }}>توظيف</em>.
+                <br />
+                نحن حللناها.
+              </>
+            ) : (
+              <>
+                You don&apos;t have an <em style={{ fontStyle: "normal", color: "#d4924b" }}>AI problem</em>.
+                <br />
+                You have a <em style={{ fontStyle: "normal", color: "#d4924b" }}>hiring problem</em>.
+                <br />
+                We solved hiring.
+              </>
+            )}
+          </p>
         </div>
       </div>
     </section>
@@ -1833,8 +1883,8 @@ function PricingCardV2({ tier, lang }: { tier: PricingTier; lang: Lang }) {
           </li>
         ))}
       </ul>
-      <a className="btn primary lg pv2-btn" href="/app/onboarding">
-        {lang === "ar" ? "ابدأ الآن" : "Get started"} <Arrow size={13} />
+      <a className="btn primary lg pv2-btn" href="/kickoff">
+        {lang === "ar" ? "احجز موعد التشغيل" : "Schedule kickoff"} <Arrow size={13} />
       </a>
     </div>
   );
@@ -2376,12 +2426,12 @@ function CTA() {
           </h3>
           <p className="ss strong">
             {lang === "ar"
-              ? "اشترك في دقيقتين. فريق الذكاء الاصطناعي يبدأ اليوم."
-              : "Sign up in 2 minutes. Your AI team starts today."}
+              ? "احجز موعد التشغيل. موظفتك تبدأ خلال ١٠ أيام عمل."
+              : "Schedule a kickoff call. Your hire starts in 10 working days."}
           </p>
           <div className="ctas">
-            <a className="btn primary lg" href="/app/onboarding">
-              {lang === "ar" ? "ابدأ مجاناً" : "Start free"} <Arrow size={14} />
+            <a className="btn primary lg" href="/kickoff">
+              {lang === "ar" ? "احجز موعد التشغيل" : "Schedule kickoff"} <Arrow size={14} />
             </a>
             <a
               className="btn ghost lg"
@@ -2404,27 +2454,27 @@ function AgentsFooter() {
   type FooterCol = { heading: BiString; links: FooterLink[] };
   const cols: FooterCol[] = [
     {
-      heading: { en: "Product", ar: "المنتج" },
+      heading: { en: "Najim", ar: "نجم" },
       links: [
-        { label: { en: "Services", ar: "الخدمات" }, href: "/" },
-        { label: { en: "Pricing", ar: "الأسعار" }, href: "/pricing" },
-        { label: { en: "Process", ar: "العملية" }, href: "/demo" },
-        { label: { en: "Dashboard", ar: "اللوحة" }, href: "/app" },
+        { label: { en: "Home", ar: "الرئيسية" }, href: "/" },
+        { label: { en: "Meet the team", ar: "الفريق" }, href: "/team" },
+        { label: { en: "The offer", ar: "العرض" }, href: "/pricing" },
+        { label: { en: "Changelog", ar: "السجل" }, href: "/changelog" },
       ],
     },
     {
-      heading: { en: "Get started", ar: "ابدأ" },
+      heading: { en: "Hire", ar: "وظّف" },
       links: [
+        { label: { en: "Schedule kickoff", ar: "احجز موعد التشغيل" }, href: "/kickoff" },
         {
-          label: { en: "Free teardown · 60s", ar: "تشريح مجاني · ٦٠ ثانية" },
+          label: { en: "Free 60-second audit", ar: "تشريح مجاني · ٦٠ ثانية" },
           href: "/teardown",
         },
-        { label: { en: "Sign up", ar: "تسجيل" }, href: "/app/onboarding" },
-        { label: { en: "Login", ar: "دخول" }, href: "/app" },
         {
-          label: { en: "Live WhatsApp demo", ar: "عرض واتساب مباشر" },
+          label: { en: "Text us on WhatsApp", ar: "كلّمنا على واتساب" },
           href: "https://wa.me/12058582516?text=Hi",
         },
+        { label: { en: "Dashboard login", ar: "دخول اللوحة" }, href: "/app" },
       ],
     },
     {
@@ -2518,6 +2568,7 @@ function HomeApp() {
         ctaHref="/kickoff"
       />
       <Hero />
+      <PositionLine />
       <TheMath />
       <AgentsSection />
       <HowItWorks />

@@ -79,7 +79,7 @@ export default function TeardownPage() {
               color: "var(--paper-mut, #837c69)",
             }}
           >
-            § agents.dcp.sa · public teardown
+            § Najim · 60-second hire preview · no signup
           </span>
           <h1
             style={{
@@ -90,14 +90,16 @@ export default function TeardownPage() {
               lineHeight: 1.05,
             }}
           >
-            See how an AI agent would{" "}
-            <em style={{ color: "#2d8e7d" }}>think about your business</em> in 30 seconds.
+            Watch a Najim hire{" "}
+            <em style={{ color: "#d4924b" }}>read your business</em>{" "}
+            in 60 seconds.
           </h1>
           <p style={{ fontSize: 17, lineHeight: 1.55, color: "var(--paper-mut, #514c40)" }}>
-            Paste any UAE or Saudi SMB website and our agent will produce a free analysis:
-            its sharp first impression, three customer questions your site doesn&apos;t answer
-            yet, three on-brand Instagram captions, and a sample WhatsApp reply. No signup
-            required. ~30 seconds.
+            Paste any UAE or Saudi SMB URL. We send your site through the same agent stack
+            that serves our paying tenants — and show you exactly what your future hire
+            would notice on Day 1: the sharp first impression, the three customer questions
+            your site doesn&apos;t answer, three on-brand Instagram captions, and a sample
+            WhatsApp reply in your voice. Shareable permalink. No signup. ~60 seconds.
           </p>
         </header>
 
@@ -152,7 +154,7 @@ export default function TeardownPage() {
               whiteSpace: "nowrap",
             }}
           >
-            {pending ? "analyzing…" : "Generate teardown"}
+            {pending ? "Reading your site…" : "Run hire preview"}
           </button>
         </form>
 
@@ -188,12 +190,13 @@ export default function TeardownPage() {
               lineHeight: 1.55,
             }}
           >
-            <strong>How it works.</strong> We crawl your public pages (about, services, FAQ,
-            contact, team) and route the content through our inference layer — the same agent
-            that runs Saffron Kitchen (Dubai) and Jareed Coffee (Riyadh) in production. The
-            report is generated in real time; we don&apos;t cache, sell, or share what we
-            find. After the analysis, you can sign up to get a full 10-artifact day-one
-            package, an owner WhatsApp channel, and the actual agent on your number.
+            <strong>What this is.</strong> Najim is an AI staffing agency — we hire,
+            train, and ship a bespoke AI teammate for your business in 10 working days.
+            This page is a 60-second preview of how that hire would think about your site
+            on Day 1. We crawl your public pages and route them through the same agent
+            stack that serves our tenants. Real-time, no cache, nothing sold or shared.
+            When you&apos;re ready: <a href="/kickoff" style={{ color: "#d4924b", textDecoration: "underline" }}>schedule a 20-minute kickoff call</a> and
+            we put your hire on WhatsApp inside two weeks.
           </div>
         )}
       </div>
