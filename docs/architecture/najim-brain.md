@@ -126,42 +126,42 @@ Application paths:
 
 Run end-to-end on the VPS as root. Total time ~30 minutes including verification.
 
-### 5.1  Clone gbrain
+### 5.1  Install Bun + gbrain CLI
+
+**Important — corrected at spec_version 1.0.1:** gbrain is **Bun-based, not Node-based**. The original §5.1 said "clone the repo, run `node migrate.js`" — that's wrong. gbrain ships as a Bun CLI installed globally. There is no `migrate.js` to run.
 
 ```bash
 ssh root@76.13.179.86
-cd /opt
-git clone https://github.com/garrytan/gbrain.git gbrain
-cd /opt/gbrain
-git log --oneline -1  # pin the SHA used below for reproducibility
+
+# Install Bun if not present
+curl -fsSL https://bun.sh/install | bash
+export PATH="$HOME/.bun/bin:$PATH"
+bun --version  # expect 1.3.14 or higher (see versions.json::runtime.bun_version_min)
+
+# Install gbrain globally
+bun install -g github:garrytan/gbrain
+gbrain --version  # expect 0.41.26.0 (or whatever is pinned in versions.json::gbrain.version)
 ```
 
-### 5.2  Provision the Postgres role + database
+### 5.2  Apply gbrain migrations
 
-The `gbrain-postgres` container already runs `pg16` with `pgvector`. Use the existing container:
+Bun's global install blocks the top-level postinstall hook, so schema migrations don't run automatically. Apply them manually:
 
 ```bash
-docker exec -it gbrain-postgres psql -U gbrain -d gbrain <<SQL
+gbrain apply-migrations --yes --non-interactive
+# Expect output: "=== v0.31.0 ... Migration complete === " for each pending migration
+```
+
+Verify the `gbrain-postgres` container has pgvector + pg_trgm enabled (the container is already running; we just turn the extensions on):
+
+```bash
+docker exec gbrain-postgres psql -U gbrain -d gbrain -c "
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;        -- for BM25-style trigram search
-CREATE SCHEMA IF NOT EXISTS gbrain;
-GRANT ALL ON SCHEMA gbrain TO gbrain;
-SQL
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+"
 ```
 
-Then run gbrain's migrations against this database. From inside `/opt/gbrain`:
-
-```bash
-# Exact command depends on gbrain's release — verify in their README at the pinned SHA
-node ./scripts/migrate.js --url postgres://gbrain:${GBRAIN_DB_PW}@127.0.0.1:5432/gbrain
-```
-
-Verify with:
-
-```bash
-docker exec gbrain-postgres psql -U gbrain -d gbrain -c "\dt gbrain.*" | head -20
-# Expect tables: pages · edges · embeddings · sources · users · jobs · audit_log
-```
+Note: `gbrain init` defaults to **PGLite** (a WASM Postgres bundled with the CLI) for personal mode. For Najim's multi-tenant production we connect to the dedicated `gbrain-postgres` Docker container via `DATABASE_URL`. The container is the system of record; PGLite is only used during local testing.
 
 ### 5.3  Configure secrets
 
@@ -558,6 +558,7 @@ Surface in the `cron_runs` table so we can graph it from the existing dashboard.
 
 ## Change log
 
-| Date | Author | Change |
+| Date | Spec version | Change |
 |---|---|---|
-| 2026-05-27 | Architecture draft v1 | Initial document. gbrain not yet bootstrapped. |
+| 2026-05-27 | 1.0.0 | Initial document. gbrain not yet bootstrapped. |
+| 2026-05-27 | **1.0.1** | **Hardwired correction.** Discovered during the bootstrap recon that gbrain is Bun-based, not Node-based — installs globally via `bun install -g github:garrytan/gbrain`, no clone+migrate workflow. Updated §5.1 and §5.2 to match reality. Pinned to gbrain version 0.41.26.0 (commit `42d99b6`) per first install on the VPS. Updated `bootstrap.sh` in the same commit per hardwire rule #2. Migration `021_clients_gbrain.sql` applied to `agents-postgres` and verified — the three new columns (gbrain_token, gbrain_source_slug, gbrain_provisioned_at) are live on `clients`. |

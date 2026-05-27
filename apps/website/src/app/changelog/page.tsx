@@ -30,6 +30,13 @@ const SHIP_LOG: ShipEntry[] = [
   {
     date: "2026-05-27",
     tag: "infra",
+    title: "Najim Brain · gbrain installed on VPS · spec bumped to v1.0.1",
+    body: "First contact with production. Installed Bun 1.3.14 + gbrain 0.41.26.0 (commit 42d99b6) on the VPS. Ran `gbrain apply-migrations --yes --non-interactive` — six migrations through schema v0.32.2 completed cleanly. Applied 021_clients_gbrain.sql to agents-postgres — the three new columns (gbrain_token, gbrain_source_slug, gbrain_provisioned_at) are live on the clients table. Critical discovery: gbrain is Bun-based, NOT Node-based — the original spec assumed `node migrate.js` which doesn't exist. Per hardwire rule #2 (never edit bootstrap.sh without updating §5 in the same commit), bumped spec_version 1.0.0 → 1.0.1, rewrote §5.1 and §5.2 in najim-brain.md to match reality, updated bootstrap.sh to install Bun + gbrain globally + run apply-migrations + generate the systemd unit pointing at the global gbrain binary. Regenerated /spec/najim-brain.html from the v1.0.1 markdown. Still queued: configure DATABASE_URL to point gbrain at the production gbrain-postgres container, decide on embedding provider (Ollama nomic-embed-text vs OpenAI), wire the `gbrain serve` HTTP endpoint, then exercise §6 against Saffron.",
+    commit: "78e2ae4",
+  },
+  {
+    date: "2026-05-27",
+    tag: "infra",
     title: "Najim Brain architecture · deploy runbook · replicable",
     body: "Before building the real gbrain integration we wrote the architecture. docs/architecture/najim-brain.md is the canonical reference — system goal, ASCII architecture diagram of how gbrain fits with the FastAPI prompt-builder + Kapso webhook + Graphiti adjacent layer, current-state inventory of what's on the VPS today, bootstrap procedure (one-time, ~30 min: clone gbrain, run migrations against gbrain-postgres, configure secrets, systemd service, Traefik localhost-only, Dream Cycle cron, smoke test), and the per-tenant provisioning procedure as 7 numbered steps with exact curl commands and verifications. Plus schema migration (clients.gbrain_token), three Python helper scripts to write next (seed_gbrain.py, backfill_gbrain.py, diff_gbrain.py), code integration points in the prompt-builder, the /brain page swap, rollback, monitoring, DR RPO/RTO, and future work. ~600 lines, copy-pasteable commands throughout. Next sprint: execute §5 then §6 against Saffron first.",
     commit: "f074979",

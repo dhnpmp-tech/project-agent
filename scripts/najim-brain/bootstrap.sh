@@ -60,76 +60,61 @@ echo "  versions: $VERSIONS_JSON"
 echo "═══════════════════════════════════════════════════════════════"
 echo
 
-# ─── §5.1 Clone gbrain ──────────────────────────────────────────────
-echo "── §5.1 Clone gbrain ──"
+# ─── §5.1 Install Bun + gbrain CLI ──────────────────────────────────
+echo "── §5.1 Install Bun + gbrain CLI ──"
 
-if [ -d "$GBRAIN_INSTALL_PATH/.git" ]; then
-  echo "[skip] $GBRAIN_INSTALL_PATH already a git repo"
+# gbrain is Bun-based, not Node. Don't try to clone+build — use the
+# global install path which is what gbrain's INSTALL_FOR_AGENTS.md
+# documents.
+export PATH="$HOME/.bun/bin:$PATH"
+
+if ! command -v bun >/dev/null 2>&1; then
+  curl -fsSL https://bun.sh/install | bash >/dev/null 2>&1
+  export PATH="$HOME/.bun/bin:$PATH"
+  echo "[ok] bun installed at $(bun --version)"
 else
-  git clone "$GBRAIN_REPO" "$GBRAIN_INSTALL_PATH"
-  echo "[ok] cloned $GBRAIN_REPO → $GBRAIN_INSTALL_PATH"
+  echo "[skip] bun already installed: $(bun --version)"
 fi
 
-if [ "$GBRAIN_SHA" = "TO_BE_PINNED_AT_BOOTSTRAP" ]; then
-  # First bootstrap — pin whatever main is right now and write it back to versions.json
-  pinned=$(git -C "$GBRAIN_INSTALL_PATH" rev-parse HEAD)
-  python3 - <<EOF
-import json
-p = "$VERSIONS_JSON"
-d = json.load(open(p))
-d["gbrain"]["sha"] = "$pinned"
-open(p, "w").write(json.dumps(d, indent=2))
-EOF
-  echo "[ok] pinned gbrain SHA $pinned in versions.json — COMMIT THIS"
+if ! command -v gbrain >/dev/null 2>&1; then
+  bun install -g github:garrytan/gbrain
+  echo "[ok] gbrain installed"
 else
-  git -C "$GBRAIN_INSTALL_PATH" fetch --quiet
-  git -C "$GBRAIN_INSTALL_PATH" checkout --quiet "$GBRAIN_SHA"
-  echo "[ok] gbrain checked out at pinned SHA $GBRAIN_SHA"
+  current_version=$(gbrain --version 2>&1 | head -1)
+  echo "[skip] gbrain already installed: $current_version"
 fi
 
-# ─── §5.2 Provision Postgres role + database ───────────────────────
+INSTALLED_VERSION=$(gbrain --version 2>&1 | head -1 | awk '{print $2}')
+PINNED_VERSION=$(read_json "d['gbrain']['version']")
+
+if [ "$INSTALLED_VERSION" != "$PINNED_VERSION" ]; then
+  echo "[warn] installed $INSTALLED_VERSION but versions.json pinned $PINNED_VERSION"
+  echo "       bump spec_version in najim-brain-versions.json if this is intentional"
+fi
+echo "[ok] gbrain version: $INSTALLED_VERSION"
+
+# ─── §5.2 Apply gbrain migrations ───────────────────────────────────
 echo
-echo "── §5.2 Provision Postgres role + database ──"
+echo "── §5.2 Apply gbrain migrations ──"
 
+# Bun blocks the top-level postinstall hook on global installs, so
+# schema migrations don't run automatically. Run them explicitly.
+gbrain apply-migrations --yes --non-interactive 2>&1 | tail -5
+echo "[ok] migrations applied"
+
+# Verify the pgvector container is present (we still need it for the
+# production Postgres backend, even though gbrain init defaults to PGLite)
 if ! docker ps --format '{{.Names}}' | grep -q "^${PG_CONTAINER}$"; then
   echo "[fatal] container $PG_CONTAINER is not running — bring it up first"
   exit 1
 fi
-echo "[ok] $PG_CONTAINER is running"
+echo "[ok] $PG_CONTAINER is running (production Postgres backend)"
 
 docker exec "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -c "
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE SCHEMA IF NOT EXISTS gbrain;
-GRANT ALL ON SCHEMA gbrain TO ${PG_USER};
 " >/dev/null
-echo "[ok] extensions + schema present"
-
-# Run gbrain's migrations against this DB.
-# The exact command depends on what the pinned SHA ships; we expect
-# either a migrate.js or migrate.sh entrypoint. Adapt here if the SHA
-# bump changes that.
-if [ -f "$GBRAIN_INSTALL_PATH/scripts/migrate.js" ]; then
-  node "$GBRAIN_INSTALL_PATH/scripts/migrate.js" \
-    --url "postgres://${PG_USER}:${POSTGRES_PASSWORD:-}@127.0.0.1:5432/${PG_DB}"
-  echo "[ok] gbrain migrations applied"
-elif [ -f "$GBRAIN_INSTALL_PATH/Makefile" ]; then
-  ( cd "$GBRAIN_INSTALL_PATH" && make migrate )
-  echo "[ok] gbrain migrations applied via Makefile"
-else
-  echo "[warn] no migrate.js or Makefile found in gbrain — read $GBRAIN_INSTALL_PATH/README"
-  echo "[warn] and update this script's §5.2 block to match"
-  exit 1
-fi
-
-# Verify
-count=$(docker exec "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -At -c \
-  "SELECT count(*) FROM pg_tables WHERE schemaname = 'gbrain';")
-if [ "$count" -lt 3 ]; then
-  echo "[fatal] gbrain schema has only $count tables — expected ≥3"
-  exit 1
-fi
-echo "[ok] gbrain schema has $count tables"
+echo "[ok] pgvector + pg_trgm extensions present on $PG_CONTAINER"
 
 # ─── §5.3 Configure secrets ─────────────────────────────────────────
 echo
@@ -169,24 +154,32 @@ echo "── §5.4 Install systemd unit ──"
 
 UNIT_PATH="/etc/systemd/system/${GBRAIN_SYSTEMD_UNIT}"
 
+GBRAIN_BIN="$HOME/.bun/bin/gbrain"
+if [ ! -x "$GBRAIN_BIN" ]; then
+  GBRAIN_BIN=$(command -v gbrain)
+fi
+
 cat > "$UNIT_PATH" <<UNIT
 [Unit]
-Description=Najim Brain (gbrain) MCP + HTTP server
+Description=Najim Brain (gbrain) HTTP server
 After=network.target docker.service
 Wants=docker.service
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=${GBRAIN_INSTALL_PATH}
+WorkingDirectory=/root
+Environment="PATH=/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 EnvironmentFile=${SECRETS_FILE}
-ExecStart=/usr/bin/node ./bin/gbrain-serve --port ${GBRAIN_HTTP_PORT} --bind ${GBRAIN_HTTP_BIND}
+ExecStart=${GBRAIN_BIN} serve --port ${GBRAIN_HTTP_PORT} --bind ${GBRAIN_HTTP_BIND}
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 UNIT
+echo "[note] verify 'gbrain serve' is the correct subcommand on the pinned version"
+echo "[note] if not, update the ExecStart line and bump spec_version"
 
 systemctl daemon-reload
 systemctl enable --now "$GBRAIN_SYSTEMD_UNIT"

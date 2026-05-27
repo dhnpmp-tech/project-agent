@@ -267,7 +267,7 @@ body {
       <span>Najim · spec library</span>
     </a>
     <div class="spec-meta">
-      <span class="pin canonical">canonical · spec v1.0.0</span>
+      <span class="pin canonical">canonical · spec v1.0.1</span>
       <span class="pin">2026-05-27</span>
       <a href="/spec/najim-brain.html" style="color:var(--fg-mute); text-decoration:none;">/spec/najim-brain.html</a>
     </div>
@@ -275,9 +275,7 @@ body {
 </div>
 
 <div class="spec-shell">
-  <aside class="spec-toc">
-    <h4>Contents</h4>
-    <div class="toc">
+  <aside class="spec-toc"><h4>Contents</h4><div class="toc">
 <ul>
 <li><a href="#the-najim-brain-architecture-deploy-runbook">The Najim Brain — architecture + deploy runbook</a><ul>
 <li><a href="#0-how-this-document-is-hardwired-to-implementation">0. How this document is hardwired to implementation</a></li>
@@ -286,8 +284,8 @@ body {
 <li><a href="#3-current-state-inventory-vps-761317986">3. Current state inventory (VPS 76.13.179.86)</a></li>
 <li><a href="#4-the-decision">4. The decision</a></li>
 <li><a href="#5-bootstrap-one-time-performed-once-per-vps">5. Bootstrap (one-time, performed once per VPS)</a><ul>
-<li><a href="#51-clone-gbrain">5.1 Clone gbrain</a></li>
-<li><a href="#52-provision-the-postgres-role-database">5.2 Provision the Postgres role + database</a></li>
+<li><a href="#51-install-bun-gbrain-cli">5.1 Install Bun + gbrain CLI</a></li>
+<li><a href="#52-apply-gbrain-migrations">5.2 Apply gbrain migrations</a></li>
 <li><a href="#53-configure-secrets">5.3 Configure secrets</a></li>
 <li><a href="#54-install-gbrain-as-a-systemd-service">5.4 Install gbrain as a systemd service</a></li>
 <li><a href="#55-expose-gbrain-through-traefik-internal-only">5.5 Expose gbrain through Traefik (internal-only)</a></li>
@@ -322,8 +320,7 @@ body {
 </li>
 </ul>
 </div>
-
-  </aside>
+</aside>
 
   <main class="spec-body">
     <div class="spec-hero">
@@ -334,7 +331,7 @@ body {
         <strong>Hardwired</strong> via pinned versions, executable bash scripts, locked Python signatures, committed SQL, and pytest verification — implementation cannot drift from this document without bumping the spec version.
       </p>
       <div class="pills">
-        <span class="pill active">● Spec v1.0.0</span>
+        <span class="pill active">● Spec v1.0.1</span>
         <span class="pill">gbrain + Graphiti + pgvector</span>
         <span class="pill">Bootstrap ≈ 30 min</span>
         <span class="pill">Per-tenant ≈ 10 min</span>
@@ -519,30 +516,31 @@ and building. We block that with five mechanisms:</p>
 <hr />
 <h2 id="5-bootstrap-one-time-performed-once-per-vps">5. Bootstrap (one-time, performed once per VPS)</h2>
 <p>Run end-to-end on the VPS as root. Total time ~30 minutes including verification.</p>
-<h3 id="51-clone-gbrain">5.1  Clone gbrain</h3>
+<h3 id="51-install-bun-gbrain-cli">5.1  Install Bun + gbrain CLI</h3>
+<p><strong>Important — corrected at spec_version 1.0.1:</strong> gbrain is <strong>Bun-based, not Node-based</strong>. The original §5.1 said "clone the repo, run <code>node migrate.js</code>" — that's wrong. gbrain ships as a Bun CLI installed globally. There is no <code>migrate.js</code> to run.</p>
 <pre><code class="language-bash">ssh root@76.13.179.86
-cd /opt
-git clone https://github.com/garrytan/gbrain.git gbrain
-cd /opt/gbrain
-git log --oneline -1  # pin the SHA used below for reproducibility
+
+# Install Bun if not present
+curl -fsSL https://bun.sh/install | bash
+export PATH=&quot;$HOME/.bun/bin:$PATH&quot;
+bun --version  # expect 1.3.14 or higher (see versions.json::runtime.bun_version_min)
+
+# Install gbrain globally
+bun install -g github:garrytan/gbrain
+gbrain --version  # expect 0.41.26.0 (or whatever is pinned in versions.json::gbrain.version)
 </code></pre>
-<h3 id="52-provision-the-postgres-role-database">5.2  Provision the Postgres role + database</h3>
-<p>The <code>gbrain-postgres</code> container already runs <code>pg16</code> with <code>pgvector</code>. Use the existing container:</p>
-<pre><code class="language-bash">docker exec -it gbrain-postgres psql -U gbrain -d gbrain &lt;&lt;SQL
+<h3 id="52-apply-gbrain-migrations">5.2  Apply gbrain migrations</h3>
+<p>Bun's global install blocks the top-level postinstall hook, so schema migrations don't run automatically. Apply them manually:</p>
+<pre><code class="language-bash">gbrain apply-migrations --yes --non-interactive
+# Expect output: &quot;=== v0.31.0 ... Migration complete === &quot; for each pending migration
+</code></pre>
+<p>Verify the <code>gbrain-postgres</code> container has pgvector + pg_trgm enabled (the container is already running; we just turn the extensions on):</p>
+<pre><code class="language-bash">docker exec gbrain-postgres psql -U gbrain -d gbrain -c &quot;
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;        -- for BM25-style trigram search
-CREATE SCHEMA IF NOT EXISTS gbrain;
-GRANT ALL ON SCHEMA gbrain TO gbrain;
-SQL
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+&quot;
 </code></pre>
-<p>Then run gbrain's migrations against this database. From inside <code>/opt/gbrain</code>:</p>
-<pre><code class="language-bash"># Exact command depends on gbrain's release — verify in their README at the pinned SHA
-node ./scripts/migrate.js --url postgres://gbrain:${GBRAIN_DB_PW}@127.0.0.1:5432/gbrain
-</code></pre>
-<p>Verify with:</p>
-<pre><code class="language-bash">docker exec gbrain-postgres psql -U gbrain -d gbrain -c &quot;\dt gbrain.*&quot; | head -20
-# Expect tables: pages · edges · embeddings · sources · users · jobs · audit_log
-</code></pre>
+<p>Note: <code>gbrain init</code> defaults to <strong>PGLite</strong> (a WASM Postgres bundled with the CLI) for personal mode. For Najim's multi-tenant production we connect to the dedicated <code>gbrain-postgres</code> Docker container via <code>DATABASE_URL</code>. The container is the system of record; PGLite is only used during local testing.</p>
 <h3 id="53-configure-secrets">5.3  Configure secrets</h3>
 <p>Append to <code>/etc/prompt-builder/secrets.env</code>:</p>
 <pre><code class="language-bash">GBRAIN_HTTP_URL=http://127.0.0.1:8300
@@ -882,15 +880,20 @@ systemctl restart prompt-builder
 <thead>
 <tr>
 <th>Date</th>
-<th>Author</th>
+<th>Spec version</th>
 <th>Change</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>2026-05-27</td>
-<td>Architecture draft v1</td>
+<td>1.0.0</td>
 <td>Initial document. gbrain not yet bootstrapped.</td>
+</tr>
+<tr>
+<td>2026-05-27</td>
+<td><strong>1.0.1</strong></td>
+<td><strong>Hardwired correction.</strong> Discovered during the bootstrap recon that gbrain is Bun-based, not Node-based — installs globally via <code>bun install -g github:garrytan/gbrain</code>, no clone+migrate workflow. Updated §5.1 and §5.2 to match reality. Pinned to gbrain version 0.41.26.0 (commit <code>42d99b6</code>) per first install on the VPS. Updated <code>bootstrap.sh</code> in the same commit per hardwire rule #2. Migration <code>021_clients_gbrain.sql</code> applied to <code>agents-postgres</code> and verified — the three new columns (gbrain_token, gbrain_source_slug, gbrain_provisioned_at) are live on <code>clients</code>.</td>
 </tr>
 </tbody>
 </table>
