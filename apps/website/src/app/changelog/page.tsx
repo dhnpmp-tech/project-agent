@@ -29,6 +29,13 @@ interface ShipEntry {
 const SHIP_LOG: ShipEntry[] = [
   {
     date: "2026-05-27",
+    tag: "feat",
+    title: "The Najim Brain · two delivery modes · system, not founder",
+    body: "Named our shared knowledge layer the Najim Brain — like WorksHQ's Works Brain but built on gbrain + Graphiti + pgvector (all three already running on our VPS as gbrain-postgres / brain-graphiti / brain-neo4j-graphiti containers). New homepage section walks the six layers: customer memory · business knowledge · the vault · knowledge graph · dream cycle (2am enrichment) · MCP protocol. Open-source stack, hosted on infrastructure we own in UAE & Saudi. Also new: 'Two ways we ship' section makes the delivery choice explicit — REMOTE (default, 10 days, AED 5K+3.5K) vs ON-SITE SPRINT (30 days, ~3× price, a Najim operator embeds inside the business — for brokerages, multi-outlet restaurants, clinics). Footer de-Petered — 'WhatsApp Peter' is now 'WhatsApp the team' / hello@najim.ai. Updated §06 of the Najim Laws to lead the system-not-person framing: 'The Brain is the team that stays. Not the person you called.'",
+    commit: "add176b",
+  },
+  {
+    date: "2026-05-27",
     tag: "ux",
     title: "WorksHQ-inspired voice upgrade · 5 new homepage sections",
     body: "Adopted five patterns from workshq.com.au's tight Australian voice: (1) The Najim Laws — six declarative commitments (\"The unit is a hire, not a tool · If she doesn't sound like your business in 10 days, you don't pay · Voice notes ship in her own voice, or they don't ship · ...\"). (2) Without/With — a behavioral 6-row table contrasting daily SMB pain with the solved state. (3) NajimICP — explicit \"Najim is for you if / NOT for you if\" qualifier that filters tire-kickers. (4) /pricing offer letter now shows the 10-day onboarding broken into Day 1 / 2-5 / 6-8 / 9 / 10 with concrete deliverables per phase. (5) Footer rebuilt — Najim star mark, Peter named as the founder line (WhatsApp + email), provenance signature (\"operated by Project Agent FZ-LLC · Built in Riyadh · backed by DCP\"). /team route removed last commit; this commit fills the page real estate it freed.",
@@ -284,7 +291,7 @@ function ChangelogList() {
       <div className="container">
         <SectionMeta idx="01" label="ship log" />
         <h2 className="display tight" style={{ marginBottom: 32 }}>
-          The <em>last 22 days</em>
+          The <em>last 23 days</em>
         </h2>
         <div className="ship-log">
           {SHIP_LOG.map((entry) => (

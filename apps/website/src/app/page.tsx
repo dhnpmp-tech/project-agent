@@ -995,6 +995,329 @@ function Teardown() {
   );
 }
 
+function NajimBrain() {
+  const { lang } = useLang();
+  const layers = [
+    {
+      n: "01",
+      t: lang === "ar" ? "ذاكرة العميل" : "Customer memory",
+      s: lang === "ar"
+        ? "كل عميل تكلّم مع موظفتك — اسمه، طلبه المعتاد، آخر زيارة، حساسياته، شكواه السابقة، تقديره كزبون مميّز أو معرّض للخسارة."
+        : "Every customer she's ever spoken to — name, usual order, last visit, dietary notes, prior complaints, VIP / at-risk / lapsed scoring.",
+    },
+    {
+      n: "02",
+      t: lang === "ar" ? "معرفة العمل" : "Business knowledge",
+      s: lang === "ar"
+        ? "قائمة الطعام، الأسعار، ساعات العمل، السياسات، السوشيال، التقييمات. تتحدّث من نفسها كل ليلة حسب التغيير عليك."
+        : "Menu, prices, hours, policies, social handles, reviews. Refreshed nightly against any updates you make.",
+    },
+    {
+      n: "03",
+      t: lang === "ar" ? "الخزانة" : "The vault",
+      s: lang === "ar"
+        ? "ملاحظات داخلية تكتبها لها — تفضيلات السلوك، الأسئلة المتكرّرة، قواعد الردّ. ثمانية تصنيفات، مفهرسة بـ pgvector."
+        : "The internal notes you write to her — behavior preferences, recurring questions, response rules. Eight categories, pgvector-indexed.",
+    },
+    {
+      n: "04",
+      t: lang === "ar" ? "الرسم المعرفي" : "Knowledge graph",
+      s: lang === "ar"
+        ? "ربط متعدّد القفزات بين الأشخاص والشركات والمواعيد. Graphiti فوق Neo4j. تجيب على أسئلة لا يستطيعها البحث المتّجهي."
+        : "Multi-hop links between people, businesses, bookings. Graphiti on Neo4j. Answers queries vector search alone cannot reach.",
+    },
+    {
+      n: "05",
+      t: lang === "ar" ? "دورة الحلم" : "Dream cycle",
+      s: lang === "ar"
+        ? "كل ليلة الساعة ٢ صباحاً: تنظيف، استخراج كيانات، كشف تناقضات، صياغة قواعد جديدة. تستيقظ موظفتك أكثر ذكاءً كل صباح."
+        : "Every night at 2am: dedup, entity extraction, contradiction detection, rule drafting. She wakes up smarter every morning.",
+    },
+    {
+      n: "06",
+      t: lang === "ar" ? "بروتوكول MCP" : "MCP protocol",
+      s: lang === "ar"
+        ? "موظفتك متّصلة بالدماغ عبر MCP — يستعمله أيضاً Claude وCursor وOpenClaw. مفتوح، لا يحبسك بنا."
+        : "She connects to the brain via MCP — the same protocol Claude, Cursor, and OpenClaw use. Open. We don't lock you in.",
+    },
+  ];
+  return (
+    <section className="section section-dark" style={{ paddingTop: 56, paddingBottom: 56 }}>
+      <div className="container">
+        <SectionMeta
+          idx="BRAIN"
+          label={lang === "ar" ? "دماغ نجم" : "the Najim Brain"}
+          right={<span className="mono">{lang === "ar" ? "طبقة معرفة موحّدة" : "SHARED KNOWLEDGE LAYER"}</span>}
+        />
+        <div className="sec-title-row">
+          <h2 className="display-2">
+            {lang === "ar" ? (
+              <>
+                المعرفة الجماعية<br />
+                التي لا تستقيل.
+              </>
+            ) : (
+              <>
+                Institutional knowledge<br />
+                <em>that doesn&apos;t quit.</em>
+              </>
+            )}
+          </h2>
+          <p className="ss strong" style={{ maxWidth: "48ch" }}>
+            {lang === "ar"
+              ? "كل موظف بشري ترك عملك، أخذ معه ما يعرف. الدماغ لا. كل ما يصل لموظفتك — كل رسالة، حجز، شكوى، تعليق — يصبح معرفة دائمة لكل موظفة قادمة."
+              : "Every human you've ever hired left with what they learned. The Brain doesn't. Every message, booking, complaint, comment that reaches your hire becomes permanent context — for her, and for every hire after her."}
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 14,
+          }}
+        >
+          {layers.map((l, i) => (
+            <Reveal key={l.n} delay={i * 40}>
+              <div
+                style={{
+                  padding: "22px 24px",
+                  border: "1px solid var(--line, rgba(255,255,255,0.08))",
+                  borderRadius: 8,
+                  background: "var(--card-bg, rgba(255,255,255,0.02))",
+                  height: "100%",
+                }}
+              >
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: "0.14em",
+                    color: "#d4924b",
+                    marginBottom: 8,
+                  }}
+                >
+                  §{l.n}
+                </div>
+                <h3
+                  style={{
+                    fontSize: 18,
+                    fontFamily: "var(--serif, Georgia, serif)",
+                    fontWeight: 400,
+                    margin: "0 0 8px",
+                  }}
+                >
+                  {l.t}
+                </h3>
+                <p style={{ fontSize: 13, lineHeight: 1.55, opacity: 0.78, margin: 0 }}>{l.s}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        <div
+          style={{
+            marginTop: 28,
+            padding: "18px 24px",
+            border: "1px solid rgba(212,146,75,0.25)",
+            borderRadius: 8,
+            background: "rgba(212,146,75,0.04)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 14,
+          }}
+        >
+          <div style={{ fontSize: 13, opacity: 0.85, maxWidth: "62ch", lineHeight: 1.55 }}>
+            {lang === "ar" ? (
+              <>
+                <b style={{ color: "#d4924b" }}>دماغ نجم</b> مبني على <code className="mono" style={{ background: "rgba(0,0,0,0.25)", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>gbrain</code> + <code className="mono" style={{ background: "rgba(0,0,0,0.25)", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>Graphiti</code> + <code className="mono" style={{ background: "rgba(0,0,0,0.25)", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>pgvector</code> · مفتوحة المصدر · يعمل خادمها على بنية تحتية نملكها في الإمارات والسعودية.
+              </>
+            ) : (
+              <>
+                <b style={{ color: "#d4924b" }}>The Najim Brain</b> runs on <code className="mono" style={{ background: "rgba(0,0,0,0.25)", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>gbrain</code> + <code className="mono" style={{ background: "rgba(0,0,0,0.25)", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>Graphiti</code> + <code className="mono" style={{ background: "rgba(0,0,0,0.25)", padding: "1px 6px", borderRadius: 3, fontSize: 12 }}>pgvector</code> · all open-source · hosted on infrastructure we own in the UAE and Saudi.
+              </>
+            )}
+          </div>
+          <span
+            className="mono"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "#d4924b",
+              border: "1px solid rgba(212,146,75,0.4)",
+              padding: "5px 12px",
+              borderRadius: 999,
+            }}
+          >
+            {lang === "ar" ? "● مباشر · إنتاج" : "● Live · production"}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DeliveryModes() {
+  const { lang } = useLang();
+  return (
+    <section className="section" style={{ paddingTop: 40, paddingBottom: 40 }}>
+      <div className="container">
+        <SectionMeta
+          idx="HOW"
+          label={lang === "ar" ? "طريقتان للتسليم" : "two ways we ship"}
+          right={<span className="mono">{lang === "ar" ? "اختر ما يناسبك" : "PICK YOUR FIT"}</span>}
+        />
+        <div className="sec-title-row">
+          <h2 className="display-2">
+            {lang === "ar" ? (
+              <>
+                عن بُعد، <em>أو داخل عملك.</em>
+              </>
+            ) : (
+              <>
+                Remote, <em>or inside your business.</em>
+              </>
+            )}
+          </h2>
+          <p className="ss strong" style={{ maxWidth: "44ch" }}>
+            {lang === "ar"
+              ? "معظم الشركات تكفيها الطريقة عن بُعد — مكالمة كيكأوف، نبني عن بُعد، تستلم خلال ١٠ أيام. للمعقّدة منها: موظف نجم يحضر إليك ٣٠ يوم."
+              : "Most businesses ship remote — kickoff call, we build off-site, you go live in 10 days. The complex ones: a Najim operator embeds inside your business for a 30-day sprint."}
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: 18,
+          }}
+        >
+          {/* Remote */}
+          <div
+            style={{
+              border: "1px solid var(--line, rgba(255,255,255,0.1))",
+              borderRadius: 12,
+              padding: "28px 30px",
+              background: "var(--card-bg, rgba(255,255,255,0.02))",
+            }}
+          >
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                opacity: 0.55,
+                marginBottom: 10,
+              }}
+            >
+              {lang === "ar" ? "الافتراضي · أغلب العملاء" : "Default · most customers"}
+            </div>
+            <h3 style={{ fontSize: 26, fontFamily: "var(--serif, Georgia, serif)", fontWeight: 400, margin: "0 0 10px" }}>
+              {lang === "ar" ? "عن بُعد · ١٠ أيام" : "Remote · 10 days"}
+            </h3>
+            <p style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.82, marginBottom: 16 }}>
+              {lang === "ar"
+                ? "مكالمة كيكأوف ٢٠ دقيقة على واتساب. نبني الموظفة عندنا — وجه، صوت، سيرة، تدريب، تكاملات. تستلمها يوم العاشر على رقم واتساب جديد."
+                : "20-minute kickoff call over WhatsApp. We build the hire off-site — face, voice, CV, training, integrations. She lands on your new WhatsApp number on Day 10."}
+            </p>
+            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 18px", display: "grid", gap: 8 }}>
+              {(lang === "ar"
+                ? ["كيكأوف عن بُعد · ٢٠ دقيقة", "بناء وتدريب ٧–٨ أيام", "موافقتك على الصوت والوجه يوم ٩", "إطلاق يوم ١٠", "خط مباشر بعد الإطلاق"]
+                : ["Remote kickoff · 20 minutes", "Build + training: 7–8 days", "You approve voice + face on Day 9", "Live on Day 10", "Direct line stays open post-launch"]
+              ).map((it) => (
+                <li key={it} style={{ display: "flex", gap: 10, fontSize: 13, opacity: 0.85 }}>
+                  <span style={{ color: "#d4924b" }}>→</span>
+                  <span>{it}</span>
+                </li>
+              ))}
+            </ul>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                paddingTop: 14,
+                borderTop: "1px solid var(--line, rgba(255,255,255,0.06))",
+              }}
+            >
+              <span className="mono" style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", opacity: 0.6 }}>
+                {lang === "ar" ? "السعر" : "Price"}
+              </span>
+              <span style={{ fontSize: 18, fontFamily: "var(--serif, Georgia, serif)" }}>
+                AED 5,000 / mo + 3,500 setup
+              </span>
+            </div>
+          </div>
+
+          {/* On-site sprint */}
+          <div
+            style={{
+              border: "1px solid rgba(212,146,75,0.35)",
+              borderRadius: 12,
+              padding: "28px 30px",
+              background: "linear-gradient(180deg, rgba(212,146,75,0.05) 0%, rgba(212,146,75,0.01) 100%)",
+              position: "relative",
+            }}
+          >
+            <div
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "#d4924b",
+                marginBottom: 10,
+              }}
+            >
+              {lang === "ar" ? "للحالات المعقّدة" : "When complexity demands it"}
+            </div>
+            <h3 style={{ fontSize: 26, fontFamily: "var(--serif, Georgia, serif)", fontWeight: 400, margin: "0 0 10px" }}>
+              {lang === "ar" ? "سبرنت داخلي · ٣٠ يوم" : "On-site sprint · 30 days"}
+            </h3>
+            <p style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.86, marginBottom: 16 }}>
+              {lang === "ar"
+                ? "موظف نجم يحضر داخل عملك ٣٠ يوماً. يجلس مع فريقك، يرسم كل سير العمل، يدرّب الموظفة على محادثاتك الفعلية، ويسلّم الفريق على لوحة التحكّم. لمكاتب العقار، السلاسل، العيادات متعدّدة الفروع."
+                : "A Najim operator embeds inside your business for 30 days. They sit with your team, map every workflow, train the hire against your actual conversation logs, and walk your team through the dashboard. Used by brokerages, multi-outlet restaurants, and clinics."}
+            </p>
+            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 18px", display: "grid", gap: 8 }}>
+              {(lang === "ar"
+                ? ["موظف نجم داخل عملك · ٣٠ يوم", "رسم كل سير العمل (ليس واتساب فقط)", "تدريب الموظفة على سجلّاتك الفعلية", "نقل ملكية اللوحة لفريقك", "إعداد ميتا + تكاملات أعمق"]
+                : ["Najim operator on-site · 30 days", "Map every workflow (not just WhatsApp)", "Train the hire against your real logs", "Hand over the dashboard to your team", "Meta verification + deeper integrations"]
+              ).map((it) => (
+                <li key={it} style={{ display: "flex", gap: 10, fontSize: 13, opacity: 0.88 }}>
+                  <span style={{ color: "#d4924b" }}>→</span>
+                  <span>{it}</span>
+                </li>
+              ))}
+            </ul>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                paddingTop: 14,
+                borderTop: "1px solid rgba(212,146,75,0.2)",
+              }}
+            >
+              <span className="mono" style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#d4924b" }}>
+                {lang === "ar" ? "السعر" : "Price"}
+              </span>
+              <span style={{ fontSize: 18, fontFamily: "var(--serif, Georgia, serif)", color: "#d4924b" }}>
+                {lang === "ar" ? "اتصل بنا · ~٣× عن بُعد" : "Talk to us · ~3× remote"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function NajimLaws() {
   const { lang } = useLang();
   const LAWS_EN = [
@@ -1003,7 +1326,7 @@ function NajimLaws() {
     "Voice notes ship in her own voice, or they don't ship.",
     "She doesn't say she's AI unless your customer asks.",
     "Arabic isn't a setting. It's the default.",
-    "We hire and train. You run the business.",
+    "The Brain is the team that stays. Not the person you called.",
   ];
   const LAWS_AR = [
     "الوحدة موظفة، مو أداة.",
@@ -1011,7 +1334,7 @@ function NajimLaws() {
     "الرسائل الصوتية تطلع بصوتها هي، أو ما تطلع.",
     "ما تقول إنها ذكاء اصطناعي إلا إذا سألها الزبون.",
     "العربية مو إعداد. هي الأصل.",
-    "نحن نوظّف وندرّب. أنت تدير العمل.",
+    "الدماغ هو الفريق الذي يبقى. مو الشخص الذي اتصلت به.",
   ];
   const laws = lang === "ar" ? LAWS_AR : LAWS_EN;
   return (
@@ -2872,18 +3195,21 @@ function AgentsFooter() {
             </div>
           ))}
           <div>
-            <h4 className="af-h mono">{lang === "ar" ? "كلّم المؤسّس" : "Direct founder line"}</h4>
+            <h4 className="af-h mono">{lang === "ar" ? "كلّم الفريق" : "Talk to the team"}</h4>
             <ul>
               <li>
-                <a href="https://wa.me/12058582516?text=Hi%20Peter">
-                  {lang === "ar" ? "كلّم بيتر على واتساب" : "WhatsApp Peter"}
+                <a href="https://wa.me/12058582516?text=Hi%20Najim">
+                  {lang === "ar" ? "واتساب نجم" : "WhatsApp the team"}
                 </a>
               </li>
               <li>
-                <a href="mailto:peter@dc1st.com">peter@dc1st.com</a>
+                <a href="mailto:hello@najim.ai">hello@najim.ai</a>
               </li>
               <li>
-                <a href="/kickoff">{lang === "ar" ? "احجز موعد كيكأوف" : "Schedule kickoff"}</a>
+                <a href="/kickoff">{lang === "ar" ? "احجز موعد كيكأوف (عن بُعد)" : "Schedule kickoff · remote"}</a>
+              </li>
+              <li>
+                <a href="/kickoff">{lang === "ar" ? "سبرنت داخلي · ٣٠ يوم" : "On-site sprint · 30 days"}</a>
               </li>
             </ul>
           </div>
@@ -2930,7 +3256,8 @@ function HomeApp() {
       <NajimLaws />
       <TheMath />
       <WithoutWith />
-      <HowItWorks />
+      <NajimBrain />
+      <DeliveryModes />
       <NajimICP />
       <Pricing />
       <AgentsSection />
