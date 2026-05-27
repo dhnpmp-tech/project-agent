@@ -1140,7 +1140,8 @@ function NajimBrain() {
               </>
             )}
           </div>
-          <span
+          <a
+            href="/brain"
             className="mono"
             style={{
               fontSize: 10,
@@ -1150,10 +1151,14 @@ function NajimBrain() {
               border: "1px solid rgba(212,146,75,0.4)",
               padding: "5px 12px",
               borderRadius: 999,
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            {lang === "ar" ? "● مباشر · إنتاج" : "● Live · production"}
-          </span>
+            {lang === "ar" ? "شاهد دماغ يُبنى ←" : "Watch a brain build itself →"}
+          </a>
         </div>
       </div>
     </section>
@@ -3237,6 +3242,7 @@ function HomeApp() {
   const { lang } = useLang();
   const navLinks: NavLink[] = [
     { href: "/", label: lang === "ar" ? "الرئيسية" : "Home", key: "home" },
+    { href: "/brain", label: lang === "ar" ? "الدماغ" : "The Brain", key: "brain" },
     { href: "/pricing", label: lang === "ar" ? "العرض" : "The offer", key: "pricing" },
     { href: "/teardown", label: lang === "ar" ? "تشريح مجاني" : "Free audit", key: "teardown" },
     { href: "/changelog", label: lang === "ar" ? "السجل" : "Changelog", key: "changelog" },
