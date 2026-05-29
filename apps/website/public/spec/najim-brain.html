@@ -267,7 +267,7 @@ body {
       <span>Najim · spec library</span>
     </a>
     <div class="spec-meta">
-      <span class="pin canonical">canonical · spec v1.0.1</span>
+      <span class="pin canonical">canonical · spec v1.0.2</span>
       <span class="pin">2026-05-27</span>
       <a href="/spec/najim-brain.html" style="color:var(--fg-mute); text-decoration:none;">/spec/najim-brain.html</a>
     </div>
@@ -331,7 +331,7 @@ body {
         <strong>Hardwired</strong> via pinned versions, executable bash scripts, locked Python signatures, committed SQL, and pytest verification — implementation cannot drift from this document without bumping the spec version.
       </p>
       <div class="pills">
-        <span class="pill active">● Spec v1.0.1</span>
+        <span class="pill active">● Spec v1.0.2</span>
         <span class="pill">gbrain + Graphiti + pgvector</span>
         <span class="pill">Bootstrap ≈ 30 min</span>
         <span class="pill">Per-tenant ≈ 10 min</span>
@@ -894,6 +894,11 @@ systemctl restart prompt-builder
 <td>2026-05-27</td>
 <td><strong>1.0.1</strong></td>
 <td><strong>Hardwired correction.</strong> Discovered during the bootstrap recon that gbrain is Bun-based, not Node-based — installs globally via <code>bun install -g github:garrytan/gbrain</code>, no clone+migrate workflow. Updated §5.1 and §5.2 to match reality. Pinned to gbrain version 0.41.26.0 (commit <code>42d99b6</code>) per first install on the VPS. Updated <code>bootstrap.sh</code> in the same commit per hardwire rule #2. Migration <code>021_clients_gbrain.sql</code> applied to <code>agents-postgres</code> and verified — the three new columns (gbrain_token, gbrain_source_slug, gbrain_provisioned_at) are live on <code>clients</code>.</td>
+</tr>
+<tr>
+<td>2026-05-29</td>
+<td><strong>1.0.2</strong></td>
+<td><strong>gbrain HTTP server live in production.</strong> <code>gbrain serve --http</code> running as systemd unit <code>gbrain.service</code> on the VPS. <code>GET http://127.0.0.1:3131/health</code> returns <code>{status: ok, version: 0.41.26.0, engine: postgres}</code>. Three endpoint discoveries vs the original spec: (a) port is 3131, not 8300 — the CLI ignores <code>--port</code>; (b) bind is <code>0.0.0.0</code> by default with no flag override — enforced localhost-only via <code>iptables INPUT DROP</code> rule on port 3131 (persisted via <code>/etc/iptables/rules.v4</code> + <code>@reboot</code> cron); (c) embedding provider is <code>minimax:embo-01</code>, not the Ollama <code>nomic-embed-text</code> originally pinned — <code>gbrain config get embedding_model</code> is the source of truth. Verified put/search pipeline end-to-end with a smoke-test page; retrieval returned a hit with score 0.24. <code>gbrain-postgres</code> database URL pre-configured via Docker network gateway (<code>postgres://gbrain@172.20.0.4:5432/gbrain</code>) — no change needed. Versions.json bumped, endpoints.* dict added. The admin token is logged to journalctl on first start; capture from <code>journalctl -u gbrain</code> and store securely.</td>
 </tr>
 </tbody>
 </table>

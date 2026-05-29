@@ -1,10 +1,11 @@
 {
   "_meta": {
-    "spec_version": "1.0.1",
+    "spec_version": "1.0.2",
     "canonical_doc": "docs/architecture/najim-brain.md",
-    "frozen_at": "2026-05-27",
+    "frozen_at": "2026-05-29",
     "purpose": "Single source of truth for every version, port, path, and env var the Najim Brain deploy depends on. Implementation reads from here, not from the prose. If you need to bump a version, edit this file AND increment spec_version AND add a row to docs/architecture/najim-brain.md change log.",
-    "v1.0.1_changes": "gbrain is Bun-based, not Node. Install via `bun install -g github:garrytan/gbrain`. Migrations via `gbrain apply-migrations --yes --non-interactive`. Server via `gbrain serve` (subcommand of the global CLI). Pinned to gbrain version 0.41.26.0 (commit 42d99b6) per first install on VPS 2026-05-27."
+    "v1.0.1_changes": "gbrain is Bun-based, not Node. Install via `bun install -g github:garrytan/gbrain`. Migrations via `gbrain apply-migrations --yes --non-interactive`. Server via `gbrain serve` (subcommand of the global CLI). Pinned to gbrain version 0.41.26.0 (commit 42d99b6) per first install on VPS 2026-05-27.",
+    "v1.0.2_changes": "gbrain serve HTTP listens on port 3131 (not 8300) — the CLI ignores --port and uses its built-in default. Confirmed live on VPS 2026-05-29 with /health returning {status:ok,version:0.41.26.0,engine:postgres}. Bound to 0.0.0.0 by default (not configurable via flag); locked down to localhost-only via iptables INPUT rule on port 3131. Embedding provider is minimax:embo-01 (not Ollama nomic-embed-text); set previously via `gbrain config set embedding_model`. Database URL pre-configured to postgres://gbrain@172.20.0.4:5432/gbrain (Docker network gateway to gbrain-postgres). Admin token is logged to journalctl on first start — capture from `journalctl -u gbrain` and store securely."
   },
   "runtime": {
     "engine": "bun",
@@ -16,13 +17,21 @@
     "version": "0.41.26.0",
     "sha": "42d99b6",
     "install_method": "bun install -g github:garrytan/gbrain",
-    "cli_binary": "gbrain",
+    "cli_binary": "/root/.bun/bin/gbrain",
     "default_config_dir": "/root/.gbrain",
-    "_serve_note": "Server mode invoked via the gbrain CLI subcommand — run `gbrain --help` on the pinned version to confirm exact serve subcommand at bootstrap time.",
-    "http_port": 8300,
-    "http_bind": "127.0.0.1",
+    "serve_command": "gbrain serve --http",
+    "_serve_note": "v1.0.2: --port flag is ignored. gbrain serves on port 3131 by default, bound to 0.0.0.0. Localhost-only enforcement is via iptables (INPUT DROP rule on port 3131 for non-127.0.0.1 sources, persisted via /etc/iptables/rules.v4 + @reboot cron).",
+    "http_port": 3131,
+    "http_bind": "0.0.0.0",
+    "external_block_method": "iptables INPUT DROP",
+    "endpoints": {
+      "health": "http://127.0.0.1:3131/health",
+      "admin": "http://127.0.0.1:3131/admin",
+      "mcp": "http://127.0.0.1:3131/mcp"
+    },
     "systemd_unit": "gbrain.service",
-    "log_file": "/var/log/gbrain.log"
+    "systemd_status": "active (2026-05-29)",
+    "log_file": "journalctl -u gbrain"
   },
   "postgres": {
     "container_name": "gbrain-postgres",
@@ -41,11 +50,13 @@
     "neo4j_image": "neo4j:5.26.2"
   },
   "models": {
-    "llm": "qwen3:30b-a3b",
-    "llm_provider": "ollama",
-    "ollama_endpoint": "http://172.17.0.1:11434/v1",
-    "embedding": "nomic-embed-text",
-    "embedding_dim": 768
+    "_note": "Active config as of v1.0.2 — read from gbrain config get embedding_model / llm_model on the VPS, not aspirational.",
+    "embedding": "minimax:embo-01",
+    "embedding_dim": 1536,
+    "graphiti_llm": "qwen3:30b-a3b",
+    "graphiti_llm_provider": "ollama",
+    "graphiti_ollama_endpoint": "http://172.17.0.1:11434/v1",
+    "graphiti_embedding": "nomic-embed-text"
   },
   "cron": {
     "dream_cycle_schedule": "0 2 * * *",

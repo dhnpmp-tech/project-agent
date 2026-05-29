@@ -28,6 +28,13 @@ interface ShipEntry {
 
 const SHIP_LOG: ShipEntry[] = [
   {
+    date: "2026-05-29",
+    tag: "infra",
+    title: "Najim Brain HTTP server live in production · spec v1.0.2",
+    body: "`gbrain serve --http` running as a systemd unit on the VPS. `GET http://127.0.0.1:3131/health` returns {status:ok, version:0.41.26.0, engine:postgres}. Three corrections vs the original spec, captured per hardwire rule #1: (a) port is 3131 not 8300 — gbrain ignores --port and uses its built-in default; (b) bind is 0.0.0.0 with no flag override — locked down to localhost-only via iptables INPUT DROP rule on 3131, persisted via /etc/iptables/rules.v4 + @reboot cron; (c) embedding provider is minimax:embo-01 not Ollama nomic-embed-text. Verified put/search end-to-end — gbrain ingested 'Saffron Kitchen serves lamb mandi nightly' and returned it on a 'lamb' query with score 0.24. najim-brain-versions.json bumped, endpoints.* dict added, change-log row written. systemd unit + iptables rules persistent across reboot.",
+    commit: "d59e112",
+  },
+  {
     date: "2026-05-27",
     tag: "infra",
     title: "Najim Brain · gbrain installed on VPS · spec bumped to v1.0.1",
@@ -305,7 +312,7 @@ function ChangelogList() {
       <div className="container">
         <SectionMeta idx="01" label="ship log" />
         <h2 className="display tight" style={{ marginBottom: 32 }}>
-          The <em>last 24 days</em>
+          The <em>last 26 days</em>
         </h2>
         <div className="ship-log">
           {SHIP_LOG.map((entry) => (
